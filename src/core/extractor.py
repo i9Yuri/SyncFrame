@@ -11,6 +11,9 @@ from .temp_manager import TempWorkspace
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_FFMPEG_THREADS = 2
+
+
 def extract_reference_channel(
     file_path: str,
     stream_id: int,
@@ -24,6 +27,7 @@ def extract_reference_channel(
     Extracts a simplified mono PCM 16kHz WAV channel from a specific container audio track.
     Applies a bandpass filter (300Hz-4000Hz) to suppress language-dependent speech fundamentals
     and isolate background foley, transients, and soundtrack cues for high mutual coherence.
+    Limits FFmpeg execution to a safe thread count (-threads 2) to avoid thermal and power spikes.
     
     Returns:
         Absolute path to the resulting WAV file.
@@ -37,9 +41,10 @@ def extract_reference_channel(
     else:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
-    # Build ffmpeg command with error resilience
+    # Build ffmpeg command with error resilience and thread throttling
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-threads", str(DEFAULT_FFMPEG_THREADS),
         "-err_detect", "ignore_err"
     ]
 
@@ -134,6 +139,7 @@ def extract_audio_lossless(
     if ext != ".flac" or raw_codec == "flac":
         cmd_copy = [
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            "-threads", str(DEFAULT_FFMPEG_THREADS),
             "-err_detect", "ignore_err",
             "-i", input_path,
             "-map", f"0:{track_index}",
@@ -150,6 +156,7 @@ def extract_audio_lossless(
         output_flac = os.path.join(output_dir, f"track_{track_index}_lossless.flac")
         cmd_flac = [
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            "-threads", str(DEFAULT_FFMPEG_THREADS),
             "-err_detect", "ignore_err",
             "-i", input_path,
             "-map", f"0:{track_index}",

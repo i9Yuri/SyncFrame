@@ -32,15 +32,19 @@ KNOWN_RATIOS = [
 def load_wav_mono(file_path: str, max_duration_sec: Optional[float] = None) -> Tuple[np.ndarray, int]:
     """
     Reads a 16-bit PCM mono WAV file into a normalized float32 numpy array.
+    Applies streaming chunking/capping to strictly prevent RAM exhaustion on long media files.
     """
+    # Safe guard: cap at 600 seconds (10 minutes) maximum if unconstrained to protect RAM
+    effective_max_sec = max_duration_sec if (max_duration_sec and max_duration_sec > 0) else 600.0
+
     with wave.open(file_path, "rb") as wf:
         n_channels = wf.getnchannels()
         sampwidth = wf.getsampwidth()
         framerate = wf.getframerate()
         n_frames = wf.getnframes()
 
-        if max_duration_sec:
-            n_frames = min(n_frames, int(max_duration_sec * framerate))
+        if effective_max_sec:
+            n_frames = min(n_frames, int(effective_max_sec * framerate))
 
         raw_bytes = wf.readframes(n_frames)
 
@@ -97,6 +101,57 @@ def _cross_correlate_fft(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.n
 
     norm_corr = (corr / denominator).astype(np.float32)
     return lags, norm_corr
+
+
+def calculate_signed_offset(
+    ref_signal: np.ndarray,
+    target_signal: np.ndarray,
+    sample_rate: int,
+    max_lag_sec: float = 60.0
+) -> float:
+    """
+    Calcula o offset temporal estritamente assinado entre o sinal de referência e o sinal alvo.
+    
+    Contrato Matemático:
+    - Se o áudio dublado (alvo) inicia DEPOIS da referência (atrasado):
+      retorna valor POSITIVO (+ms). Necessita de adiantamento / delay negativo no contêiner.
+    - Se o áudio dublado (alvo) inicia ANTES da referência (adiantado):
+      retorna valor NEGATIVO (-ms). Necessita de injeção de delay positivo no contêiner.
+    """
+    offset_ms, _, _ = calculate_offset_from_signals(
+        ref_signal, target_signal, sample_rate, max_lag_sec=max_lag_sec
+    )
+    return float(offset_ms)
+
+
+def map_offset_to_player_delay(
+    offset_ms: float,
+    player_engine: str
+) -> float:
+    """
+    Converte deterministicamente o offset calculado para o atraso/adiantamento
+    exigido por cada motor de reprodução ou remux.
+    
+    Regras de sinal:
+    - 'mkvmerge': Retorna o valor em milissegundos para a flag --sync 0:<delay>.
+      Áudio dublado atrasado (+ms) requer delay negativo no contêiner para adiantamento.
+      Retorna: -float(offset_ms)
+      
+    - 'mpv': Retorna o valor em segundos para a flag --audio-delay=<sec>.
+      Em mpv, valores positivos atrasam o áudio e negativos atrasam o vídeo / adiantam o áudio.
+      Para sincronizar áudio dublado atrasado (+ms), adianta-se o áudio (-segundos).
+      Retorna: -(float(offset_ms) / 1000.0)
+      
+    - 'ffplay': Retorna o valor em segundos para compensação temporal.
+      Retorna: -(float(offset_ms) / 1000.0)
+    """
+    engine = player_engine.lower()
+    if engine == "mkvmerge":
+        return -float(offset_ms)
+    elif engine in ("mpv", "ffplay"):
+        return -(float(offset_ms) / 1000.0)
+    else:
+        raise ValueError(f"Motor de player/remux desconhecido: '{player_engine}'")
 
 
 def calculate_offset_from_signals(

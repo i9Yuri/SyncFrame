@@ -170,7 +170,8 @@ class TestContainerHandling(unittest.TestCase):
         self.assertIn("0", cmd)
         self.assertIn("--audio-tracks", cmd)
         self.assertIn("--sync", cmd)
-        self.assertIn("0:-125", cmd)
+        # With normalized sign contract: offset_ms = -125.0 implies container delay = -(-125) = +125ms
+        self.assertIn("0:125", cmd)
         self.assertIn("--track-name", cmd)
         self.assertIn("0:Português (Brasil)", cmd)
         self.assertIn("/tmp/extracted_audio.m4a", cmd)

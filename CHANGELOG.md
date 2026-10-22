@@ -7,6 +7,38 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [0.3.0] - 2026-10-22
+
+### Adicionado
+- **Diagnóstico do Sistema & Mitigação de Quedas de Hardware:**
+  - Utilitário `diagnose_system_crash_logs()` em `src/utils/system_check.py` para inspeção automatizada dos logs anteriores do sistema operacional (`journalctl -b -1`).
+  - Diagnóstico da causa-raiz do desligamento abrupto no host (Intel Xeon E5-2667 v2 + AMD RX 580 no Nobara Linux): desarme elétrico/térmico (OCP) sob concorrência desenfreada de 16 threads de FFmpeg em 4K UHD Atmos somada a reprodução acelerada por hardware no mpv.
+  - Mitigação de sobrecarga em `run.sh` e `src/main.py`: fixação estrita das variáveis de ambiente de concorrência (`OMP_NUM_THREADS=2`, `OPENBLAS_NUM_THREADS=2`, `MKL_NUM_THREADS=2`, `VECLIB_MAXIMUM_THREADS=2`, `NUMEXPR_NUM_THREADS=2`).
+  - Throttling de processos em `src/core/extractor.py` e `src/core/transformer.py`: injeção compulsória de `-threads 2` em todas as invocações de FFmpeg (`extract_reference_channel`, `extract_audio_lossless`, `apply_temporal_transform`).
+  - Execução de esteira em baixa prioridade (`os.nice(5)`) no worker de background.
+
+- **Formalização Matemática do Contrato de Sinal de Offset:**
+  - Implementação de `calculate_signed_offset` e `map_offset_to_player_delay` em `src/core/correlator.py`.
+  - Resolução da divergência de convenções de sinal:
+    - Se o áudio dublado inicia *depois* do vídeo (atrasado), `offset_ms > 0` ($+\text{ms}$); exige avanço no contêiner (`mkvmerge --sync 0:-offset_ms`) e adiantamento no player (`mpv --audio-delay=-offset_sec`).
+    - Se o áudio dublado inicia *antes* do vídeo (adiantado), `offset_ms < 0` ($-\text{ms}$); exige atraso positivo no contêiner e player.
+  - Blindagem contra exaustão de RAM em arquivos longos (`load_wav_mono` com teto padrão de leitura de 600 segundos).
+
+- **Fluxo de Ação Única & Simplificação Radical da Interface:**
+  - Consolidação dos fluxos dispersos no modelo de ação linear ("Jogou ➔ Confirmou ➔ Concluiu") orquestrado por `UnifiedPipelineWorker` (`src/ui/workers/unified_pipeline_worker.py`).
+  - Eliminação de botões concorrentes e redundantes ("Calcular Sincronia", "Iniciar Sincronização e Remux", "Executar Lossless Remux") em favor de um botão único principal: `"Sincronizar e Concluir"`.
+  - Botão contextual `"Cancelar Operação"` acionável durante a execução com cancelamento gracioso de subprocessos.
+  - Novo componente de gaveta retrátil `CollapsibleSection` (`src/ui/components/collapsible_section.py`) recolhido por padrão com alternador `▶ / ▼`, encapsulando a curva de correlação (`CorrelationView`), micro-ajustes manuais ($\pm 50\text{ ms}$, $\pm 250\text{ ms}$, slider) e o miniplayer de inspeção labial (`PreviewPlayer`).
+  - Novo controle de alto contraste `AudioPreserveCheckbox` (`src/ui/components/audio_preserve_checkbox.py`) com fundo esmeralda `#10b981`, ícone SVG de checkmark nítido quando ativo, e texto dinâmico inequívoco (`"Preservar áudio original em inglês: Sim (Faixa Secundária)"` vs `"Não"`).
+  - Auditoria e saneamento completo de herança visual no tema claro, eliminando cores escuras inline fixadas (`#141414`, `#121212`, `#ffffff`) em favor de classes semânticas QSS neutras.
+
+- **Expansão da Suíte de Testes Automatizados:**
+  - Criação de `tests/test_system_diagnostics.py` e `tests/test_ui_components.py`.
+  - Novos testes de cálculo de offset com sinal e mapeamento de atraso em `tests/test_correlator.py`.
+  - Total de 44 testes unitários automatizados (100% aprovados).
+
+---
+
 ## [0.1.0] - 2026-10-22
 
 ### Adicionado

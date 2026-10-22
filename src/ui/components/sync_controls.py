@@ -47,12 +47,6 @@ class SyncControls(QFrame):
         title.setProperty("class", "cardTitle")
         header_layout.addWidget(title)
         header_layout.addStretch()
-
-        self.btn_analyze = QPushButton("Calcular Sincronia")
-        self.btn_analyze.setProperty("class", "btnPrimary")
-        self.btn_analyze.clicked.connect(self.analyze_requested.emit)
-        header_layout.addWidget(self.btn_analyze)
-
         layout.addLayout(header_layout)
 
         # Metrics Display Grid
@@ -74,7 +68,7 @@ class SyncControls(QFrame):
         grid.addWidget(lbl_drift_title, 0, 1)
 
         self.lbl_drift_val = QLabel("1.000000x")
-        self.lbl_drift_val.setStyleSheet("font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff;")
+        self.lbl_drift_val.setStyleSheet("font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700;")
         grid.addWidget(self.lbl_drift_val, 1, 1)
 
         # Metric: Confidence
@@ -90,7 +84,8 @@ class SyncControls(QFrame):
 
         # FPS Diagnostic banner
         self.lbl_diagnosis = QLabel("Taxas de quadros congruentes (sem deriva contínua)")
-        self.lbl_diagnosis.setStyleSheet("color: #d4d4d4; font-size: 12px; background: #141414; padding: 6px 10px; border-radius: 6px; border: 1px solid #2e2e2e;")
+        self.lbl_diagnosis.setProperty("class", "badgeNeutral")
+        self.lbl_diagnosis.setStyleSheet("padding: 6px 10px; font-size: 11px;")
         layout.addWidget(self.lbl_diagnosis)
 
         # Fine-Tuning Controls Row

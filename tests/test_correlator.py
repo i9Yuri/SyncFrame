@@ -6,6 +6,8 @@ import numpy as np
 
 from src.core.correlator import (
     calculate_offset_from_signals,
+    calculate_signed_offset,
+    map_offset_to_player_delay,
     diagnose_drift_and_framerate,
     _cross_correlate_fft
 )
@@ -78,6 +80,57 @@ class TestCorrelator(unittest.TestCase):
         self.assertAlmostEqual(drift, 1.0, places=4)
         self.assertEqual(stretch, 1.0)
         self.assertIn("congruentes", diag.lower())
+
+    def test_calculate_signed_offset_delayed(self):
+        """When target audio is delayed (+500ms after ref), calculate_signed_offset returns +500ms."""
+        sample_rate = 16000
+        duration_sec = 3.0
+        n_samples = int(duration_sec * sample_rate)
+        t = np.linspace(0, duration_sec, n_samples, endpoint=False, dtype=np.float32)
+
+        # Distinct pulse pattern at t=1.0s
+        ref = np.zeros(n_samples, dtype=np.float32)
+        ref[int(1.0 * sample_rate):int(1.1 * sample_rate)] = 1.0
+
+        # Target has the same pulse delayed by 500ms (at t=1.5s)
+        target = np.zeros(n_samples, dtype=np.float32)
+        target[int(1.5 * sample_rate):int(1.6 * sample_rate)] = 1.0
+
+        offset_ms = calculate_signed_offset(ref, target, sample_rate, max_lag_sec=2.0)
+        self.assertAlmostEqual(offset_ms, 500.0, delta=1.0)
+
+    def test_calculate_signed_offset_advanced(self):
+        """When target audio is advanced (-500ms before ref), calculate_signed_offset returns -500ms."""
+        sample_rate = 16000
+        duration_sec = 3.0
+        n_samples = int(duration_sec * sample_rate)
+
+        # Distinct pulse pattern at t=1.5s in reference
+        ref = np.zeros(n_samples, dtype=np.float32)
+        ref[int(1.5 * sample_rate):int(1.6 * sample_rate)] = 1.0
+
+        # Target has the same pulse early by 500ms (at t=1.0s)
+        target = np.zeros(n_samples, dtype=np.float32)
+        target[int(1.0 * sample_rate):int(1.1 * sample_rate)] = 1.0
+
+        offset_ms = calculate_signed_offset(ref, target, sample_rate, max_lag_sec=2.0)
+        self.assertAlmostEqual(offset_ms, -500.0, delta=1.0)
+
+    def test_map_offset_to_player_delay(self):
+        """Verifies mathematical inversion contract across mkvmerge, mpv, and ffplay."""
+        # 1. Delayed target audio (+500ms) -> container delay must be -500ms, player delay -0.5s
+        self.assertEqual(map_offset_to_player_delay(500.0, "mkvmerge"), -500.0)
+        self.assertEqual(map_offset_to_player_delay(500.0, "mpv"), -0.5)
+        self.assertEqual(map_offset_to_player_delay(500.0, "ffplay"), -0.5)
+
+        # 2. Advanced target audio (-500ms) -> container delay must be +500ms, player delay +0.5s
+        self.assertEqual(map_offset_to_player_delay(-500.0, "mkvmerge"), 500.0)
+        self.assertEqual(map_offset_to_player_delay(-500.0, "mpv"), 0.5)
+        self.assertEqual(map_offset_to_player_delay(-500.0, "ffplay"), 0.5)
+
+        # 3. Zero offset -> zero delay
+        self.assertEqual(map_offset_to_player_delay(0.0, "mkvmerge"), 0.0)
+        self.assertEqual(map_offset_to_player_delay(0.0, "mpv"), 0.0)
 
 
 if __name__ == "__main__":

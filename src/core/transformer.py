@@ -8,6 +8,9 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_FFMPEG_THREADS = 2
+
+
 def _build_atempo_filter(stretch_ratio: float) -> str:
     """
     Builds an FFmpeg atempo filter chain for any stretch ratio.
@@ -54,7 +57,11 @@ def apply_temporal_transform(
 
     os.makedirs(os.path.dirname(os.path.abspath(audio_out)), exist_ok=True)
 
-    cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", audio_in]
+    cmd = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-threads", str(DEFAULT_FFMPEG_THREADS),
+        "-i", audio_in
+    ]
 
     if source_track_id is not None:
         cmd.extend(["-map", f"0:{source_track_id}"])

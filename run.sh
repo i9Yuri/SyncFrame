@@ -67,7 +67,12 @@ if [ -f "$REQ_FILE" ]; then
     fi
 fi
 
-# 4. Execução da aplicação
-echo -e "${EMERALD}✔ Ambiente validado. Iniciando interface gráfica...${NC}"
+# 4. Execução da aplicação com contenção segura de concorrência
+echo -e "${EMERALD}✔ Ambiente validado. Iniciando interface gráfica com limitação de threads (2 cores)...${NC}"
 export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
+export OMP_NUM_THREADS=2
+export OPENBLAS_NUM_THREADS=2
+export MKL_NUM_THREADS=2
+export VECLIB_MAXIMUM_THREADS=2
+export NUMEXPR_NUM_THREADS=2
 exec python3 "$PROJECT_DIR/src/main.py" "$@"

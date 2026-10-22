@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
+from .components.collapsible_section import CollapsibleSection
 from .components.correlation_view import CorrelationView
 from .components.log_drawer import LogDrawer
 from .components.preview_player import PreviewPlayer
@@ -31,6 +32,7 @@ from .components.unified_drop_zone import UnifiedDropZone
 from .style import apply_theme, get_theme_qss
 from .workers.analyze_worker import AnalyzeWorker
 from .workers.remux_worker import RemuxWorker
+from .workers.unified_pipeline_worker import UnifiedPipelineWorker
 from ..core.disk_utils import check_disk_space, format_bytes
 from ..core.inspector import inspect_media, evaluate_media_streams
 from ..core.models import RemuxJob, SyncMetrics, AutoMatchVerdict, StreamCandidate, format_channel_layout_label
@@ -59,12 +61,24 @@ class SyncFrameMainWindow(QWidget):
         self.selected_target_audio_id: int = 0
 
         self.latest_metrics: Optional[SyncMetrics] = None
+        self.pipeline_worker: Optional[UnifiedPipelineWorker] = None
         self.analyze_worker: Optional[AnalyzeWorker] = None
         self.remux_worker: Optional[RemuxWorker] = None
         self.auto_chain_remux: bool = False
+        self.manual_offset_override: Optional[float] = None
 
         self.setAcceptDrops(True)
         self.init_ui()
+
+    @property
+    def check_keep_original(self):
+        """Forwarding property for backwards-compatibility with existing tests."""
+        return self.drop_zone.check_keep_original
+
+    @property
+    def btn_remux(self):
+        """Forwarding property pointing to the unified primary action button."""
+        return self.drop_zone.btn_confirm
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
@@ -81,7 +95,7 @@ class SyncFrameMainWindow(QWidget):
         header_text_box.setSpacing(2)
 
         title = QLabel("SyncFrame")
-        title.setStyleSheet("font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;")
+        title.setStyleSheet("font-size: 20px; font-weight: 800; letter-spacing: -0.5px;")
         header_text_box.addWidget(title)
 
         subtitle = QLabel("Automação de Sincronia Acústica por FFT & Lossless Remux de Alta Fidelidade")
@@ -122,27 +136,35 @@ class SyncFrameMainWindow(QWidget):
         self.drop_zone.reset_requested.connect(self._on_reset_requested)
         body_layout.addWidget(self.drop_zone)
 
-        # 4. Bento Grid: Metrics & Correlation Visualization
+        # 4. Retractable Drawer: Advanced Controls & Lip-Sync Inspection (CollapsibleSection)
+        self.advanced_drawer = CollapsibleSection("Ajustes Avançados e Inspeção Labial", self)
+
+        # Drawer Content: Waveform + Controls + Miniplayer
+        drawer_content_layout = QVBoxLayout()
+        drawer_content_layout.setSpacing(10)
+
         mid_layout = QHBoxLayout()
-        mid_layout.setSpacing(14)
+        mid_layout.setSpacing(12)
 
         # Left: Correlation Canvas
         self.correlation_view = CorrelationView()
         mid_layout.addWidget(self.correlation_view, 1)
 
-        # Right: Sync Controls & Metrics
+        # Right: Sync Controls & Fine-Tuning Steps
         self.sync_controls = SyncControls()
-        self.sync_controls.analyze_requested.connect(self.start_analysis)
         self.sync_controls.offset_changed.connect(self._on_manual_offset_changed)
         mid_layout.addWidget(self.sync_controls, 1)
 
-        body_layout.addLayout(mid_layout)
+        drawer_content_layout.addLayout(mid_layout)
 
-        # 5. Preview Player Panel
+        # Miniplayer for spot-check preview
         self.preview_player = PreviewPlayer()
-        body_layout.addWidget(self.preview_player)
+        drawer_content_layout.addWidget(self.preview_player)
 
-        # 6. Destination & Output Remux Card
+        self.advanced_drawer.add_layout(drawer_content_layout)
+        body_layout.addWidget(self.advanced_drawer)
+
+        # 5. Destination & Execution Status Card
         dest_card = QFrame()
         dest_card.setObjectName("bentoCard")
         dest_card.setProperty("class", "bentoCard")
@@ -151,15 +173,10 @@ class SyncFrameMainWindow(QWidget):
         dest_layout.setContentsMargins(16, 14, 16, 14)
 
         dest_header = QHBoxLayout()
-        dest_title = QLabel("Destino & Multiplexação Lossless (mkvmerge)")
+        dest_title = QLabel("Destino & Conclusão do Processamento")
         dest_title.setProperty("class", "cardTitle")
         dest_header.addWidget(dest_title)
         dest_header.addStretch()
-
-        self.check_keep_original = QCheckBox("Preservar áudio original como faixa secundária")
-        self.check_keep_original.setChecked(True)
-        dest_header.addWidget(self.check_keep_original)
-
         dest_layout.addLayout(dest_header)
 
         # Output Path selector
@@ -179,22 +196,9 @@ class SyncFrameMainWindow(QWidget):
 
         dest_layout.addLayout(path_row)
 
-        # Action Buttons & Progress Bar
+        # Progress Bar and Contextual Cancel Button
         action_row = QHBoxLayout()
         action_row.setSpacing(12)
-
-        self.btn_remux = QPushButton("Executar Lossless Remux")
-        self.btn_remux.setProperty("class", "btnSuccess")
-        self.btn_remux.clicked.connect(self.start_remux)
-        action_row.addWidget(self.btn_remux)
-
-        self.btn_cancel = QPushButton("Cancelar Operação")
-        self.btn_cancel.setProperty("class", "btnDanger")
-        self.btn_cancel.setEnabled(False)
-        self.btn_cancel.clicked.connect(self.cancel_active_operation)
-        action_row.addWidget(self.btn_cancel)
-
-        action_row.addSpacing(10)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
@@ -202,15 +206,21 @@ class SyncFrameMainWindow(QWidget):
         self.progress_bar.setTextVisible(True)
         action_row.addWidget(self.progress_bar, 1)
 
+        self.btn_cancel = QPushButton("Cancelar Operação")
+        self.btn_cancel.setProperty("class", "btnDanger")
+        self.btn_cancel.setEnabled(False)
+        self.btn_cancel.clicked.connect(self.cancel_active_operation)
+        action_row.addWidget(self.btn_cancel)
+
         dest_layout.addLayout(action_row)
 
         self.lbl_progress_status = QLabel("Pronto para operação.")
-        self.lbl_progress_status.setStyleSheet("color: #8c8c8c; font-size: 11px;")
+        self.lbl_progress_status.setProperty("class", "subText")
         dest_layout.addWidget(self.lbl_progress_status)
 
         body_layout.addWidget(dest_card)
 
-        # 7. Retractable Terminal Logs Drawer
+        # 6. Retractable Terminal Logs Drawer
         self.log_drawer = LogDrawer()
         body_layout.addWidget(self.log_drawer)
 
@@ -314,6 +324,7 @@ class SyncFrameMainWindow(QWidget):
         self.selected_target_audio_id = 0
         self.total_duration_sec = 0.0
         self.latest_metrics = None
+        self.manual_offset_override = None
         self.txt_output_path.clear()
         self.correlation_view.clear()
         self.sync_controls.reset()
@@ -323,6 +334,7 @@ class SyncFrameMainWindow(QWidget):
         self.log_drawer.append_log("[RESET] Fontes e parâmetros resetados.")
 
     def _on_manual_offset_changed(self, offset_ms: float):
+        self.manual_offset_override = offset_ms
         self.preview_player.update_offset(offset_ms)
         if self.latest_metrics:
             self.correlation_view.set_data(
@@ -355,54 +367,17 @@ class SyncFrameMainWindow(QWidget):
             self.txt_output_path.setText(path)
 
     def start_analysis(self):
-        if not self.video_path or not self.audio_path:
-            QMessageBox.warning(self, "Fontes Incompletas", "Carregue os arquivos de vídeo e áudio dublado antes de calcular a sincronia.")
-            return
-
-        self.btn_remux.setEnabled(False)
-        self.sync_controls.btn_analyze.setEnabled(False)
-        self.btn_cancel.setEnabled(True)
-        self.progress_bar.setValue(0)
-
-        self.analyze_worker = AnalyzeWorker(
-            video_path=self.video_path,
-            video_audio_track_id=self.selected_ref_audio_id,
-            audio_path=self.audio_path,
-            target_audio_track_id=self.selected_target_audio_id,
-            duration_sec=self.total_duration_sec
-        )
-        self.analyze_worker.progress.connect(self._on_worker_progress)
-        self.analyze_worker.finished.connect(self._on_analysis_finished)
-        self.analyze_worker.error.connect(self._on_worker_error)
-        self.analyze_worker.start()
-
-    def _on_analysis_finished(self, metrics: SyncMetrics):
-        self.latest_metrics = metrics
-        self.sync_controls.set_metrics(metrics)
-        self.correlation_view.set_data(
-            metrics.correlation_curve,
-            metrics.static_offset_ms,
-            metrics.confidence_score
-        )
-        self.preview_player.update_offset(metrics.static_offset_ms)
-
-        self.btn_remux.setEnabled(True)
-        self.sync_controls.btn_analyze.setEnabled(True)
-        self.btn_cancel.setEnabled(False)
-        self.progress_bar.setValue(100)
-        self.lbl_progress_status.setText("Cálculo espectral concluído com sucesso!")
-        self.log_drawer.append_log(
-            f"[SUCESSO] Offset: {metrics.static_offset_ms:+.1f} ms | Drift: {metrics.drift_ratio:.6f}x | Confiança: {metrics.confidence_score*100:.1f}%"
-        )
-
-        if getattr(self, "auto_chain_remux", False):
-            self.auto_chain_remux = False
-            self.log_drawer.append_log("[AUTO-CHAIN] Review Gate confirmado: Iniciando multiplexação lossless autônoma...")
-            self.start_remux()
+        """Starts the unified execution pipeline (backwards-compatible with tests)."""
+        self.start_unified_pipeline()
 
     def start_remux(self):
+        """Starts the unified execution pipeline (backwards-compatible with tests)."""
+        self.start_unified_pipeline()
+
+    def start_unified_pipeline(self):
+        """Orchestrates single-action extraction, FFT cross-correlation, and lossless remuxing."""
         if not self.video_path or not self.audio_path:
-            QMessageBox.warning(self, "Fontes Incompletas", "Selecione o vídeo e o áudio antes de iniciar o remux.")
+            QMessageBox.warning(self, "Fontes Incompletas", "Carregue os arquivos de vídeo e áudio dublado antes de sincronizar.")
             return
 
         output_path = self.txt_output_path.text().strip()
@@ -439,15 +414,31 @@ class SyncFrameMainWindow(QWidget):
         )
 
         self.btn_remux.setEnabled(False)
-        self.sync_controls.btn_analyze.setEnabled(False)
         self.btn_cancel.setEnabled(True)
         self.progress_bar.setValue(0)
+        self.lbl_progress_status.setText("Iniciando esteira unificada de sincronização e remux...")
+        self.log_drawer.append_log("[PIPELINE] Esteira unificada deflagrada: extração, correlação acústica e lossless remux...")
 
-        self.remux_worker = RemuxWorker(job)
-        self.remux_worker.progress.connect(self._on_worker_progress)
-        self.remux_worker.completed.connect(self._on_remux_completed)
-        self.remux_worker.error.connect(self._on_worker_error)
-        self.remux_worker.start()
+        self.pipeline_worker = UnifiedPipelineWorker(job, manual_offset_override=self.manual_offset_override)
+        self.pipeline_worker.progress.connect(self._on_worker_progress)
+        self.pipeline_worker.metrics_ready.connect(self._on_metrics_ready)
+        self.pipeline_worker.completed.connect(self._on_pipeline_completed)
+        self.pipeline_worker.error.connect(self._on_worker_error)
+        self.pipeline_worker.start()
+
+    def _on_metrics_ready(self, metrics: SyncMetrics):
+        self.latest_metrics = metrics
+        self.sync_controls.set_metrics(metrics)
+        self.correlation_view.set_data(
+            metrics.correlation_curve,
+            metrics.static_offset_ms,
+            metrics.confidence_score
+        )
+        self.preview_player.update_offset(metrics.static_offset_ms)
+        self.log_drawer.append_log(
+            f"[ACÚSTICA] FFT concluída: Offset {metrics.static_offset_ms:+.1f} ms | "
+            f"Drift: {metrics.drift_ratio:.6f}x | Confiança: {metrics.confidence_score*100:.1f}%"
+        )
 
     def _on_worker_progress(self, pct: float, log_line: str):
         if pct >= 0:
@@ -455,27 +446,30 @@ class SyncFrameMainWindow(QWidget):
         self.lbl_progress_status.setText(log_line)
         self.log_drawer.append_log(log_line)
 
-    def _on_remux_completed(self, success: bool, msg: str):
+    def _on_pipeline_completed(self, success: bool, msg: str):
         self.btn_remux.setEnabled(True)
-        self.sync_controls.btn_analyze.setEnabled(True)
         self.btn_cancel.setEnabled(False)
 
         if success:
             self.progress_bar.setValue(100)
-            self.lbl_progress_status.setText("Multiplexação finalizada com sucesso!")
+            self.lbl_progress_status.setText("Sincronização e remux finalizados com sucesso!")
+            self.log_drawer.append_log(f"[SUCESSO] {msg}")
             QMessageBox.information(self, "Sucesso", msg)
         else:
             self.lbl_progress_status.setText(msg)
+            self.log_drawer.append_log(f"[INTERROMPIDO] {msg}")
 
     def _on_worker_error(self, err_msg: str):
         self.btn_remux.setEnabled(True)
-        self.sync_controls.btn_analyze.setEnabled(True)
         self.btn_cancel.setEnabled(False)
         self.lbl_progress_status.setText(f"Erro: {err_msg}")
         self.log_drawer.append_log(f"[ERRO CRÍTICO] {err_msg}")
         QMessageBox.critical(self, "Falha na Operação", f"Ocorreu um erro no pipeline:\n\n{err_msg}")
 
     def cancel_active_operation(self):
+        if self.pipeline_worker and self.pipeline_worker.isRunning():
+            self.pipeline_worker.cancel()
+            self.lbl_progress_status.setText("Cancelando operação e finalizando subprocessos...")
         if self.analyze_worker and self.analyze_worker.isRunning():
             self.analyze_worker.cancel()
             self.lbl_progress_status.setText("Cancelando análise...")

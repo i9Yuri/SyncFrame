@@ -7,7 +7,8 @@ import subprocess
 import threading
 from typing import Callable, List, Optional
 
-from .extractor import extract_audio_lossless
+from .correlator import compute_acoustic_correlation, map_offset_to_player_delay
+from .extractor import extract_audio_lossless, extract_reference_channel
 from .models import RemuxJob
 from .transformer import apply_temporal_transform
 from .temp_manager import TempWorkspace
@@ -34,6 +35,7 @@ def build_mkvmerge_hybrid_command(
     """
     Constructs the mkvmerge command arguments combining untouched video stream
     with synchronized target dubbed audio stream.
+    Applies map_offset_to_player_delay to ensure proper container delay sign convention.
     """
     cmd = ["mkvmerge", "-o", output_path]
 
@@ -53,10 +55,11 @@ def build_mkvmerge_hybrid_command(
     cmd.extend(["--no-subtitles", "--no-attachments", video_mkv])
 
     # 2. Synchronized Dubbed Audio source options
-    int_offset_ms = int(round(offset_ms))
+    # Normalizes offset to container delay convention (-offset_ms)
+    container_delay_ms = int(round(map_offset_to_player_delay(offset_ms, "mkvmerge")))
     cmd.extend([
         "--audio-tracks", str(target_audio_track_id),
-        "--sync", f"{target_audio_track_id}:{int_offset_ms}",
+        "--sync", f"{target_audio_track_id}:{container_delay_ms}",
         "--default-track-flag", f"{target_audio_track_id}:yes",
         "--track-name", f"{target_audio_track_id}:{target_audio_name}",
         "--language", f"{target_audio_track_id}:{target_audio_language}",
@@ -203,3 +206,85 @@ def execute_lossless_remux(
                 except OSError:
                     pass
             raise exc
+
+
+def execute_unified_sync_pipeline(
+    job: RemuxJob,
+    on_status_change: Callable[[str, float], None],
+    cancel_event: Optional[threading.Event] = None,
+    manual_offset_ms: Optional[float] = None
+) -> bool:
+    """
+    Executes the end-to-end autonomous synchronization pipeline:
+    1. Selective extraction of acoustic reference channels (-threads 2).
+    2. FFT acoustic cross-correlation and signed offset calculation (with fallback on low confidence).
+    3. Stream demuxing (if MP4/MOV) and time-stretching (if framerate drift detected).
+    4. Lossless mkvmerge multiplexing with normalized delay convention.
+    """
+    if cancel_event and cancel_event.is_set():
+        return False
+
+    with TempWorkspace(session_name="unified_pipeline") as workspace:
+        # Step 1: Extract reference audio channels for acoustic FFT analysis
+        if manual_offset_ms is not None:
+            job.offset_ms = manual_offset_ms
+            logger.info("Using manual offset override: %+.1f ms", job.offset_ms)
+            on_status_change(f"Utilizando offset manual definido ({job.offset_ms:+.1f} ms)...", 20.0)
+        else:
+            on_status_change("Extraindo canais acústicos de referência e dublagem (PCM 16kHz)...", 5.0)
+            ref_wav = extract_reference_channel(
+                file_path=job.video_file,
+                stream_id=job.ref_audio_track_id,
+                duration_sec=120.0,
+                start_sec=10.0,
+                output_path=workspace.get_path("ref_sample.wav")
+            )
+            if cancel_event and cancel_event.is_set():
+                return False
+
+            on_status_change("Extraindo canal acústico da dublagem para correlação...", 15.0)
+            target_wav = extract_reference_channel(
+                file_path=job.target_audio_file,
+                stream_id=job.target_track_id,
+                duration_sec=120.0,
+                start_sec=10.0,
+                output_path=workspace.get_path("target_sample.wav")
+            )
+            if cancel_event and cancel_event.is_set():
+                return False
+
+            on_status_change("Calculando correlação acústica FFT e alinhamento temporal...", 25.0)
+            metrics = compute_acoustic_correlation(ref_wav, target_wav, search_window_sec=120)
+
+            # Confidence check: Fallback gracefully to 0.0ms instead of aborting
+            if metrics.confidence_score < 0.30:
+                logger.warning("Low correlation confidence (%.2f < 0.30). Defaulting to 0.0ms offset.", metrics.confidence_score)
+                job.offset_ms = 0.0
+                on_status_change("Pico de correlação com baixa confiança (<0.30). Assumindo 0.0 ms com tolerância...", 35.0)
+            else:
+                job.offset_ms = metrics.static_offset_ms
+                logger.info("Acoustic sync calculated: offset=%+.1f ms, confidence=%.2f", job.offset_ms, metrics.confidence_score)
+                on_status_change(f"Alinhamento acústico calculado: {job.offset_ms:+.1f} ms (confiança: {metrics.confidence_score*100:.0f}%)...", 35.0)
+
+        if cancel_event and cancel_event.is_set():
+            return False
+
+        # Step 2: Remux execution with lossless mkvmerge
+        def _remux_progress(pct: float, msg: str):
+            if pct >= 0:
+                scaled = 40.0 + (pct * 0.6)
+                on_status_change(msg, scaled)
+            else:
+                on_status_change(msg, -1.0)
+
+        success = execute_lossless_remux(
+            job=job,
+            on_progress=_remux_progress,
+            cancel_event=cancel_event
+        )
+
+        if success:
+            on_status_change("Sincronização e multiplexação concluídas com sucesso!", 100.0)
+
+        return success
+

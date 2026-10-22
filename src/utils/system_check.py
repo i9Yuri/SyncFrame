@@ -64,3 +64,84 @@ def check_system_dependencies() -> SystemDiagnostics:
             setattr(diag, f"{name}_available", True)
 
     return diag
+
+
+def diagnose_system_crash_logs() -> Dict[str, str]:
+    """
+    Inspeciona os logs do sistema operacional (journalctl da sessão anterior)
+    para isolar causas de reinicialização ou desligamento abrupto (OOM, picos térmicos,
+    falha de hardware MCE ou desarme de proteção da fonte/VRM).
+    
+    Returns:
+        Dicionário com o diagnóstico detalhado e mitigações recomendadas.
+    """
+    report = {
+        "last_reboot_type": "Desconhecido / Não diagnosticado",
+        "oom_detected": "False",
+        "mce_hardware_error": "False",
+        "thermal_status": "Normal / Não reportado",
+        "last_logged_activity": "",
+        "recommended_mitigation": "Manter concorrência limitada (-threads 2) e prioridade normalizada."
+    }
+
+    journal_output = ""
+    try:
+        proc = subprocess.run(
+            ["journalctl", "-b", "-1", "-n", "120", "--no-pager"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=4
+        )
+        if proc.returncode == 0:
+            journal_output = proc.stdout
+    except Exception:
+        journal_output = ""
+
+    if not journal_output:
+        # Fallback para dmesg ou logs locais se journalctl não estiver disponível
+        report["last_reboot_type"] = "Indisponível (journalctl anterior inacessível)"
+        return report
+
+    lines = [line.strip() for line in journal_output.strip().split("\n") if line.strip()]
+    if lines:
+        report["last_logged_activity"] = lines[-1]
+
+    lower_log = journal_output.lower()
+
+    # 1. Checagem de OOM Killer
+    if any(k in lower_log for k in ("out of memory", "oom-killer", "killed process", "invoked oom-killer")):
+        report["oom_detected"] = "True"
+        report["last_reboot_type"] = "Estouro de Memória (OOM Killer acionado)"
+        report["recommended_mitigation"] = "Reduzir janelas de leitura PCM e aplicar streaming estrito em blocos."
+
+    # 2. Checagem de MCE / Hardware Panic
+    elif any(k in lower_log for k in ("machine check exception", "mce: [hardware error]", "kernel panic", "fatal exception")):
+        report["mce_hardware_error"] = "True"
+        report["last_reboot_type"] = "Kernel Panic ou Falha de Hardware (MCE)"
+        report["recommended_mitigation"] = "Verificar estabilidade de tensão de CPU e memórias ECC."
+
+    # 3. Checagem de Desligamento Limpo vs Queda Abrupta
+    clean_shutdown = any(k in lower_log for k in (
+        "reached target shutdown",
+        "reached target reboot",
+        "systemd-shutdown",
+        "reboot: restart",
+        "power down"
+    ))
+
+    if not clean_shutdown and report["oom_detected"] == "False" and report["mce_hardware_error"] == "False":
+        report["last_reboot_type"] = "Desarme Abrupto de Hardware (OCP/Térmico - Sem Shutdown Limpo)"
+        report["recommended_mitigation"] = (
+            "Limitar subprocessos FFmpeg a -threads 2, fixar OMP_NUM_THREADS=2 e "
+            "evitar multiplexação simultânea com reprodução de vídeo acelerada por hardware."
+        )
+
+    # 4. Checagem do Daemon Térmico (thermald)
+    if "thermald" in lower_log:
+        if "unsupported cpu model" in lower_log or "deactivated successfully" in lower_log:
+            report["thermal_status"] = "thermald inativo (CPU Xeon/plataforma não suportada pelo daemon)"
+        else:
+            report["thermal_status"] = "thermald ativo"
+
+    return report

@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from ...core.disk_utils import format_bytes
 from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label
+from .audio_preserve_checkbox import AudioPreserveCheckbox
 
 
 class UnifiedDropZone(QFrame):
@@ -56,25 +57,15 @@ class UnifiedDropZone(QFrame):
         # Page 0: Standby / Empty Drop Zone
         # ======================================================================
         self.page_empty = QFrame()
-        self.page_empty.setStyleSheet("""
-            QFrame {
-                border: 2px dashed #383838;
-                border-radius: 8px;
-                background-color: #141414;
-                padding: 24px;
-            }
-            QFrame:hover {
-                border-color: #555555;
-                background-color: #191919;
-            }
-        """)
+        self.page_empty.setObjectName("dropFrameEmpty")
+        self.page_empty.setProperty("class", "dropFrame")
         empty_layout = QVBoxLayout(self.page_empty)
         empty_layout.setAlignment(Qt.AlignCenter)
         empty_layout.setSpacing(10)
 
         self.lbl_empty_title = QLabel("Arraste e solte os 2 arquivos aqui\nou clique para navegar e selecionar ambos")
         self.lbl_empty_title.setAlignment(Qt.AlignCenter)
-        self.lbl_empty_title.setStyleSheet("color: #e5e5e5; font-size: 14px; font-weight: 600;")
+        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700;")
         empty_layout.addWidget(self.lbl_empty_title)
 
         lbl_hint = QLabel("Suporte agnóstico a contêineres: MKV, MP4, M4V, MOV (alta fidelidade visual + dublagem)")
@@ -94,14 +85,8 @@ class UnifiedDropZone(QFrame):
         # Page 1: 1 File Ingested (Awaiting Second File)
         # ======================================================================
         self.page_single = QFrame()
-        self.page_single.setStyleSheet("""
-            QFrame {
-                border: 2px dashed #404040;
-                border-radius: 8px;
-                background-color: #161616;
-                padding: 18px;
-            }
-        """)
+        self.page_single.setObjectName("dropFrameSingle")
+        self.page_single.setProperty("class", "dropFrame")
         single_layout = QVBoxLayout(self.page_single)
         single_layout.setAlignment(Qt.AlignCenter)
         single_layout.setSpacing(8)
@@ -111,7 +96,7 @@ class UnifiedDropZone(QFrame):
         single_layout.addWidget(self.badge_waiting, alignment=Qt.AlignCenter)
 
         self.lbl_single_filename = QLabel("")
-        self.lbl_single_filename.setStyleSheet("color: #ffffff; font-weight: 700; font-size: 13px;")
+        self.lbl_single_filename.setStyleSheet("font-weight: 700; font-size: 13px;")
         self.lbl_single_filename.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(self.lbl_single_filename)
 
@@ -160,9 +145,8 @@ class UnifiedDropZone(QFrame):
 
         # Files summary strip
         self.lbl_files_summary = QLabel("")
-        self.lbl_files_summary.setStyleSheet(
-            "background-color: #121212; border: 1px solid #282828; border-radius: 6px; padding: 6px 10px; color: #a3a3a3; font-size: 11px;"
-        )
+        self.lbl_files_summary.setProperty("class", "summaryStrip")
+        self.lbl_files_summary.setStyleSheet("font-size: 11px;")
         confirm_layout.addWidget(self.lbl_files_summary)
 
         # Ambiguity Banner
@@ -184,7 +168,7 @@ class UnifiedDropZone(QFrame):
 
         # Row 1: Primary Video
         lbl_v_tag = QLabel("Vídeo:")
-        lbl_v_tag.setStyleSheet("color: #ffffff; font-weight: 700; font-size: 12px;")
+        lbl_v_tag.setStyleSheet("font-weight: 700; font-size: 12px;")
         table_grid.addWidget(lbl_v_tag, 0, 0)
 
         self.badge_v_status = QLabel("Melhor Imagem")
@@ -198,7 +182,7 @@ class UnifiedDropZone(QFrame):
 
         # Row 2: Target Dubbed Audio
         lbl_a_tag = QLabel("Áudio Dublado:")
-        lbl_a_tag.setStyleSheet("color: #ffffff; font-weight: 700; font-size: 12px;")
+        lbl_a_tag.setStyleSheet("font-weight: 700; font-size: 12px;")
         table_grid.addWidget(lbl_a_tag, 1, 0)
 
         self.badge_a_status = QLabel("Português")
@@ -212,7 +196,7 @@ class UnifiedDropZone(QFrame):
 
         # Row 3: Reference Audio
         lbl_ref_tag = QLabel("Áudio Referência:")
-        lbl_ref_tag.setStyleSheet("color: #ffffff; font-weight: 700; font-size: 12px;")
+        lbl_ref_tag.setStyleSheet("font-weight: 700; font-size: 12px;")
         table_grid.addWidget(lbl_ref_tag, 2, 0)
 
         self.badge_ref_status = QLabel("Referência FFT")
@@ -230,15 +214,13 @@ class UnifiedDropZone(QFrame):
         # Acoustic Audit Card & Channel Configuration Badges
         # ======================================================================
         self.frame_audio_audit = QFrame()
-        self.frame_audio_audit.setStyleSheet(
-            "background-color: #141414; border: 1px solid #262626; border-radius: 6px; padding: 8px 12px;"
-        )
+        self.frame_audio_audit.setProperty("class", "auditCard")
         audit_layout = QHBoxLayout(self.frame_audio_audit)
         audit_layout.setContentsMargins(0, 0, 0, 0)
         audit_layout.setSpacing(10)
 
         lbl_audit_title = QLabel("Auditoria da Dublagem:")
-        lbl_audit_title.setStyleSheet("color: #d4d4d4; font-weight: 700; font-size: 11px;")
+        lbl_audit_title.setStyleSheet("font-weight: 700; font-size: 11px;")
         audit_layout.addWidget(lbl_audit_title)
 
         self.lbl_audit_origin = QLabel("")
@@ -251,7 +233,7 @@ class UnifiedDropZone(QFrame):
 
         self.lbl_audit_specs = QLabel("")
         self.lbl_audit_specs.setStyleSheet(
-            "color: #ffffff; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;"
+            "font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;"
         )
         audit_layout.addWidget(self.lbl_audit_specs)
 
@@ -271,21 +253,20 @@ class UnifiedDropZone(QFrame):
         self.frame_channel_alert.setVisible(False)
         confirm_layout.addWidget(self.frame_channel_alert)
 
-        # Checkboxes for Composition
+        # High-Contrast Dynamic Checkbox for Composition
         check_row = QHBoxLayout()
         check_row.setSpacing(16)
 
-        self.check_keep_original = QCheckBox("Preservar áudio original em inglês como faixa secundária")
-        self.check_keep_original.setChecked(True)
+        self.check_keep_original = AudioPreserveCheckbox(self.page_confirm, language_name="inglês")
         check_row.addWidget(self.check_keep_original)
 
         confirm_layout.addLayout(check_row)
 
-        # Primary Action Row
+        # Primary Action Row: Single button ("Sincronizar e Concluir")
         action_row = QHBoxLayout()
         action_row.setSpacing(12)
 
-        self.btn_confirm = QPushButton("Iniciar Sincronização e Remux ➔")
+        self.btn_confirm = QPushButton("Sincronizar e Concluir")
         self.btn_confirm.setProperty("class", "btnSuccess")
         self.btn_confirm.clicked.connect(self._on_confirm_clicked)
         action_row.addWidget(self.btn_confirm)
@@ -430,6 +411,11 @@ class UnifiedDropZone(QFrame):
             if alt != verdict.reference_audio:
                 self.combo_ref_audio.addItem(alt.summary_title(), userData=alt)
         self.combo_ref_audio.blockSignals(False)
+
+        if verdict.reference_audio and verdict.reference_audio.stream.language:
+            lang = verdict.reference_audio.stream.language.lower()
+            lang_name = "inglês" if lang in ("eng", "en") else lang.upper()
+            self.check_keep_original.set_language_name(lang_name)
 
         # Update acoustic audit card
         self._update_audio_audit()

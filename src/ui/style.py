@@ -255,27 +255,85 @@ QProgressBar::chunk {
     border-radius: 4px;
 }
 
-/* Checkboxes */
+/* Checkboxes & High-Contrast Toggles */
 QCheckBox {
-    color: #cccccc;
-    spacing: 7px;
+    color: #e5e5e5;
+    font-size: 12px;
+    font-weight: 500;
+    spacing: 9px;
 }
 
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    background-color: #121212;
-    border: 1px solid #383838;
-    border-radius: 3px;
+    width: 18px;
+    height: 18px;
+    background-color: #181818;
+    border: 1px solid #444444;
+    border-radius: 4px;
 }
 
 QCheckBox::indicator:hover {
-    border-color: #666666;
+    border-color: #737373;
+    background-color: #222222;
 }
 
 QCheckBox::indicator:checked {
-    background-color: #404040;
-    border-color: #666666;
+    background-color: #10b981;
+    border: 1px solid #059669;
+    border-radius: 4px;
+    image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
+}
+
+QCheckBox::indicator:checked:hover {
+    background-color: #059669;
+    border-color: #047857;
+}
+
+/* Collapsible Drawer & Secondary Containers */
+QFrame#collapsibleSection {
+    background-color: #161616;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+}
+
+QPushButton.collapsibleBtn {
+    background-color: transparent;
+    color: #d4d4d4;
+    border: none;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 2px 0px;
+}
+
+QPushButton.collapsibleBtn:hover {
+    color: #ffffff;
+}
+
+/* Drop Frames, Summary Strips & Audit Cards */
+QFrame.dropFrame {
+    border: 2px dashed #383838;
+    border-radius: 8px;
+    background-color: #141414;
+    padding: 20px;
+}
+
+QFrame.dropFrame:hover {
+    border-color: #555555;
+    background-color: #191919;
+}
+
+QFrame.summaryStrip {
+    background-color: #121212;
+    border: 1px solid #282828;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+QFrame.auditCard {
+    background-color: #141414;
+    border: 1px solid #262626;
+    border-radius: 6px;
+    padding: 8px 12px;
 }
 
 /* Terminal Log Area */
@@ -563,23 +621,85 @@ QProgressBar::chunk {
     border-radius: 4px;
 }
 
-/* Checkboxes */
+/* Checkboxes & High-Contrast Toggles */
 QCheckBox {
-    color: #27272a;
-    spacing: 7px;
+    color: #18181b;
+    font-size: 12px;
+    font-weight: 500;
+    spacing: 9px;
 }
 
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     background-color: #ffffff;
-    border: 1px solid #a1a1aa;
-    border-radius: 3px;
+    border: 1px solid #9ca3af;
+    border-radius: 4px;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #4b5563;
+    background-color: #f9fafb;
 }
 
 QCheckBox::indicator:checked {
-    background-color: #18181b;
-    border-color: #18181b;
+    background-color: #059669;
+    border: 1px solid #047857;
+    border-radius: 4px;
+    image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
+}
+
+QCheckBox::indicator:checked:hover {
+    background-color: #047857;
+    border-color: #065f46;
+}
+
+/* Collapsible Drawer & Secondary Containers */
+QFrame#collapsibleSection {
+    background-color: #ffffff;
+    border: 1px solid #e4e4e7;
+    border-radius: 8px;
+}
+
+QPushButton.collapsibleBtn {
+    background-color: transparent;
+    color: #27272a;
+    border: none;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 2px 0px;
+}
+
+QPushButton.collapsibleBtn:hover {
+    color: #09090b;
+}
+
+/* Drop Frames, Summary Strips & Audit Cards */
+QFrame.dropFrame {
+    border: 2px dashed #d4d4d8;
+    border-radius: 8px;
+    background-color: #ffffff;
+    padding: 20px;
+}
+
+QFrame.dropFrame:hover {
+    border-color: #a1a1aa;
+    background-color: #f8fafc;
+}
+
+QFrame.summaryStrip {
+    background-color: #ffffff;
+    border: 1px solid #e4e4e7;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+QFrame.auditCard {
+    background-color: #ffffff;
+    border: 1px solid #e4e4e7;
+    border-radius: 6px;
+    padding: 8px 12px;
 }
 
 /* Terminal Log Area */

@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
+from ...core.correlator import map_offset_to_player_delay
+
 logger = logging.getLogger(__name__)
 
 
@@ -144,9 +146,9 @@ class PreviewPlayer(QFrame):
         start_time = max(0.0, self.total_duration_sec * fraction)
         duration_clip = 12.0  # 12 seconds preview
 
-        # Audio delay in seconds:
-        # Note: in mpv, --audio-delay adds delay in seconds (positive means audio delayed relative to video)
-        delay_sec = self.current_offset_ms / 1000.0
+        # Audio delay normalized deterministically via map_offset_to_player_delay:
+        # A positive offset (audio is late) needs negative delay in mpv to advance audio.
+        delay_sec = map_offset_to_player_delay(self.current_offset_ms, "mpv")
 
         pct_label = int(fraction * 100)
         self.status_label.setText(

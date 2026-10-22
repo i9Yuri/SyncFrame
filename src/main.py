@@ -2,7 +2,15 @@
 
 import argparse
 import logging
+import os
 import sys
+
+# Resource Throttling: Enforce thread limits before native math runtimes load
+os.environ.setdefault("OMP_NUM_THREADS", "2")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "2")
+os.environ.setdefault("MKL_NUM_THREADS", "2")
+os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "2")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "2")
 
 from src.ui.app import create_application
 from src.ui.main_window import SyncFrameMainWindow
