@@ -33,7 +33,7 @@ from .workers.analyze_worker import AnalyzeWorker
 from .workers.remux_worker import RemuxWorker
 from ..core.disk_utils import check_disk_space, format_bytes
 from ..core.inspector import inspect_media, evaluate_media_streams
-from ..core.models import RemuxJob, SyncMetrics, AutoMatchVerdict, StreamCandidate
+from ..core.models import RemuxJob, SyncMetrics, AutoMatchVerdict, StreamCandidate, format_channel_layout_label
 
 logger = logging.getLogger(__name__)
 
@@ -291,9 +291,13 @@ class SyncFrameMainWindow(QWidget):
 
         self._update_preview_sources()
 
+        fmt_v = chosen_video.stream.container_format.upper() if chosen_video.stream.container_format else "MKV"
+        fmt_a = chosen_target.stream.container_format.upper() if chosen_target.stream.container_format else "MKV"
+        layout_name = format_channel_layout_label(chosen_target.stream.channels, chosen_target.stream.channel_layout)
+
         self.log_drawer.append_log(
-            f"[CONFIRMADO] Vídeo #{self.selected_video_track_id} ({os.path.basename(self.video_path)}) | "
-            f"Dublagem #{self.selected_target_audio_id} ({os.path.basename(self.audio_path)}) | "
+            f"[CONFIRMADO] Vídeo #{self.selected_video_track_id} ({os.path.basename(self.video_path)} [{fmt_v}]) | "
+            f"Dublagem #{self.selected_target_audio_id} ({os.path.basename(self.audio_path)} [{fmt_a}]: {layout_name}, {chosen_target.stream.codec.upper()}) | "
             f"Ref #{self.selected_ref_audio_id}"
         )
 

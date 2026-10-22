@@ -1,4 +1,4 @@
-"""Media stream inspector using mkvmerge -J and ffprobe."""
+"""Media stream inspector using mkvmerge -J and deep ffprobe probing."""
 
 import json
 import logging
@@ -6,7 +6,15 @@ import os
 import subprocess
 from typing import List, Optional, Tuple, Dict, Any
 
-from .models import StreamMetadata, InspectionResult, StreamCandidate, AutoMatchVerdict
+from .models import (
+    StreamMetadata,
+    InspectionResult,
+    StreamCandidate,
+    AutoMatchVerdict,
+    AudioProfile,
+    MediaContainerInfo,
+    format_channel_layout_label
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +31,143 @@ def _parse_fraction(frac_str: str) -> float:
         return float(frac_str)
     except (ValueError, TypeError, ZeroDivisionError):
         return 0.0
+
+
+def probe_media_file(file_path: str) -> MediaContainerInfo:
+    """
+    Performs deep inspection of any media container (MKV, MP4, M4V, MOV) using ffprobe
+    with robust parameters (-analyzeduration 100M -probesize 50M) and fallback for
+    malformed/corrupted headers (-err_detect ignore_err).
+    """
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"Media file not found: {file_path}")
+
+    ext = os.path.splitext(file_path)[1].lower().lstrip(".")
+    container_format = ext if ext in ("mkv", "mp4", "m4v", "mov") else "unknown"
+
+    base_cmd = [
+        "ffprobe",
+        "-v", "quiet",
+        "-print_format", "json",
+        "-show_format",
+        "-show_streams",
+        "-analyzeduration", "100M",
+        "-probesize", "50M",
+    ]
+
+    is_corrupted = False
+    data = None
+    try:
+        cmd = base_cmd + [file_path]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        data = json.loads(res.stdout)
+    except Exception as exc:
+        logger.warning(
+            "Standard ffprobe probing failed for %s (%s). Attempting error-resilient fallback...",
+            file_path, exc
+        )
+        try:
+            cmd = base_cmd + ["-err_detect", "ignore_err", file_path]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            data = json.loads(res.stdout)
+            is_corrupted = True
+        except Exception as exc2:
+            logger.error("Deep ffprobe inspection completely failed for %s: %s", file_path, exc2)
+            raise RuntimeError(f"Unable to probe media file {file_path}: {exc2}") from exc2
+
+    format_info = data.get("format", {})
+    if container_format == "unknown":
+        fmt_name = format_info.get("format_name", "").lower()
+        if "matroska" in fmt_name:
+            container_format = "mkv"
+        elif "mp4" in fmt_name or "mov" in fmt_name or "m4a" in fmt_name:
+            container_format = "mp4"
+
+    container_duration_sec = float(format_info.get("duration", 0.0))
+    container_duration_ms = container_duration_sec * 1000.0
+
+    video_streams: List[StreamMetadata] = []
+    audio_streams: List[StreamMetadata] = []
+    all_streams: List[StreamMetadata] = []
+
+    for s in data.get("streams", []):
+        codec_type = s.get("codec_type", "").lower()
+        if codec_type not in ("video", "audio"):
+            continue
+
+        stream_index = int(s.get("index", 0))
+        codec = s.get("codec_name", "")
+        channels = int(s.get("channels", 0))
+        channel_layout = str(s.get("channel_layout", ""))
+        sample_rate = int(s.get("sample_rate", 0))
+
+        bitrate_str = s.get("bit_rate") or format_info.get("bit_rate")
+        bitrate_int = int(bitrate_str) if bitrate_str and str(bitrate_str).isdigit() else None
+
+        fps = _parse_fraction(s.get("r_frame_rate", ""))
+        if fps == 0.0:
+            fps = _parse_fraction(s.get("avg_frame_rate", ""))
+
+        tags = s.get("tags", {})
+        language = tags.get("language", "und")
+        title = tags.get("title", "")
+
+        disposition = s.get("disposition", {})
+        is_default = bool(disposition.get("default", 0))
+
+        duration_sec = float(s.get("duration", container_duration_sec))
+        duration_ms = duration_sec * 1000.0 if duration_sec > 0 else container_duration_ms
+
+        width = s.get("width")
+        height = s.get("height")
+        width_int = int(width) if width and str(width).isdigit() else None
+        height_int = int(height) if height and str(height).isdigit() else None
+
+        audio_profile = None
+        if codec_type == "audio":
+            audio_profile = AudioProfile(
+                codec=codec,
+                channels=channels,
+                channel_layout=channel_layout,
+                sample_rate=sample_rate,
+                bit_rate=bitrate_int,
+                is_surround=(channels >= 6 or "5.1" in channel_layout or "7.1" in channel_layout)
+            )
+
+        meta = StreamMetadata(
+            id=stream_index,
+            codec=codec,
+            channels=channels,
+            sample_rate=sample_rate,
+            fps=fps,
+            duration_ms=duration_ms,
+            language=language,
+            is_default=is_default,
+            track_type=codec_type,
+            title=title,
+            bitrate=bitrate_int,
+            width=width_int,
+            height=height_int,
+            channel_layout=channel_layout,
+            container_format=container_format,
+            audio_profile=audio_profile
+        )
+
+        all_streams.append(meta)
+        if codec_type == "video":
+            video_streams.append(meta)
+        elif codec_type == "audio":
+            audio_streams.append(meta)
+
+    return MediaContainerInfo(
+        file_path=file_path,
+        container_format=container_format,
+        duration_ms=container_duration_ms,
+        video_streams=video_streams,
+        audio_streams=audio_streams,
+        all_streams=all_streams,
+        is_corrupted=is_corrupted
+    )
 
 
 def _inspect_via_mkvmerge(file_path: str) -> List[StreamMetadata]:
@@ -42,7 +187,6 @@ def _inspect_via_mkvmerge(file_path: str) -> List[StreamMetadata]:
         container_duration_ms = 0.0
         container_props = data.get("container", {}).get("properties", {})
         if "duration" in container_props:
-            # mkvmerge reports duration in nanoseconds
             container_duration_ms = float(container_props["duration"]) / 1_000_000.0
 
         for t in tracks:
@@ -50,28 +194,37 @@ def _inspect_via_mkvmerge(file_path: str) -> List[StreamMetadata]:
             track_type = str(t.get("type", "")).lower()
             codec = str(t.get("codec", ""))
             props = t.get("properties", {})
-            
+
             channels = int(props.get("audio_channels", 0))
             sample_rate = int(props.get("audio_sampling_frequency", 0))
             language = str(props.get("language", props.get("language_ietf", "und")))
             is_default = bool(props.get("default_track", False))
             title = str(props.get("track_name", ""))
             codec_id = str(props.get("codec_id", ""))
-            
+
             width = props.get("pixel_dimensions", "").split("x")[0] if "pixel_dimensions" in props else None
             height = props.get("pixel_dimensions", "").split("x")[1] if "pixel_dimensions" in props and "x" in props.get("pixel_dimensions", "") else None
-            
+
             width_int = int(width) if width and str(width).isdigit() else None
             height_int = int(height) if height and str(height).isdigit() else None
-            
+
             fps = 0.0
             if "default_duration" in props:
-                # default_duration is in nanoseconds per frame
                 nanosecs = float(props["default_duration"])
                 if nanosecs > 0:
                     fps = 1_000_000_000.0 / nanosecs
 
             duration_ms = container_duration_ms
+
+            audio_profile = None
+            if track_type == "audio":
+                audio_profile = AudioProfile(
+                    codec=codec,
+                    channels=channels,
+                    channel_layout=f"{channels}.0" if channels in (1, 2) else ("5.1" if channels == 6 else f"{channels}ch"),
+                    sample_rate=sample_rate,
+                    is_surround=(channels >= 6)
+                )
 
             streams.append(StreamMetadata(
                 id=track_id,
@@ -86,111 +239,58 @@ def _inspect_via_mkvmerge(file_path: str) -> List[StreamMetadata]:
                 title=title,
                 codec_id=codec_id,
                 width=width_int,
-                height=height_int
+                height=height_int,
+                container_format="mkv",
+                audio_profile=audio_profile
             ))
     except Exception as exc:
         logger.warning("mkvmerge -J inspection failed for %s: %s", file_path, exc)
     return streams
 
 
-def _inspect_via_ffprobe(file_path: str) -> List[StreamMetadata]:
-    """Inspect media file using ffprobe as primary or fallback parser."""
-    streams: List[StreamMetadata] = []
-    try:
-        cmd = [
-            "ffprobe",
-            "-v", "quiet",
-            "-print_format", "json",
-            "-show_format",
-            "-show_streams",
-            file_path
-        ]
-        res = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True
-        )
-        data = json.loads(res.stdout)
-        format_info = data.get("format", {})
-        container_duration_sec = float(format_info.get("duration", 0.0))
-        container_duration_ms = container_duration_sec * 1000.0
-
-        for s in data.get("streams", []):
-            codec_type = s.get("codec_type", "").lower()
-            if codec_type not in ("video", "audio"):
-                continue
-
-            stream_index = int(s.get("index", 0))
-            codec = s.get("codec_name", "")
-            channels = int(s.get("channels", 0))
-            sample_rate = int(s.get("sample_rate", 0))
-            
-            fps = _parse_fraction(s.get("r_frame_rate", ""))
-            if fps == 0.0:
-                fps = _parse_fraction(s.get("avg_frame_rate", ""))
-
-            tags = s.get("tags", {})
-            language = tags.get("language", "und")
-            title = tags.get("title", "")
-            
-            disposition = s.get("disposition", {})
-            is_default = bool(disposition.get("default", 0))
-
-            duration_sec = float(s.get("duration", container_duration_sec))
-            duration_ms = duration_sec * 1000.0 if duration_sec > 0 else container_duration_ms
-
-            width = s.get("width")
-            height = s.get("height")
-
-            streams.append(StreamMetadata(
-                id=stream_index,
-                codec=codec,
-                channels=channels,
-                sample_rate=sample_rate,
-                fps=fps,
-                duration_ms=duration_ms,
-                language=language,
-                is_default=is_default,
-                track_type=codec_type,
-                title=title,
-                width=width,
-                height=height
-            ))
-    except Exception as exc:
-        logger.error("ffprobe inspection failed for %s: %s", file_path, exc)
-    return streams
-
-
 def inspect_media(file_path: str) -> List[StreamMetadata]:
     """
     Inspects media file and returns list of StreamMetadata.
-    Prefers mkvmerge -J to preserve container track IDs, enriching with ffprobe if needed.
+    For MKV files, uses mkvmerge -J to retain native track IDs, enriched by ffprobe deep probe.
+    For MP4, M4V, MOV and other containers, uses probe_media_file directly.
     """
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"Media file not found: {file_path}")
 
-    # Primary inspection via mkvmerge for MKV container fidelity
-    mkv_streams = _inspect_via_mkvmerge(file_path)
-    if mkv_streams:
-        # Check if FPS or resolution needs enrichment via ffprobe
-        needs_enrichment = any(s.track_type == "video" and (s.fps == 0.0 or not s.width) for s in mkv_streams)
-        if needs_enrichment:
-            ff_streams = _inspect_via_ffprobe(file_path)
-            ff_dict = {s.id: s for s in ff_streams}
-            for s in mkv_streams:
-                if s.id in ff_dict:
-                    ff = ff_dict[s.id]
-                    if s.fps == 0.0:
-                        s.fps = ff.fps
-                    if not s.width:
-                        s.width = ff.width
-                        s.height = ff.height
-        return mkv_streams
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext == ".mkv":
+        mkv_streams = _inspect_via_mkvmerge(file_path)
+        if mkv_streams:
+            try:
+                probe_info = probe_media_file(file_path)
+                ff_dict = {s.id: s for s in probe_info.all_streams}
+                ff_audios = probe_info.audio_streams
+                audio_idx = 0
+                for s in mkv_streams:
+                    s.container_format = "mkv"
+                    if s.id in ff_dict:
+                        ff = ff_dict[s.id]
+                        if s.fps == 0.0:
+                            s.fps = ff.fps
+                        if not s.width:
+                            s.width = ff.width
+                            s.height = ff.height
+                        if s.track_type == "audio":
+                            s.channel_layout = ff.channel_layout
+                            s.audio_profile = ff.audio_profile
+                            s.bitrate = s.bitrate or ff.bitrate
+                    elif s.track_type == "audio" and audio_idx < len(ff_audios):
+                        ff = ff_audios[audio_idx]
+                        s.channel_layout = ff.channel_layout
+                        s.audio_profile = ff.audio_profile
+                        s.bitrate = s.bitrate or ff.bitrate
+                        audio_idx += 1
+            except Exception as exc:
+                logger.debug("Enrichment via ffprobe skipped for %s: %s", file_path, exc)
+            return mkv_streams
 
-    # Fallback directly to ffprobe
-    return _inspect_via_ffprobe(file_path)
+    probe_info = probe_media_file(file_path)
+    return probe_info.all_streams
 
 
 def get_inspection_result(video_source: str, audio_source: str) -> InspectionResult:
@@ -204,13 +304,10 @@ def get_inspection_result(video_source: str, audio_source: str) -> InspectionRes
     all_audio_in_video = [s for s in video_streams if s.track_type == "audio"]
     all_audio_in_audio = [s for s in audio_streams if s.track_type == "audio"]
 
-    # Select primary video track
     selected_video = all_video[0] if all_video else None
 
-    # Select reference audio track (prefer original/english or default in video container)
     ref_audio = None
     if all_audio_in_video:
-        # Prefer default track or english
         english_tracks = [s for s in all_audio_in_video if s.language.lower() in ("eng", "en")]
         default_tracks = [s for s in all_audio_in_video if s.is_default]
         if english_tracks:
@@ -220,7 +317,6 @@ def get_inspection_result(video_source: str, audio_source: str) -> InspectionRes
         else:
             ref_audio = all_audio_in_video[0]
 
-    # Select target audio track (prefer portuguese in audio container)
     target_audio = None
     if all_audio_in_audio:
         pt_tracks = [s for s in all_audio_in_audio if s.language.lower() in ("por", "pt", "pob", "pt-br", "bra")]
@@ -289,7 +385,6 @@ def rank_video_streams(streams_with_files: List[Tuple[str, StreamMetadata]]) -> 
         pixels = w * h
         codec_wt = _get_codec_weight(stream.codec)
 
-        # Estimate bitrate
         bitrate_bps = stream.bitrate or 0
         if bitrate_bps == 0 and os.path.isfile(file_path):
             file_bytes = os.path.getsize(file_path)
@@ -297,12 +392,11 @@ def rank_video_streams(streams_with_files: List[Tuple[str, StreamMetadata]]) -> 
             bitrate_bps = int((file_bytes * 8.0) / dur_sec)
 
         bitrate_kbps = bitrate_bps / 1000.0
-
-        # Fidelity score
         score = (pixels * 1.0 * codec_wt) + (bitrate_kbps * 50.0)
 
         res_label = f"{w}x{h}" if w and h else "Resolução Indefinida"
-        details = f"{res_label} ({stream.codec}) | ~{bitrate_kbps:.0f} kbps"
+        fmt_label = stream.container_format.upper() if stream.container_format else "MKV"
+        details = f"{res_label} ({stream.codec.upper()}) [{fmt_label}] | ~{bitrate_kbps:.0f} kbps"
 
         candidates.append(StreamCandidate(
             stream=stream,
@@ -351,7 +445,6 @@ def identify_target_and_ref_audios(
         if is_pt:
             has_explicit_pt = True
 
-        # Scoring for Portuguese dub candidate
         score = 0.0
         if is_pt_lang:
             score += 1000.0
@@ -359,16 +452,22 @@ def identify_target_and_ref_audios(
             score += 800.0
         if file_path != chosen_video_file:
             # Strong bonus if coming from the separate dubbed release file
-            score += 300.0
+            score += 350.0
+            # If opposite file has only 1 audio stream, strong probability it's the target dub
+            opp_audios = [s for f, s in streams_with_files if f == file_path and s.track_type == "audio"]
+            if len(opp_audios) == 1:
+                score += 150.0
         if stream.is_default:
             score += 50.0
 
         score += (stream.channels or 2) * 20.0
         score += (stream.sample_rate or 48000) / 1000.0
 
-        ch_str = f"{stream.channels}ch" if stream.channels else "2ch"
+        layout_label = format_channel_layout_label(stream.channels, stream.channel_layout)
+        fmt_label = stream.container_format.upper() if stream.container_format else "MKV"
         lang_str = stream.language.upper() if stream.language else "UND"
-        details = f"{lang_str} ({stream.codec}, {ch_str}, {stream.sample_rate}Hz)"
+        sr_label = f"{stream.sample_rate:,}Hz".replace(",", ".") if stream.sample_rate else ""
+        details = f"{lang_str} ({stream.codec.upper()} | {layout_label} | {sr_label}) [{fmt_label}]"
 
         cand = StreamCandidate(
             stream=stream,
@@ -392,7 +491,6 @@ def identify_target_and_ref_audios(
         recommended_target.is_recommended = True
         recommended_target.badge_label = "Áudio Português Identificado"
     elif all_candidates:
-        # Fallback: prefer audio from the non-video file
         non_video_audios = [c for c in all_candidates if c.file_path != chosen_video_file]
         recommended_target = non_video_audios[0] if non_video_audios else all_candidates[0]
         recommended_target.is_recommended = False
@@ -400,7 +498,6 @@ def identify_target_and_ref_audios(
         is_ambiguous = True
         ambiguity_reason = "Nenhuma tag ou título em português encontrada nos metadados. Confirme a faixa manualmente."
 
-    # Identify Reference Audio from the chosen video container
     video_audios = [c for c in all_candidates if c.file_path == chosen_video_file]
     reference_audio = None
 
@@ -420,7 +517,6 @@ def identify_target_and_ref_audios(
         reference_audio = video_audios[0]
         reference_audio.badge_label = "Áudio Original de Referência"
     elif all_candidates:
-        # Fallback reference if no audio in video file
         reference_audio = all_candidates[0]
 
     return recommended_target, reference_audio, all_candidates, is_ambiguous, ambiguity_reason
@@ -428,7 +524,7 @@ def identify_target_and_ref_audios(
 
 def evaluate_media_streams(file_a: str, file_b: str) -> AutoMatchVerdict:
     """
-    Executes immediate comparative heuristic evaluation of two MKV media files,
+    Executes immediate comparative heuristic evaluation of two media files (MKV, MP4, M4V, MOV),
     producing an AutoMatchVerdict with recommended streams and alternatives.
     """
     streams_a = inspect_media(file_a)
@@ -440,7 +536,6 @@ def evaluate_media_streams(file_a: str, file_b: str) -> AutoMatchVerdict:
     for s in streams_b:
         all_streams_with_files.append((file_b, s))
 
-    # 1. Rank video streams
     ranked_videos = rank_video_streams(all_streams_with_files)
     if not ranked_videos:
         raise ValueError("Nenhuma faixa de vídeo válida encontrada em nenhum dos arquivos informados.")
@@ -448,7 +543,6 @@ def evaluate_media_streams(file_a: str, file_b: str) -> AutoMatchVerdict:
     chosen_video = ranked_videos[0]
     alt_videos = ranked_videos[1:]
 
-    # 2. Identify Target Dubbed Audio and Reference Audio
     recommended_target, reference_audio, all_audios, is_ambiguous, ambiguity_reason = identify_target_and_ref_audios(
         all_streams_with_files,
         chosen_video.file_path

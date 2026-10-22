@@ -1,23 +1,24 @@
 # SyncFrame
 
-**SyncFrame** é uma aplicação desktop de alta fidelidade voltada para a automação de remux e sincronização precisa de áudio dublado e vídeo de alta definição a partir de arquivos MKV distintos.
+**SyncFrame** é uma aplicação desktop de alta fidelidade voltada para a automação de remux e sincronização precisa de áudio dublado e vídeo de alta definição a partir de arquivos MKV, MP4, M4V e MOV distintos.
 
-Projetado com uma interface neutra, minimalista e de alta densidade de informação, o sistema soluciona desalinhamentos temporais causados por atrasos estáticos iniciais, discrepâncias de frame rate (23.976 fps vs. 24.000 fps vs. 25.000 fps PAL) e deriva contínua através de inspeção matemática de metadados e correlação acústica por FFT, realizando multiplexação direta sem reencodamento de vídeo.
+Projetado com uma interface neutra, minimalista e de alta densidade de informação, o sistema soluciona desalinhamentos temporais causados por atrasos estáticos iniciais, discrepâncias de frame rate (23.976 fps vs. 24.000 fps vs. 25.000 fps PAL) e deriva contínua através de inspeção matemática de metadados e correlação acústica por FFT, realizando multiplexação direta no contêiner MKV sem reencodamento de vídeo.
 
 ---
 
 ## ⚡ Características Principais
 
 - **Fidelidade Visual 100% Intocada (Zero-Loss Passthrough):** O vídeo de referência **nunca** é reencodificado; o fluxo é transmitido diretamente bit-a-bit via `mkvmerge`.
-- **Zero Recompressão de Áudio para Offsets Estáticos:** Se as taxas de quadros forem congruentes, o atraso/adiantamento é aplicado nativamente no cabeçalho do contêiner MKV (`--sync <TRACK_ID>:<OFFSET_MS>`), preservando a qualidade de áudio original sem perda de geração.
+- **Suporte Agnóstico a Múltiplos Contêineres (MKV, MP4, M4V, MOV):** Ingestão transparente e combinação híbrida de fontes (ex.: Vídeo 4K de um MKV + Áudio dublado de um MP4/MOV de torrent).
+- **Probing Profundo & Resiliente:** Análise não bloqueante via `ffprobe` com flags de análise profunda (`-analyzeduration 100M -probesize 50M`) e tolerância a erros (`-err_detect ignore_err`), garantindo leitura imediata mesmo de arquivos MP4 com átomo `moov` alocado ao final ou cabeçalhos imperfeitos.
+- **Demuxing Lossless Direto (Zero Recompressão de Áudio):** Extração de faixas em modo cópia de stream (`ffmpeg -c:a copy`) preservando os codecs nativos (AAC, AC3, E-AC3, MP3, Opus, DTS, FLAC) sem perdas nem downmix/upmix forçado.
+- **Card de Auditoria Acústica no Review Gate:** Apresentação clara de layout de canais (Mono 1.0, Estéreo 2.0, Surround 5.1, Surround 7.1), codec, taxa de amostragem em Hz e bitrate, acompanhado de alerta contextual neutro quando a dublagem for estéreo e o original for multicanal surround.
+- **Zero Recompressão para Offsets Estáticos:** Se as taxas de quadros forem congruentes, o atraso/adiantamento é aplicado nativamente no cabeçalho do contêiner MKV (`--sync <TRACK_ID>:<OFFSET_MS>`).
 - **Detecção de Framerate & Correlação FFT Multi-Janela:** Extrai trechos acústicos filtrados (bandpass 300Hz-4000Hz mono PCM) no início (5%), meio (50%) e fim (85%) para isolar transientes, trilhas incidentais e foley idênticos entre idiomas, diagnosticando divergências de frame rate conhecidas:
   - `23.976 fps ↔ 24.000 fps` (deriva telecine NTSC de $1001/1000 \approx +0.1001\%$)
   - `24.000 fps ↔ 25.000 fps` (PAL Speedup/Slowdown de $25/24 \approx +4.167\%$)
-- **Zona Unificada de Entrada (Unified Drop Zone) & Review Gate Tabular:** Zona central inteligente que aceita 1 ou 2 arquivos MKV simultaneamente ou seleção via diálogo nativo de arquivos:
-  - Ingestão simultânea de fontes com avaliação heurística imediata em segundo plano.
-  - Painel de confirmação assistida inline com seleção de faixas recomendadas (vídeo de melhor imagem, áudio dublado em português e áudio de referência original).
-  - Aprovação instantânea em 1 clique ou via tecla **Enter**, deflagrando autonomamente todo o pipeline de extração, cálculo de offset e multiplexação sem perdas.
-- **Estética Neutra Monocromática & Modo Escuro/Claro:** Design refinado em escala de cinza neutra, preto e branco, sem cores temáticas saturadas ou invasivas, com alternador dinâmico de tema (`🌓`) no cabeçalho.
+- **Zona Unificada de Entrada (Unified Drop Zone) & Review Gate Tabular:** Zona central inteligente que aceita 1 ou 2 arquivos simultaneamente (.mkv, .mp4, .m4v, .mov), com aprovação instantânea em 1 clique ou via tecla **Enter**.
+- **Estética Neutra Monocromática & Modo Escuro/Claro:** Design refinado em escala de cinza neutra, preto e branco, com alternador dinâmico de tema (`🌓`) no cabeçalho.
 - **Layout Totalmente Responsivo com Scroll Vertical:** Estrutura envelopada em `QScrollArea` que garante perfeita usabilidade em modo janela (`1024x650`, `900x550`), eliminando achatamento ou sobreposição de widgets.
 - **Time-Stretch Inteligente sem Alteração de Pitch:** Se e somente se houver deriva contínua significativa ($\text{drift} \neq 1.0$), o filtro `atempo` do FFmpeg é aplicado em cópia temporária de alta precisão (FLAC lossless).
 - **Player de Inspeção Instantânea:** Teste de reprodução em tempo real nos marcadores 5%, 50% e 90% via `mpv` com compensação de atraso instantânea para validação labial antes do remux.
@@ -119,7 +120,8 @@ SyncFrame/
     ├── test_temp_manager.py
     ├── test_stream_evaluator.py
     ├── test_unified_drop_zone.py
-    └── test_ui_layout_responsiveness.py
+    ├── test_ui_layout_responsiveness.py
+    └── test_container_handling.py
 ```
 
 ---

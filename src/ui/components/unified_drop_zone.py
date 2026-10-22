@@ -1,4 +1,4 @@
-"""Unified drag-and-drop ingestion zone with hierarchical confirmation table."""
+"""Unified drag-and-drop ingestion zone with hierarchical confirmation table and acoustic auditing."""
 
 import os
 from typing import List, Optional, Tuple
@@ -20,15 +20,15 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.disk_utils import format_bytes
-from ...core.models import AutoMatchVerdict, StreamCandidate
+from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label
 
 
 class UnifiedDropZone(QFrame):
     """
     Unified ingestion zone supporting:
-    - Drag & drop of 1 or 2 files simultaneously.
-    - Single system file picker for selecting both MKV files.
-    - Clean tabular Review Gate with pre-selected streams and composition checkboxes.
+    - Drag & drop of 1 or 2 files simultaneously (.mkv, .mp4, .m4v, .mov).
+    - Single system file picker for selecting both media files.
+    - Clean tabular Review Gate with pre-selected streams, acoustic channel audit, and composition options.
     """
     files_ready = Signal(str, str)
     confirmation_confirmed = Signal(object, object, object, bool)  # (video_cand, target_cand, ref_cand, keep_orig)
@@ -72,19 +72,19 @@ class UnifiedDropZone(QFrame):
         empty_layout.setAlignment(Qt.AlignCenter)
         empty_layout.setSpacing(10)
 
-        self.lbl_empty_title = QLabel("Arraste e solte os 2 arquivos MKV aqui\nou clique para navegar e selecionar ambos")
+        self.lbl_empty_title = QLabel("Arraste e solte os 2 arquivos aqui\nou clique para navegar e selecionar ambos")
         self.lbl_empty_title.setAlignment(Qt.AlignCenter)
         self.lbl_empty_title.setStyleSheet("color: #e5e5e5; font-size: 14px; font-weight: 600;")
         empty_layout.addWidget(self.lbl_empty_title)
 
-        lbl_hint = QLabel("Suporte a carregamento simultâneo (vídeo de alta resolução + dublagem)")
+        lbl_hint = QLabel("Suporte agnóstico a contêineres: MKV, MP4, M4V, MOV (alta fidelidade visual + dublagem)")
         lbl_hint.setAlignment(Qt.AlignCenter)
         lbl_hint.setProperty("class", "subText")
         empty_layout.addWidget(lbl_hint)
 
-        btn_browse = QPushButton("Selecionar Arquivos (2 MKVs)...")
+        btn_browse = QPushButton("Selecionar Arquivos (MKV / MP4)...")
         btn_browse.setProperty("class", "btnPrimary")
-        btn_browse.setFixedWidth(220)
+        btn_browse.setFixedWidth(240)
         btn_browse.clicked.connect(self._open_file_dialog)
         empty_layout.addWidget(btn_browse, alignment=Qt.AlignCenter)
 
@@ -115,7 +115,7 @@ class UnifiedDropZone(QFrame):
         self.lbl_single_filename.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(self.lbl_single_filename)
 
-        lbl_single_instruction = QLabel("Arraste o segundo arquivo MKV aqui ou selecione manualmente:")
+        lbl_single_instruction = QLabel("Arraste o segundo arquivo de mídia aqui ou selecione manualmente:")
         lbl_single_instruction.setProperty("class", "subText")
         lbl_single_instruction.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(lbl_single_instruction)
@@ -160,12 +160,16 @@ class UnifiedDropZone(QFrame):
 
         # Files summary strip
         self.lbl_files_summary = QLabel("")
-        self.lbl_files_summary.setStyleSheet("background-color: #121212; border: 1px solid #282828; border-radius: 6px; padding: 6px 10px; color: #a3a3a3; font-size: 11px;")
+        self.lbl_files_summary.setStyleSheet(
+            "background-color: #121212; border: 1px solid #282828; border-radius: 6px; padding: 6px 10px; color: #a3a3a3; font-size: 11px;"
+        )
         confirm_layout.addWidget(self.lbl_files_summary)
 
         # Ambiguity Banner
         self.frame_ambiguity = QFrame()
-        self.frame_ambiguity.setStyleSheet("background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 6px 10px;")
+        self.frame_ambiguity.setStyleSheet(
+            "background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 6px 10px;"
+        )
         amb_layout = QHBoxLayout(self.frame_ambiguity)
         amb_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_ambiguity = QLabel("")
@@ -189,6 +193,7 @@ class UnifiedDropZone(QFrame):
         table_grid.addWidget(self.badge_v_status, 0, 1)
 
         self.combo_video = QComboBox()
+        self.combo_video.currentIndexChanged.connect(self._update_audio_audit)
         table_grid.addWidget(self.combo_video, 0, 2)
 
         # Row 2: Target Dubbed Audio
@@ -202,6 +207,7 @@ class UnifiedDropZone(QFrame):
         table_grid.addWidget(self.badge_a_status, 1, 1)
 
         self.combo_target_audio = QComboBox()
+        self.combo_target_audio.currentIndexChanged.connect(self._update_audio_audit)
         table_grid.addWidget(self.combo_target_audio, 1, 2)
 
         # Row 3: Reference Audio
@@ -215,9 +221,55 @@ class UnifiedDropZone(QFrame):
         table_grid.addWidget(self.badge_ref_status, 2, 1)
 
         self.combo_ref_audio = QComboBox()
+        self.combo_ref_audio.currentIndexChanged.connect(self._update_audio_audit)
         table_grid.addWidget(self.combo_ref_audio, 2, 2)
 
         confirm_layout.addLayout(table_grid)
+
+        # ======================================================================
+        # Acoustic Audit Card & Channel Configuration Badges
+        # ======================================================================
+        self.frame_audio_audit = QFrame()
+        self.frame_audio_audit.setStyleSheet(
+            "background-color: #141414; border: 1px solid #262626; border-radius: 6px; padding: 8px 12px;"
+        )
+        audit_layout = QHBoxLayout(self.frame_audio_audit)
+        audit_layout.setContentsMargins(0, 0, 0, 0)
+        audit_layout.setSpacing(10)
+
+        lbl_audit_title = QLabel("Auditoria da Dublagem:")
+        lbl_audit_title.setStyleSheet("color: #d4d4d4; font-weight: 700; font-size: 11px;")
+        audit_layout.addWidget(lbl_audit_title)
+
+        self.lbl_audit_origin = QLabel("")
+        self.lbl_audit_origin.setProperty("class", "badgeNeutral")
+        audit_layout.addWidget(self.lbl_audit_origin)
+
+        self.badge_audit_layout = QLabel("Estéreo 2.0")
+        self.badge_audit_layout.setProperty("class", "badgeNeutral")
+        audit_layout.addWidget(self.badge_audit_layout)
+
+        self.lbl_audit_specs = QLabel("")
+        self.lbl_audit_specs.setStyleSheet(
+            "color: #ffffff; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;"
+        )
+        audit_layout.addWidget(self.lbl_audit_specs)
+
+        audit_layout.addStretch()
+        confirm_layout.addWidget(self.frame_audio_audit)
+
+        # Contextual Channel Difference Alert
+        self.frame_channel_alert = QFrame()
+        self.frame_channel_alert.setStyleSheet(
+            "background-color: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; padding: 6px 10px;"
+        )
+        alert_layout = QHBoxLayout(self.frame_channel_alert)
+        alert_layout.setContentsMargins(0, 0, 0, 0)
+        self.lbl_channel_alert = QLabel("")
+        self.lbl_channel_alert.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: 600;")
+        alert_layout.addWidget(self.lbl_channel_alert)
+        self.frame_channel_alert.setVisible(False)
+        confirm_layout.addWidget(self.frame_channel_alert)
 
         # Checkboxes for Composition
         check_row = QHBoxLayout()
@@ -281,9 +333,9 @@ class UnifiedDropZone(QFrame):
     def _open_file_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Selecionar os 2 Arquivos MKV (Vídeo de Alta Resolução + Dublado)",
+            "Selecionar os 2 Arquivos de Mídia (Vídeo de Alta Resolução + Dublado)",
             os.path.expanduser("~"),
-            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.avi *.wav *.flac);;Todos (*.*)"
+            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos os Arquivos (*.*)"
         )
         if files:
             self.ingest_files(files)
@@ -291,9 +343,9 @@ class UnifiedDropZone(QFrame):
     def _open_single_file_dialog(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Selecionar o Segundo Arquivo MKV",
+            "Selecionar o Segundo Arquivo de Mídia",
             os.path.expanduser("~"),
-            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.avi *.wav *.flac);;Todos (*.*)"
+            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos os Arquivos (*.*)"
         )
         if file_path:
             self.ingest_files([file_path])
@@ -326,8 +378,12 @@ class UnifiedDropZone(QFrame):
         sz_v = format_bytes(os.path.getsize(file_v)) if os.path.isfile(file_v) else ""
         sz_a = format_bytes(os.path.getsize(file_a)) if os.path.isfile(file_a) else ""
 
+        ext_v = os.path.splitext(file_v)[1].upper().lstrip(".")
+        ext_a = os.path.splitext(file_a)[1].upper().lstrip(".")
+
         self.lbl_files_summary.setText(
-            f"Fonte Vídeo: {os.path.basename(file_v)} ({sz_v})  |  Fonte Áudio: {os.path.basename(file_a)} ({sz_a})"
+            f"Fonte Vídeo: {os.path.basename(file_v)} ({sz_v}) [{ext_v}]  |  "
+            f"Fonte Áudio: {os.path.basename(file_a)} ({sz_a}) [{ext_a}]"
         )
 
         # Ambiguity banner
@@ -375,8 +431,64 @@ class UnifiedDropZone(QFrame):
                 self.combo_ref_audio.addItem(alt.summary_title(), userData=alt)
         self.combo_ref_audio.blockSignals(False)
 
+        # Update acoustic audit card
+        self._update_audio_audit()
+
         # Set focus to confirm button for instant Enter activation
         self.btn_confirm.setFocus()
+
+    def _update_audio_audit(self):
+        """Updates acoustic audit badges and contextual channel warnings based on combo selection."""
+        target_cand: Optional[StreamCandidate] = self.combo_target_audio.currentData()
+        ref_cand: Optional[StreamCandidate] = self.combo_ref_audio.currentData()
+        video_cand: Optional[StreamCandidate] = self.combo_video.currentData()
+
+        if not target_cand:
+            self.frame_audio_audit.setVisible(False)
+            self.frame_channel_alert.setVisible(False)
+            return
+
+        self.frame_audio_audit.setVisible(True)
+        tgt_stream = target_cand.stream
+        tgt_fmt = tgt_stream.container_format.upper() if tgt_stream.container_format else "MKV"
+
+        # Origin indicator
+        is_hybrid = (tgt_fmt != "MKV") or (video_cand and target_cand.file_path != video_cand.file_path)
+        if is_hybrid:
+            self.lbl_audit_origin.setText(f"{tgt_fmt} ➔ MKV Remux")
+            self.lbl_audit_origin.setProperty("class", "badgeAmber" if tgt_fmt != "MKV" else "badgeNeutral")
+        else:
+            self.lbl_audit_origin.setText(f"{tgt_fmt} Nativo")
+            self.lbl_audit_origin.setProperty("class", "badgeNeutral")
+        self.lbl_audit_origin.setStyle(self.lbl_audit_origin.style())
+
+        # Channel layout badge
+        layout_text = format_channel_layout_label(tgt_stream.channels, tgt_stream.channel_layout)
+        self.badge_audit_layout.setText(layout_text)
+        if tgt_stream.channels >= 6:
+            self.badge_audit_layout.setProperty("class", "badgeGreen")
+        else:
+            self.badge_audit_layout.setProperty("class", "badgeNeutral")
+        self.badge_audit_layout.setStyle(self.badge_audit_layout.style())
+
+        # Acoustic specs label
+        if tgt_stream.audio_profile:
+            spec_str = tgt_stream.audio_profile.spec_label()
+        else:
+            sr_str = f"{tgt_stream.sample_rate:,} Hz".replace(",", ".") if tgt_stream.sample_rate else ""
+            spec_str = f"{tgt_stream.codec.upper()} • {sr_str}"
+        self.lbl_audit_specs.setText(spec_str)
+
+        # Contextual Channel Difference Alert
+        # Emits neutral alert if dubbed audio is stereo 2.0 while reference English audio is 5.1/7.1
+        if tgt_stream.channels in (1, 2) and ref_cand and ref_cand.stream.channels >= 6:
+            ref_layout = format_channel_layout_label(ref_cand.stream.channels, ref_cand.stream.channel_layout)
+            self.lbl_channel_alert.setText(
+                f"ℹ {layout_text} identificado na dublagem; áudio original em inglês possui {ref_layout} ({ref_cand.stream.channels} canais)."
+            )
+            self.frame_channel_alert.setVisible(True)
+        else:
+            self.frame_channel_alert.setVisible(False)
 
     def _on_confirm_clicked(self):
         chosen_video = self.combo_video.currentData()

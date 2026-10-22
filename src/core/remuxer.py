@@ -5,8 +5,9 @@ import os
 import re
 import subprocess
 import threading
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
+from .extractor import extract_audio_lossless
 from .models import RemuxJob
 from .transformer import apply_temporal_transform
 from .temp_manager import TempWorkspace
@@ -14,6 +15,56 @@ from .temp_manager import TempWorkspace
 logger = logging.getLogger(__name__)
 
 PROGRESS_REGEX = re.compile(r"Progress:\s*(\d+)%", re.IGNORECASE)
+
+
+def build_mkvmerge_hybrid_command(
+    video_mkv: str,
+    audio_source: str,
+    offset_ms: float,
+    output_path: str,
+    video_track_id: int = 0,
+    target_audio_track_id: int = 0,
+    target_audio_language: str = "por",
+    target_audio_name: str = "Português (Brasil)",
+    keep_original_audio: bool = True,
+    ref_audio_track_id: int = 1,
+    original_audio_language: str = "eng",
+    original_audio_name: str = "Áudio Original"
+) -> List[str]:
+    """
+    Constructs the mkvmerge command arguments combining untouched video stream
+    with synchronized target dubbed audio stream.
+    """
+    cmd = ["mkvmerge", "-o", output_path]
+
+    # 1. Video source options (untouched passthrough)
+    cmd.extend(["--video-tracks", str(video_track_id)])
+
+    if keep_original_audio:
+        cmd.extend([
+            "--audio-tracks", str(ref_audio_track_id),
+            "--default-track-flag", f"{ref_audio_track_id}:no",
+            "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
+            "--language", f"{ref_audio_track_id}:{original_audio_language}",
+        ])
+    else:
+        cmd.append("--no-audio")
+
+    cmd.extend(["--no-subtitles", "--no-attachments", video_mkv])
+
+    # 2. Synchronized Dubbed Audio source options
+    int_offset_ms = int(round(offset_ms))
+    cmd.extend([
+        "--audio-tracks", str(target_audio_track_id),
+        "--sync", f"{target_audio_track_id}:{int_offset_ms}",
+        "--default-track-flag", f"{target_audio_track_id}:yes",
+        "--track-name", f"{target_audio_track_id}:{target_audio_name}",
+        "--language", f"{target_audio_track_id}:{target_audio_language}",
+        "--no-video", "--no-subtitles", "--no-attachments",
+        audio_source
+    ])
+
+    return cmd
 
 
 def execute_lossless_remux(
@@ -27,7 +78,7 @@ def execute_lossless_remux(
     
     Guarantees:
     - 0% video recompression (100% direct stream copy).
-    - 0% audio recompression if only a static offset is needed (--sync container flag).
+    - 0% audio recompression for standard codecs (stream copy demuxing if from MP4/MOV).
     - Time-stretch without pitch alteration only if continuous drift is present.
     - Real-time progress monitoring and graceful cancellation with SIGTERM.
     """
@@ -58,40 +109,41 @@ def execute_lossless_remux(
             )
             audio_to_mux = stretched_wav
             target_track_id = 0  # In extracted FLAC, audio is track 0
+        else:
+            # Check if source is MP4 / MOV container: extract lossless stream first to isolate mkvmerge
+            ext_audio = os.path.splitext(job.target_audio_file)[1].lower()
+            if ext_audio in (".mp4", ".m4v", ".mov"):
+                if on_progress:
+                    on_progress(5.0, "Extraindo faixa dublada em modo stream copy sem recodificação...")
+                extracted = extract_audio_lossless(
+                    input_path=job.target_audio_file,
+                    track_index=job.target_track_id,
+                    output_dir=staging.path
+                )
+                audio_to_mux = extracted.output_path
+                target_track_id = 0  # Standalone audio track index is 0 in mkvmerge
+                copy_tag = "cópia direta de stream" if extracted.is_direct_copy else "conversão lossless FLAC"
+                logger.info("Agnostic audio extraction completed (%s): %s", copy_tag, audio_to_mux)
 
         if cancel_event and cancel_event.is_set():
             logger.info("Remux cancelled by user before mkvmerge launch.")
             return False
 
         # Build mkvmerge command
-        cmd = ["mkvmerge", "-o", job.output_path]
-
-        # 1. Video source options
-        cmd.extend(["--video-tracks", str(job.video_track_id)])
-
-        if job.keep_original_audio:
-            cmd.extend([
-                "--audio-tracks", str(job.ref_audio_track_id),
-                f"--default-track-flag", f"{job.ref_audio_track_id}:no",
-                f"--track-name", f"{job.ref_audio_track_id}:{job.original_audio_name}",
-                f"--language", f"{job.ref_audio_track_id}:{job.original_audio_language}",
-            ])
-        else:
-            cmd.append("--no-audio")
-
-        cmd.extend(["--no-subtitles", "--no-attachments", job.video_file])
-
-        # 2. Synchronized Dubbed Audio source options
-        int_offset_ms = int(round(job.offset_ms))
-        cmd.extend([
-            "--audio-tracks", str(target_track_id),
-            "--sync", f"{target_track_id}:{int_offset_ms}",
-            "--default-track-flag", f"{target_track_id}:yes",
-            "--track-name", f"{target_track_id}:{job.target_audio_name}",
-            "--language", f"{target_track_id}:{job.target_audio_language}",
-            "--no-video", "--no-subtitles", "--no-attachments",
-            audio_to_mux
-        ])
+        cmd = build_mkvmerge_hybrid_command(
+            video_mkv=job.video_file,
+            audio_source=audio_to_mux,
+            offset_ms=job.offset_ms,
+            output_path=job.output_path,
+            video_track_id=job.video_track_id,
+            target_audio_track_id=target_track_id,
+            target_audio_language=job.target_audio_language,
+            target_audio_name=job.target_audio_name,
+            keep_original_audio=job.keep_original_audio,
+            ref_audio_track_id=job.ref_audio_track_id,
+            original_audio_language=job.original_audio_language,
+            original_audio_name=job.original_audio_name
+        )
 
         logger.info("Executing mkvmerge command: %s", " ".join(cmd))
         if on_progress:
