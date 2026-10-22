@@ -1,4 +1,4 @@
-"""Main application window with asymmetric Bento Grid layout."""
+"""Main application window with responsive layout and unified ingestion."""
 
 import logging
 import os
@@ -6,27 +6,29 @@ from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QDialog,
     QFileDialog,
     QFrame,
-    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget
 )
 
 from .components.correlation_view import CorrelationView
-from .components.file_drop_card import FileDropCard
 from .components.log_drawer import LogDrawer
 from .components.preview_player import PreviewPlayer
 from .components.sync_controls import SyncControls
 from .components.stream_selector_modal import StreamSelectorModal
+from .components.unified_drop_zone import UnifiedDropZone
+from .style import apply_theme, get_theme_qss
 from .workers.analyze_worker import AnalyzeWorker
 from .workers.remux_worker import RemuxWorker
 from ..core.disk_utils import check_disk_space, format_bytes
@@ -38,16 +40,17 @@ logger = logging.getLogger(__name__)
 
 class SyncFrameMainWindow(QWidget):
     """
-    Main application window implementing Pro Max v4 Bento Grid aesthetics
-    and asynchronous correlation & remux pipelines.
+    Main application window implementing neutral monochrome aesthetics,
+    responsive scrollable layout, unified drop ingestion, and autonomous execution.
     """
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SyncFrame — Lossless Audio/Video Synchronizer")
-        self.resize(1180, 880)
-        self.setMinimumSize(960, 720)
+        self.resize(1180, 840)
+        self.setMinimumSize(800, 540)
 
+        self.current_theme: str = "dark"
         self.video_path: Optional[str] = None
         self.audio_path: Optional[str] = None
         self.total_duration_sec: float = 0.0
@@ -65,16 +68,20 @@ class SyncFrameMainWindow(QWidget):
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
-        root_layout.setSpacing(14)
-        root_layout.setContentsMargins(20, 18, 20, 18)
+        root_layout.setSpacing(0)
+        root_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 1. Header Banner
-        header = QHBoxLayout()
+        # 1. Fixed Clean Header Bar
+        header_widget = QWidget()
+        header_widget.setObjectName("headerBar")
+        header = QHBoxLayout(header_widget)
+        header.setContentsMargins(20, 14, 20, 14)
+
         header_text_box = QVBoxLayout()
         header_text_box.setSpacing(2)
 
         title = QLabel("SyncFrame")
-        title.setStyleSheet("font-size: 22px; font-weight: 800; color: #f8fafc; letter-spacing: -0.5px;")
+        title.setStyleSheet("font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;")
         header_text_box.addWidget(title)
 
         subtitle = QLabel("Automação de Sincronia Acústica por FFT & Lossless Remux de Alta Fidelidade")
@@ -84,43 +91,38 @@ class SyncFrameMainWindow(QWidget):
 
         header.addStretch()
 
-        self.btn_auto_match = QPushButton("⚡ Auto-Mapear")
-        self.btn_auto_match.setProperty("class", "btnPrimary")
-        self.btn_auto_match.setToolTip("Executa análise heurística comparativa das duas fontes carregadas")
-        self.btn_auto_match.clicked.connect(self._on_click_auto_match)
-        header.addWidget(self.btn_auto_match)
+        self.btn_theme = QPushButton("🌓 Modo Claro")
+        self.btn_theme.setProperty("class", "btnSecondary")
+        self.btn_theme.setToolTip("Alternar entre modo Escuro e Claro Neutro")
+        self.btn_theme.clicked.connect(self._toggle_theme)
+        header.addWidget(self.btn_theme)
 
-        badge_v = QLabel("v0.1.0 • Anti-Slop Engine")
-        badge_v.setProperty("class", "badgeBlue")
+        badge_v = QLabel("v0.1.0")
+        badge_v.setProperty("class", "badgeNeutral")
         header.addWidget(badge_v)
 
-        root_layout.addLayout(header)
+        root_layout.addWidget(header_widget)
 
-        # 2. Bento Grid: Source Files (Top Row)
-        sources_layout = QHBoxLayout()
-        sources_layout.setSpacing(14)
+        # 2. Scroll Area for Responsive Windowed Operation
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
-        self.card_video = FileDropCard(
-            title="Fonte de Vídeo (Alta Fidelidade)",
-            subtitle="MKV ou MP4 de referência visual com áudio original"
-        )
-        self.card_video.file_selected.connect(self._on_video_selected)
-        self.card_video.stream_changed.connect(self._on_ref_audio_track_changed)
-        self.card_video.multiple_files_dropped.connect(self._on_multiple_files_dropped)
-        sources_layout.addWidget(self.card_video, 1)
+        body_container = QWidget()
+        body_layout = QVBoxLayout(body_container)
+        body_layout.setSpacing(14)
+        body_layout.setContentsMargins(20, 8, 20, 20)
 
-        self.card_audio = FileDropCard(
-            title="Fonte de Áudio Dublado (Alvo)",
-            subtitle="MKV ou arquivo de áudio com dublagem em Português"
-        )
-        self.card_audio.file_selected.connect(self._on_audio_selected)
-        self.card_audio.stream_changed.connect(self._on_target_audio_track_changed)
-        self.card_audio.multiple_files_dropped.connect(self._on_multiple_files_dropped)
-        sources_layout.addWidget(self.card_audio, 1)
+        # 3. Unified Drop Zone & Review Gate
+        self.drop_zone = UnifiedDropZone()
+        self.drop_zone.files_ready.connect(self._on_files_ready)
+        self.drop_zone.confirmation_confirmed.connect(self._on_confirmation_confirmed)
+        self.drop_zone.reset_requested.connect(self._on_reset_requested)
+        body_layout.addWidget(self.drop_zone)
 
-        root_layout.addLayout(sources_layout)
-
-        # 3. Bento Grid: Metrics & Correlation Visualization (Middle Row)
+        # 4. Bento Grid: Metrics & Correlation Visualization
         mid_layout = QHBoxLayout()
         mid_layout.setSpacing(14)
 
@@ -134,13 +136,13 @@ class SyncFrameMainWindow(QWidget):
         self.sync_controls.offset_changed.connect(self._on_manual_offset_changed)
         mid_layout.addWidget(self.sync_controls, 1)
 
-        root_layout.addLayout(mid_layout)
+        body_layout.addLayout(mid_layout)
 
-        # 4. Preview Player Panel
+        # 5. Preview Player Panel
         self.preview_player = PreviewPlayer()
-        root_layout.addWidget(self.preview_player)
+        body_layout.addWidget(self.preview_player)
 
-        # 5. Destination & Output Remux Card (Bottom Row)
+        # 6. Destination & Output Remux Card
         dest_card = QFrame()
         dest_card.setObjectName("bentoCard")
         dest_card.setProperty("class", "bentoCard")
@@ -154,7 +156,7 @@ class SyncFrameMainWindow(QWidget):
         dest_header.addWidget(dest_title)
         dest_header.addStretch()
 
-        self.check_keep_original = QCheckBox("Preservar áudio original (Inglês) como faixa secundária")
+        self.check_keep_original = QCheckBox("Preservar áudio original como faixa secundária")
         self.check_keep_original.setChecked(True)
         dest_header.addWidget(self.check_keep_original)
 
@@ -163,7 +165,7 @@ class SyncFrameMainWindow(QWidget):
         # Output Path selector
         path_row = QHBoxLayout()
         path_lbl = QLabel("Arquivo de Saída:")
-        path_lbl.setStyleSheet("color: #cbd5e1; font-weight: 600;")
+        path_lbl.setStyleSheet("color: #b0b0b0; font-weight: 600;")
         path_row.addWidget(path_lbl)
 
         self.txt_output_path = QLineEdit()
@@ -177,7 +179,7 @@ class SyncFrameMainWindow(QWidget):
 
         dest_layout.addLayout(path_row)
 
-        # Action Buttons & Linear Progress
+        # Action Buttons & Progress Bar
         action_row = QHBoxLayout()
         action_row.setSpacing(12)
 
@@ -203,14 +205,30 @@ class SyncFrameMainWindow(QWidget):
         dest_layout.addLayout(action_row)
 
         self.lbl_progress_status = QLabel("Pronto para operação.")
-        self.lbl_progress_status.setStyleSheet("color: #64748b; font-size: 11px;")
+        self.lbl_progress_status.setStyleSheet("color: #8c8c8c; font-size: 11px;")
         dest_layout.addWidget(self.lbl_progress_status)
 
-        root_layout.addWidget(dest_card)
+        body_layout.addWidget(dest_card)
 
-        # 6. Retractable Terminal Logs Drawer
+        # 7. Retractable Terminal Logs Drawer
         self.log_drawer = LogDrawer()
-        root_layout.addWidget(self.log_drawer)
+        body_layout.addWidget(self.log_drawer)
+
+        self.scroll_area.setWidget(body_container)
+        root_layout.addWidget(self.scroll_area)
+
+    def _toggle_theme(self):
+        """Toggles between neutral dark and neutral light theme."""
+        if self.current_theme == "dark":
+            self.current_theme = "light"
+            self.btn_theme.setText("🌓 Modo Escuro")
+        else:
+            self.current_theme = "dark"
+            self.btn_theme.setText("🌓 Modo Claro")
+
+        app = QApplication.instance()
+        target = app if app else self
+        apply_theme(target, self.current_theme)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -219,35 +237,24 @@ class SyncFrameMainWindow(QWidget):
     def dropEvent(self, event):
         urls = event.mimeData().urls()
         valid = [u.toLocalFile() for u in urls if os.path.isfile(u.toLocalFile())]
-        if len(valid) >= 2:
-            self._on_multiple_files_dropped(valid)
-        elif len(valid) == 1:
-            if not self.video_path:
-                self.card_video.set_file_path(valid[0])
-            else:
-                self.card_audio.set_file_path(valid[0])
+        if valid:
+            self.drop_zone.ingest_files(valid)
 
-    def _on_multiple_files_dropped(self, files: list):
-        if len(files) < 2:
-            return
-        self.process_dual_files(files[0], files[1])
-
-    def _on_click_auto_match(self):
-        if not self.video_path or not self.audio_path:
-            QMessageBox.information(
-                self,
-                "Fontes Incompletas",
-                "Carregue ou arraste dois arquivos de vídeo/áudio para executar o mapeamento heurístico automático."
-            )
-            return
-        self.process_dual_files(self.video_path, self.audio_path)
-
-    def process_dual_files(self, file_a: str, file_b: str):
+    def _on_files_ready(self, file_a: str, file_b: str):
+        """Triggers heuristic evaluation when two files are loaded in UnifiedDropZone."""
         self.log_drawer.append_log(
-            f"[AUTO-MATCH] Executando heurística comparativa determinística entre:\n  Fonte A: {os.path.basename(file_a)}\n  Fonte B: {os.path.basename(file_b)}"
+            f"[AUTO-MATCH] Inspecionando fontes e avaliando heurística determinística:\n"
+            f"  Fonte A: {os.path.basename(file_a)}\n  Fonte B: {os.path.basename(file_b)}"
         )
         try:
             verdict = evaluate_media_streams(file_a, file_b)
+            self.drop_zone.set_verdict(verdict)
+            tgt_name = os.path.basename(verdict.recommended_target_audio.file_path) if verdict.recommended_target_audio else "N/A"
+            self.log_drawer.append_log(
+                f"[AUTO-MATCH] Heurística concluída:\n"
+                f"  Vídeo recomendado: '{os.path.basename(verdict.recommended_video.file_path)}'\n"
+                f"  Dublagem alvo: '{tgt_name}'"
+            )
         except Exception as exc:
             logger.error("Auto match evaluation failed: %s", exc)
             QMessageBox.critical(
@@ -255,114 +262,61 @@ class SyncFrameMainWindow(QWidget):
                 "Falha na Avaliação Heurística",
                 f"Ocorreu um erro ao inspecionar as fontes:\n\n{exc}"
             )
+            self.drop_zone.reset()
+
+    def _on_confirmation_confirmed(
+        self,
+        chosen_video: StreamCandidate,
+        chosen_target: StreamCandidate,
+        chosen_ref: Optional[StreamCandidate],
+        keep_orig: bool
+    ):
+        """Handles 1-click confirmation from UnifiedDropZone's Review Gate."""
+        if not chosen_video or not chosen_target:
+            QMessageBox.warning(self, "Seleção Incompleta", "É necessário selecionar tanto o vídeo quanto o áudio dublado.")
             return
 
-        modal = StreamSelectorModal(verdict, self)
-        if modal.exec() == QDialog.Accepted:
-            chosen_video, chosen_target, chosen_ref, keep_orig = modal.get_selection()
-            if not chosen_video or not chosen_target:
-                QMessageBox.warning(self, "Seleção Incompleta", "É necessário selecionar tanto o vídeo quanto o áudio dublado.")
-                return
+        self.video_path = chosen_video.file_path
+        self.audio_path = chosen_target.file_path
+        self.selected_video_track_id = chosen_video.stream.id
+        self.selected_ref_audio_id = chosen_ref.stream.id if chosen_ref else 0
+        self.selected_target_audio_id = chosen_target.stream.id
+        self.total_duration_sec = (chosen_video.stream.duration_ms / 1000.0) if chosen_video.stream.duration_ms > 0 else 7200.0
 
-            self.video_path = chosen_video.file_path
-            self.audio_path = chosen_target.file_path
-            self.selected_video_track_id = chosen_video.stream.id
-            self.selected_ref_audio_id = chosen_ref.stream.id if chosen_ref else 0
-            self.selected_target_audio_id = chosen_target.stream.id
-            self.total_duration_sec = (chosen_video.stream.duration_ms / 1000.0) if chosen_video.stream.duration_ms > 0 else 7200.0
+        self.check_keep_original.setChecked(keep_orig)
 
-            # Update UI cards
-            self.card_video.set_file_path(self.video_path)
-            v_streams = inspect_media(self.video_path)
-            self.card_video.update_streams(
-                [s for s in v_streams if s.track_type == "audio"],
-                default_stream_id=self.selected_ref_audio_id
-            )
+        # Auto suggest output path
+        base, _ = os.path.splitext(self.video_path)
+        self.txt_output_path.setText(f"{base}_synced.mkv")
 
-            self.card_audio.set_file_path(self.audio_path)
-            a_streams = inspect_media(self.audio_path)
-            self.card_audio.update_streams(
-                [s for s in a_streams if s.track_type == "audio"],
-                default_stream_id=self.selected_target_audio_id
-            )
+        self._update_preview_sources()
 
-            self.check_keep_original.setChecked(keep_orig)
+        self.log_drawer.append_log(
+            f"[CONFIRMADO] Vídeo #{self.selected_video_track_id} ({os.path.basename(self.video_path)}) | "
+            f"Dublagem #{self.selected_target_audio_id} ({os.path.basename(self.audio_path)}) | "
+            f"Ref #{self.selected_ref_audio_id}"
+        )
 
-            # Auto suggest output path
-            base, _ = os.path.splitext(self.video_path)
-            self.txt_output_path.setText(f"{base}_synced.mkv")
+        # Deflagra sequencialmente e sem novas intervenções a extração, FFT e remux
+        self.auto_chain_remux = True
+        self.start_analysis()
 
-            self._update_preview_sources()
-
-            self.log_drawer.append_log(
-                f"[CONFIRMADO] Vídeo #{self.selected_video_track_id} ({os.path.basename(self.video_path)}) | "
-                f"Dublagem #{self.selected_target_audio_id} ({os.path.basename(self.audio_path)}) | "
-                f"Ref #{self.selected_ref_audio_id}"
-            )
-
-            # Deflagra sequencialmente e sem novas intervenções a extração, FFT e remux
-            self.auto_chain_remux = True
-            self.start_analysis()
-
-    def _on_video_selected(self, path: str):
-        self.video_path = path
-        try:
-            streams = inspect_media(path)
-            video_streams = [s for s in streams if s.track_type == "video"]
-            audio_streams = [s for s in streams if s.track_type == "audio"]
-
-            if video_streams:
-                self.selected_video_track_id = video_streams[0].id
-                self.total_duration_sec = video_streams[0].duration_ms / 1000.0
-
-            # Default reference audio track
-            default_ref_id = None
-            if audio_streams:
-                eng = [s for s in audio_streams if s.language.lower() in ("eng", "en")]
-                default_ref_id = eng[0].id if eng else audio_streams[0].id
-                self.selected_ref_audio_id = default_ref_id
-
-            self.card_video.update_streams(audio_streams, default_ref_id)
-
-            # Auto suggest output path
-            if not self.txt_output_path.text():
-                base, _ = os.path.splitext(path)
-                suggested = f"{base}_synced.mkv"
-                self.txt_output_path.setText(suggested)
-
-            self._update_preview_sources()
-            self.log_drawer.append_log(f"[INFO] Vídeo de referência carregado: {path} ({len(audio_streams)} faixas de áudio)")
-        except Exception as exc:
-            logger.error("Error inspecting video: %s", exc)
-            QMessageBox.critical(self, "Erro de Leitura", f"Não foi possível inspecionar o vídeo:\n{exc}")
-
-    def _on_audio_selected(self, path: str):
-        self.audio_path = path
-        try:
-            streams = inspect_media(path)
-            audio_streams = [s for s in streams if s.track_type == "audio"]
-
-            # Prefer Portuguese track
-            default_tgt_id = None
-            if audio_streams:
-                pt = [s for s in audio_streams if s.language.lower() in ("por", "pt", "pob", "pt-br", "bra")]
-                default_tgt_id = pt[0].id if pt else audio_streams[0].id
-                self.selected_target_audio_id = default_tgt_id
-
-            self.card_audio.update_streams(audio_streams, default_tgt_id)
-            self._update_preview_sources()
-            self.log_drawer.append_log(f"[INFO] Fonte de áudio dublado carregada: {path} ({len(audio_streams)} faixas de áudio)")
-        except Exception as exc:
-            logger.error("Error inspecting audio: %s", exc)
-            QMessageBox.critical(self, "Erro de Leitura", f"Não foi possível inspecionar o áudio:\n{exc}")
-
-    def _on_ref_audio_track_changed(self, track_id: int):
-        self.selected_ref_audio_id = track_id
-        self.log_drawer.append_log(f"[CONFIG] Faixa de áudio de referência alterada para #{track_id}")
-
-    def _on_target_audio_track_changed(self, track_id: int):
-        self.selected_target_audio_id = track_id
-        self.log_drawer.append_log(f"[CONFIG] Faixa de áudio dublado alvo alterada para #{track_id}")
+    def _on_reset_requested(self):
+        """Resets all media and analysis state when files are cleared."""
+        self.video_path = None
+        self.audio_path = None
+        self.selected_video_track_id = 0
+        self.selected_ref_audio_id = 1
+        self.selected_target_audio_id = 0
+        self.total_duration_sec = 0.0
+        self.latest_metrics = None
+        self.txt_output_path.clear()
+        self.correlation_view.clear()
+        self.sync_controls.reset()
+        self.preview_player.reset()
+        self.lbl_progress_status.setText("Pronto para operação.")
+        self.progress_bar.setValue(0)
+        self.log_drawer.append_log("[RESET] Fontes e parâmetros resetados.")
 
     def _on_manual_offset_changed(self, offset_ms: float):
         self.preview_player.update_offset(offset_ms)
@@ -398,7 +352,7 @@ class SyncFrameMainWindow(QWidget):
 
     def start_analysis(self):
         if not self.video_path or not self.audio_path:
-            QMessageBox.warning(self, "Fontes Incompletas", "Carregue o arquivo de vídeo e o arquivo de áudio dublado antes de calcular a sincronia.")
+            QMessageBox.warning(self, "Fontes Incompletas", "Carregue os arquivos de vídeo e áudio dublado antes de calcular a sincronia.")
             return
 
         self.btn_remux.setEnabled(False)

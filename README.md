@@ -2,7 +2,7 @@
 
 **SyncFrame** é uma aplicação desktop de alta fidelidade voltada para a automação de remux e sincronização precisa de áudio dublado e vídeo de alta definição a partir de arquivos MKV distintos.
 
-Projetado sob a filosofia *Pro Max v4 Anti-Slop*, o sistema soluciona desalinhamentos temporais causados por atrasos estáticos iniciais, discrepâncias de frame rate (23.976 fps vs. 24.000 fps vs. 25.000 fps PAL) e deriva contínua através de inspeção matemática de metadados e correlação acústica por FFT, realizando multiplexação direta sem reencodamento de vídeo.
+Projetado com uma interface neutra, minimalista e de alta densidade de informação, o sistema soluciona desalinhamentos temporais causados por atrasos estáticos iniciais, discrepâncias de frame rate (23.976 fps vs. 24.000 fps vs. 25.000 fps PAL) e deriva contínua através de inspeção matemática de metadados e correlação acústica por FFT, realizando multiplexação direta sem reencodamento de vídeo.
 
 ---
 
@@ -13,12 +13,13 @@ Projetado sob a filosofia *Pro Max v4 Anti-Slop*, o sistema soluciona desalinham
 - **Detecção de Framerate & Correlação FFT Multi-Janela:** Extrai trechos acústicos filtrados (bandpass 300Hz-4000Hz mono PCM) no início (5%), meio (50%) e fim (85%) para isolar transientes, trilhas incidentais e foley idênticos entre idiomas, diagnosticando divergências de frame rate conhecidas:
   - `23.976 fps ↔ 24.000 fps` (deriva telecine NTSC de $1001/1000 \approx +0.1001\%$)
   - `24.000 fps ↔ 25.000 fps` (PAL Speedup/Slowdown de $25/24 \approx +4.167\%$)
-- **Auto-Matching Heurístico & Review Gate (Confirmação em 1 Clique):** Ao descartar simultaneamente dois arquivos MKV na aplicação, o sistema executa análise determinística comparativa imediata:
-  - Pontuação de fidelidade de vídeo ($W_{res} \cdot \text{Res} + W_{codec} \cdot \text{CodecWeight} + W_{br} \cdot \text{Bitrate}$) elegendo automaticamente a melhor imagem (ex.: 4K HEVC > 1080p AVC).
-  - Detecção da faixa dublada em português e do áudio de referência original em inglês.
-  - Exibição de um Review Gate modal com badges de qualidade e foco padrão na tecla **Enter**, permitindo confirmação instantânea ou troca manual de faixas antes de deflagrar todo o pipeline autônomo (extração, FFT e remux).
+- **Zona Unificada de Entrada (Unified Drop Zone) & Review Gate Tabular:** Zona central inteligente que aceita 1 ou 2 arquivos MKV simultaneamente ou seleção via diálogo nativo de arquivos:
+  - Ingestão simultânea de fontes com avaliação heurística imediata em segundo plano.
+  - Painel de confirmação assistida inline com seleção de faixas recomendadas (vídeo de melhor imagem, áudio dublado em português e áudio de referência original).
+  - Aprovação instantânea em 1 clique ou via tecla **Enter**, deflagrando autonomamente todo o pipeline de extração, cálculo de offset e multiplexação sem perdas.
+- **Estética Neutra Monocromática & Modo Escuro/Claro:** Design refinado em escala de cinza neutra, preto e branco, sem cores temáticas saturadas ou invasivas, com alternador dinâmico de tema (`🌓`) no cabeçalho.
+- **Layout Totalmente Responsivo com Scroll Vertical:** Estrutura envelopada em `QScrollArea` que garante perfeita usabilidade em modo janela (`1024x650`, `900x550`), eliminando achatamento ou sobreposição de widgets.
 - **Time-Stretch Inteligente sem Alteração de Pitch:** Se e somente se houver deriva contínua significativa ($\text{drift} \neq 1.0$), o filtro `atempo` do FFmpeg é aplicado em cópia temporária de alta precisão (FLAC lossless).
-- **Interface Desktop PySide6 em Bento Grid:** Visual denso, responsivo e ergonômico, com renderizador QPainter de pico de correlação, controles de micro-ajuste em passos de $\pm 50\text{ ms}$, gaveta retrátil de logs do `mkvmerge` e checagem de espaço em disco pré-voo.
 - **Player de Inspeção Instantânea:** Teste de reprodução em tempo real nos marcadores 5%, 50% e 90% via `mpv` com compensação de atraso instantânea para validação labial antes do remux.
 - **Isolamento e Limpeza Compulsória de Staging:** Todos os artefatos temporários de PCM e áudios intermediários em `.syncframe_tmp/` são descartados automaticamente ao término do trabalho ou em caso de encerramento do processo (`SIGINT`/`SIGTERM`/`atexit`).
 
@@ -96,14 +97,16 @@ SyncFrame/
 │   │   └── disk_utils.py           # Validação pré-voo de capacidade em disco
 │   ├── ui/                         # Interface Gráfica desktop (PySide6)
 │   │   ├── app.py                  # Factory de instanciação do QApplication
-│   │   ├── main_window.py          # Janela principal em layout Bento Grid
-│   │   ├── style.py                # Estilização QSS Pro Max v4 (Slate 950 / Ciano / Esmeralda)
+│   │   ├── main_window.py          # Janela principal responsiva com QScrollArea e tema alternável
+│   │   ├── style.py                # Design system neutro monocromático (Dark/Light QSS)
 │   │   ├── components/             # Componentes modulares de UI
-│   │   │   ├── file_drop_card.py   # Upload drag-and-drop e seletores de faixas
+│   │   │   ├── unified_drop_zone.py # Zona unificada de ingestão e Review Gate tabular inline
+│   │   │   ├── stream_selector_modal.py # Modal assistido de confirmação de faixas
 │   │   │   ├── correlation_view.py # Gráfico de correlação desenhado em QPainter
 │   │   │   ├── sync_controls.py    # Controles de micro-ajuste (±50ms) e métricas
 │   │   │   ├── preview_player.py   # Spot-check player nos marcadores 5%, 50%, 90%
-│   │   │   └── log_drawer.py       # Gaveta retrátil de logs do terminal
+│   │   │   ├── log_drawer.py       # Gaveta retrátil de logs do terminal
+│   │   │   └── file_drop_card.py   # Card modular legado de drop
 │   │   └── workers/                # Threads de segundo plano (QThread)
 │   │       ├── analyze_worker.py   # Análise espectral assíncrona multi-janela
 │   │       └── remux_worker.py     # Multiplexação com suporte a cancelamento
@@ -113,7 +116,10 @@ SyncFrame/
     ├── test_models.py
     ├── test_correlator.py
     ├── test_inspector.py
-    └── test_temp_manager.py
+    ├── test_temp_manager.py
+    ├── test_stream_evaluator.py
+    ├── test_unified_drop_zone.py
+    └── test_ui_layout_responsiveness.py
 ```
 
 ---

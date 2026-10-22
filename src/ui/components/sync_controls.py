@@ -74,7 +74,7 @@ class SyncControls(QFrame):
         grid.addWidget(lbl_drift_title, 0, 1)
 
         self.lbl_drift_val = QLabel("1.000000x")
-        self.lbl_drift_val.setStyleSheet("font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #38bdf8;")
+        self.lbl_drift_val.setStyleSheet("font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #ffffff;")
         grid.addWidget(self.lbl_drift_val, 1, 1)
 
         # Metric: Confidence
@@ -90,7 +90,7 @@ class SyncControls(QFrame):
 
         # FPS Diagnostic banner
         self.lbl_diagnosis = QLabel("Taxas de quadros congruentes (sem deriva contínua)")
-        self.lbl_diagnosis.setStyleSheet("color: #cbd5e1; font-size: 12px; background: #020617; padding: 6px 10px; border-radius: 6px; border: 1px solid #1e293b;")
+        self.lbl_diagnosis.setStyleSheet("color: #d4d4d4; font-size: 12px; background: #141414; padding: 6px 10px; border-radius: 6px; border: 1px solid #2e2e2e;")
         layout.addWidget(self.lbl_diagnosis)
 
         # Fine-Tuning Controls Row
@@ -98,7 +98,7 @@ class SyncControls(QFrame):
         ctrl_box.setSpacing(8)
 
         lbl_tune = QLabel("Ajuste Fino Manual (Passos de ±50 ms):")
-        lbl_tune.setStyleSheet("color: #cbd5e1; font-weight: 600; font-size: 12px;")
+        lbl_tune.setStyleSheet("color: #d4d4d4; font-weight: 600; font-size: 12px;")
         ctrl_box.addWidget(lbl_tune)
 
         adj_row = QHBoxLayout()
@@ -201,6 +201,23 @@ class SyncControls(QFrame):
 
     def reset_to_calculated(self):
         self.spin_offset.setValue(self.algorithmic_offset)
+
+    def reset(self):
+        """Resets all metrics and adjustment inputs to initial state."""
+        self.algorithmic_offset = 0.0
+        self.current_offset = 0.0
+        self.lbl_offset_val.setText("0.0 ms")
+        self.lbl_drift_val.setText("1.000000x")
+        self.lbl_confidence.setText("Não analisado")
+        self.lbl_confidence.setProperty("class", "badgeAmber")
+        self.lbl_confidence.setStyle(self.lbl_confidence.style())
+        self.lbl_diagnosis.setText("Taxas de quadros congruentes (sem deriva contínua)")
+        self.spin_offset.blockSignals(True)
+        self.spin_offset.setValue(0.0)
+        self.spin_offset.blockSignals(False)
+        self.slider.blockSignals(True)
+        self.slider.setValue(0)
+        self.slider.blockSignals(False)
 
     def get_offset_ms(self) -> float:
         return self.spin_offset.value()

@@ -87,7 +87,7 @@ class PreviewPlayer(QFrame):
         layout.addLayout(btn_layout)
 
         self.status_label = QLabel("Aguardando carregamento de fontes para inspeção")
-        self.status_label.setStyleSheet("color: #64748b; font-size: 11px;")
+        self.status_label.setStyleSheet("color: #8c8c8c; font-size: 11px;")
         layout.addWidget(self.status_label)
 
     def set_media_sources(
@@ -128,6 +128,12 @@ class PreviewPlayer(QFrame):
         self.active_proc = None
         self.btn_stop.setEnabled(False)
         self.status_label.setText("Reprodução interrompida.")
+
+    def reset(self):
+        """Stops any active playback and resets preview media sources."""
+        self.stop_preview()
+        self.set_media_sources(None, None, 0.0, 0.0)
+        self.status_label.setText("Aguardando carregamento de fontes para inspeção")
 
     def play_marker(self, fraction: float):
         self.stop_preview()

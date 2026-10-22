@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QFrame, QWidget
 class CorrelationView(QFrame):
     """
     Renders the cross-correlation energy curve and alignment peak using hardware-accelerated QPainter.
-    Adheres to the Pro Max v4 Anti-Slop color scheme (Dark Slate, Cyan, Emerald).
+    Adheres to the neutral monochrome palette (grays, whites, and utilitarian status indicators).
     """
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -50,7 +50,7 @@ class CorrelationView(QFrame):
         plot_h = h - (2 * margin_y)
 
         # Draw background grid lines
-        grid_pen = QPen(QColor("#1e293b"))
+        grid_pen = QPen(QColor("#2a2a2a"))
         grid_pen.setWidth(1)
         grid_pen.setStyle(Qt.DashLine)
         painter.setPen(grid_pen)
@@ -62,14 +62,14 @@ class CorrelationView(QFrame):
 
         # Central alignment line
         center_x = int(margin_x + (plot_w / 2.0))
-        center_pen = QPen(QColor("#334155"))
+        center_pen = QPen(QColor("#3d3d3d"))
         center_pen.setWidth(1)
         painter.setPen(center_pen)
         painter.drawLine(center_x, margin_y, center_x, h - margin_y)
 
         if not self.curve_points or len(self.curve_points) < 2:
             # Render placeholder text
-            painter.setPen(QColor("#64748b"))
+            painter.setPen(QColor("#737373"))
             font = QFont("Inter", 11)
             painter.setFont(font)
             painter.drawText(
@@ -103,25 +103,26 @@ class CorrelationView(QFrame):
                 highest_y = y
                 peak_idx = i
 
-        # Draw energy curve in surgical cyan
-        curve_pen = QPen(QColor("#06b6d4"))
+        # Draw energy curve in high-contrast neutral light
+        curve_pen = QPen(QColor("#e5e5e5"))
         curve_pen.setWidth(2)
         painter.setPen(curve_pen)
         painter.drawPath(path)
 
-        # Highlight peak with emerald/cyan marker
+        # Highlight peak with green/amber utilitarian marker
         peak_x = margin_x + (peak_idx / float(n_points - 1)) * plot_w
-        peak_pen = QPen(QColor("#10b981") if self.confidence >= 0.35 else QColor("#f59e0b"))
+        peak_color = QColor("#22c55e") if self.confidence >= 0.35 else QColor("#f59e0b")
+        peak_pen = QPen(peak_color)
         peak_pen.setWidth(2)
         painter.setPen(peak_pen)
         painter.drawLine(int(peak_x), margin_y, int(peak_x), h - margin_y)
 
         # Draw circle on peak
-        painter.setBrush(QColor("#10b981") if self.confidence >= 0.35 else QColor("#f59e0b"))
+        painter.setBrush(peak_color)
         painter.drawEllipse(QPointF(peak_x, highest_y), 4.5, 4.5)
 
         # Render status banner at top
-        painter.setPen(QColor("#38bdf8"))
+        painter.setPen(QColor("#ffffff"))
         font = QFont("JetBrains Mono", 10)
         font.setBold(True)
         painter.setFont(font)

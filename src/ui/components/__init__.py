@@ -6,6 +6,7 @@ from .log_drawer import LogDrawer
 from .preview_player import PreviewPlayer
 from .sync_controls import SyncControls
 from .stream_selector_modal import StreamSelectorModal
+from .unified_drop_zone import UnifiedDropZone
 
 __all__ = [
     "CorrelationView",
@@ -14,4 +15,5 @@ __all__ = [
     "PreviewPlayer",
     "SyncControls",
     "StreamSelectorModal",
+    "UnifiedDropZone",
 ]

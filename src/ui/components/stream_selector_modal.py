@@ -33,11 +33,11 @@ class StreamSelectorModal(QDialog):
         self.resize(780, 560)
         self.setMinimumWidth(680)
 
-        # Style matching Pro Max v4 Anti-Slop
+        # Neutral monochrome dialog styling
         self.setStyleSheet("""
             QDialog {
-                background-color: #090d16;
-                color: #f1f5f9;
+                background-color: #121212;
+                color: #e5e5e5;
             }
         """)
 
