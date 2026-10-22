@@ -1,5 +1,4 @@
-"""Data models and contract schemas for SyncFrame."""
-
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Dict, Any
 
@@ -86,3 +85,38 @@ class RemuxJob:
     target_audio_name: str = "Português (Brasil)"
     original_audio_language: str = "eng"
     original_audio_name: str = "Áudio Original"
+
+
+@dataclass
+class StreamCandidate:
+    """A scored stream candidate from one of the examined media files."""
+    stream: StreamMetadata
+    file_path: str
+    score: float = 0.0
+    is_recommended: bool = False
+    badge_label: str = ""
+    details_str: str = ""
+
+    def summary_title(self) -> str:
+        basename = os.path.basename(self.file_path)
+        if self.stream.track_type == "video":
+            res = f"{self.stream.width}x{self.stream.height}" if self.stream.width and self.stream.height else "Vídeo"
+            fps_str = f" @ {self.stream.fps:.3f}fps" if self.stream.fps > 0 else ""
+            return f"[{res}{fps_str}] {self.stream.codec} — {basename} (Trilha #{self.stream.id})"
+        else:
+            lang = self.stream.language.upper() if self.stream.language else "UND"
+            ch = f"{self.stream.channels}ch" if self.stream.channels else ""
+            title = f" ({self.stream.title})" if self.stream.title else ""
+            return f"[{lang}] {self.stream.codec} {ch}{title} — {basename} (Trilha #{self.stream.id})"
+
+
+@dataclass
+class AutoMatchVerdict:
+    """Result of deterministic comparative heuristic ranking between two media containers."""
+    recommended_video: StreamCandidate
+    alternative_videos: List[StreamCandidate] = field(default_factory=list)
+    recommended_target_audio: Optional[StreamCandidate] = None
+    alternative_audios: List[StreamCandidate] = field(default_factory=list)
+    reference_audio: Optional[StreamCandidate] = None
+    is_ambiguous: bool = False
+    ambiguity_reason: str = ""

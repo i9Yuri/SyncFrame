@@ -13,6 +13,10 @@ Projetado sob a filosofia *Pro Max v4 Anti-Slop*, o sistema soluciona desalinham
 - **Detecção de Framerate & Correlação FFT Multi-Janela:** Extrai trechos acústicos filtrados (bandpass 300Hz-4000Hz mono PCM) no início (5%), meio (50%) e fim (85%) para isolar transientes, trilhas incidentais e foley idênticos entre idiomas, diagnosticando divergências de frame rate conhecidas:
   - `23.976 fps ↔ 24.000 fps` (deriva telecine NTSC de $1001/1000 \approx +0.1001\%$)
   - `24.000 fps ↔ 25.000 fps` (PAL Speedup/Slowdown de $25/24 \approx +4.167\%$)
+- **Auto-Matching Heurístico & Review Gate (Confirmação em 1 Clique):** Ao descartar simultaneamente dois arquivos MKV na aplicação, o sistema executa análise determinística comparativa imediata:
+  - Pontuação de fidelidade de vídeo ($W_{res} \cdot \text{Res} + W_{codec} \cdot \text{CodecWeight} + W_{br} \cdot \text{Bitrate}$) elegendo automaticamente a melhor imagem (ex.: 4K HEVC > 1080p AVC).
+  - Detecção da faixa dublada em português e do áudio de referência original em inglês.
+  - Exibição de um Review Gate modal com badges de qualidade e foco padrão na tecla **Enter**, permitindo confirmação instantânea ou troca manual de faixas antes de deflagrar todo o pipeline autônomo (extração, FFT e remux).
 - **Time-Stretch Inteligente sem Alteração de Pitch:** Se e somente se houver deriva contínua significativa ($\text{drift} \neq 1.0$), o filtro `atempo` do FFmpeg é aplicado em cópia temporária de alta precisão (FLAC lossless).
 - **Interface Desktop PySide6 em Bento Grid:** Visual denso, responsivo e ergonômico, com renderizador QPainter de pico de correlação, controles de micro-ajuste em passos de $\pm 50\text{ ms}$, gaveta retrátil de logs do `mkvmerge` e checagem de espaço em disco pré-voo.
 - **Player de Inspeção Instantânea:** Teste de reprodução em tempo real nos marcadores 5%, 50% e 90% via `mpv` com compensação de atraso instantânea para validação labial antes do remux.

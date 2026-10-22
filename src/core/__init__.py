@@ -1,7 +1,13 @@
 """SyncFrame Core Processing Engine."""
 
-from .models import StreamMetadata, InspectionResult, SyncMetrics, RemuxJob
-from .inspector import inspect_media, get_inspection_result
+from .models import StreamMetadata, InspectionResult, SyncMetrics, RemuxJob, StreamCandidate, AutoMatchVerdict
+from .inspector import (
+    inspect_media,
+    get_inspection_result,
+    rank_video_streams,
+    identify_target_and_ref_audios,
+    evaluate_media_streams
+)
 from .extractor import extract_reference_channel
 from .correlator import compute_acoustic_correlation
 from .transformer import apply_temporal_transform
@@ -14,8 +20,13 @@ __all__ = [
     "InspectionResult",
     "SyncMetrics",
     "RemuxJob",
+    "StreamCandidate",
+    "AutoMatchVerdict",
     "inspect_media",
     "get_inspection_result",
+    "rank_video_streams",
+    "identify_target_and_ref_audios",
+    "evaluate_media_streams",
     "extract_reference_channel",
     "compute_acoustic_correlation",
     "apply_temporal_transform",

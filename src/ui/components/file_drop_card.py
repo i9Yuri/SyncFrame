@@ -27,6 +27,7 @@ class FileDropCard(QFrame):
     """
     file_selected = Signal(str)
     stream_changed = Signal(int)
+    multiple_files_dropped = Signal(list)
 
     def __init__(
         self,
@@ -136,10 +137,11 @@ class FileDropCard(QFrame):
     def dropEvent(self, event: QDropEvent):
         self.dragLeaveEvent(event)
         urls = event.mimeData().urls()
-        if urls:
-            path = urls[0].toLocalFile()
-            if os.path.isfile(path):
-                self.set_file_path(path)
+        valid_paths = [u.toLocalFile() for u in urls if os.path.isfile(u.toLocalFile())]
+        if len(valid_paths) >= 2:
+            self.multiple_files_dropped.emit(valid_paths)
+        elif valid_paths:
+            self.set_file_path(valid_paths[0])
 
     def _open_file_dialog(self):
         file_path, _ = QFileDialog.getOpenFileName(
