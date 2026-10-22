@@ -1,0 +1,24 @@
+# SyncFrame Git Ignore
+.syncframe_tmp/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+*.log
+*.mkv
+*.wav
+*.mp4
+*.part
+build/
+dist/
+*.spec
+.pytest_cache/
+.coverage
+.DS_Store
+.idea/
+.vscode/
+Brain
+GEMINI.md
