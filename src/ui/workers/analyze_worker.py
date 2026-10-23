@@ -9,6 +9,7 @@ from PySide6.QtCore import QThread, Signal
 from ...core.correlator import (
     calculate_offset_from_signals,
     diagnose_drift_and_framerate,
+    detect_temporal_discontinuities,
     load_wav_mono
 )
 from ...core.extractor import extract_reference_channel
@@ -108,7 +109,7 @@ class AnalyzeWorker(QThread):
                     ref_sig, sr_ref = load_wav_mono(ref_wav)
                     tgt_sig, sr_tgt = load_wav_mono(tgt_wav)
 
-                    offset_ms, conf, curve = calculate_offset_from_signals(
+                    offset_ms, conf, curve, pslr = calculate_offset_from_signals(
                         ref_sig, tgt_sig, sr_ref, max_lag_sec=60.0
                     )
                     window_results.append((start_sec, offset_ms, conf))
@@ -120,6 +121,11 @@ class AnalyzeWorker(QThread):
                 self.progress.emit(90.0, "Diagnosticando deriva contínua e divergência de framerate...")
                 drift_ratio, detected_mismatch, diagnosis, stretch_ratio = diagnose_drift_and_framerate(
                     window_results
+                )
+
+                # Detect non-linear step discontinuities (cuts, intros, logos)
+                discontinuity_report = detect_temporal_discontinuities(
+                    window_results, duration_sec=self.duration_sec
                 )
 
                 # Use initial window or most confident window for static initial offset
@@ -139,7 +145,10 @@ class AnalyzeWorker(QThread):
                     time_stretch_ratio=stretch_ratio,
                     fps_diagnosis=diagnosis,
                     offsets_by_window=window_results,
-                    correlation_curve=primary_preview_curve
+                    correlation_curve=primary_preview_curve,
+                    pslr_score=pslr,
+                    discontinuity_report=discontinuity_report,
+                    net_offset_ms=static_offset
                 )
 
                 self.progress.emit(100.0, "Análise de sincronização concluída!")

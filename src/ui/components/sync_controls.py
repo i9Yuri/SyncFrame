@@ -162,12 +162,12 @@ class SyncControls(QFrame):
         bd_layout.addWidget(self.lbl_drift_val)
         grid.addWidget(box_drift, 0, 0)
 
-        # Metric: Confidence
+        # Metric: Confidence & PSLR
         box_conf = QFrame()
         box_conf.setProperty("class", "subCard")
         bc_layout = QVBoxLayout(box_conf)
         bc_layout.setContentsMargins(8, 8, 8, 8)
-        lbl_conf_title = QLabel("CONFIANCA FFT")
+        lbl_conf_title = QLabel("CONFIANCA FFT / PSLR")
         lbl_conf_title.setProperty("class", "eyebrowText")
         bc_layout.addWidget(lbl_conf_title)
         self.lbl_confidence = QLabel("Nao analisado")
@@ -176,6 +176,23 @@ class SyncControls(QFrame):
         grid.addWidget(box_conf, 0, 1)
 
         layout.addLayout(grid)
+
+        # Discontinuity Warning Banner (Cuts/Step Discontinuities)
+        self.frame_discont = QFrame()
+        self.frame_discont.setStyleSheet(
+            "background-color: rgba(231, 161, 155, 0.12); border: 1px solid rgba(231, 161, 155, 0.4); border-radius: 6px; padding: 6px 10px;"
+        )
+        fd_layout = QVBoxLayout(self.frame_discont)
+        fd_layout.setContentsMargins(0, 0, 0, 0)
+        self.lbl_discont_title = QLabel("AVISO: DESCONTINUIDADE EM DEGRAU (CORTE/LOGO)")
+        self.lbl_discont_title.setStyleSheet("color: #e7a19b; font-size: 10px; font-weight: 700;")
+        fd_layout.addWidget(self.lbl_discont_title)
+        self.lbl_discont_msg = QLabel("")
+        self.lbl_discont_msg.setStyleSheet("color: #eef0f2; font-size: 11px;")
+        self.lbl_discont_msg.setWordWrap(True)
+        fd_layout.addWidget(self.lbl_discont_msg)
+        self.frame_discont.setVisible(False)
+        layout.addWidget(self.frame_discont)
 
         # FPS Diagnostic banner
         self.lbl_diagnosis = QLabel("Taxas de quadros congruentes (sem deriva contínua)")
@@ -192,12 +209,20 @@ class SyncControls(QFrame):
         self.lbl_drift_val.setText(f"{metrics.drift_ratio:.6f}x")
         self.lbl_diagnosis.setText(metrics.fps_diagnosis)
 
+        # Check for non-linear step cuts
+        if metrics.discontinuity_report and metrics.discontinuity_report.has_cuts:
+            self.lbl_discont_msg.setText(metrics.discontinuity_report.diagnosis)
+            self.frame_discont.setVisible(True)
+        else:
+            self.frame_discont.setVisible(False)
+
         pct = metrics.confidence_score * 100.0
+        pslr_tag = f" • PSLR {metrics.pslr_score:.1f}" if metrics.pslr_score > 0 else ""
         if metrics.is_confident:
-            self.lbl_confidence.setText(f"Alta ({pct:.1f}%)")
+            self.lbl_confidence.setText(f"Alta ({pct:.1f}%{pslr_tag})")
             self.lbl_confidence.setProperty("class", "badgeGreen")
         else:
-            self.lbl_confidence.setText(f"Baixa ({pct:.1f}%) — Manual")
+            self.lbl_confidence.setText(f"Baixa ({pct:.1f}%{pslr_tag}) — Manual")
             self.lbl_confidence.setProperty("class", "badgeAmber")
         self.lbl_confidence.setStyle(self.lbl_confidence.style())
 

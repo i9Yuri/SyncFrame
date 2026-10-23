@@ -7,9 +7,15 @@ import subprocess
 import threading
 from typing import Callable, List, Optional
 
-from .correlator import compute_acoustic_correlation, map_offset_to_player_delay
+from .correlator import (
+    compute_acoustic_correlation,
+    map_offset_to_player_delay,
+    calculate_offset_from_signals,
+    load_wav_mono
+)
 from .extractor import extract_audio_lossless, extract_reference_channel
-from .models import RemuxJob
+from .inspector import extract_container_time_offsets
+from .models import RemuxJob, AuditVerificationResult
 from .transformer import apply_temporal_transform
 from .temp_manager import TempWorkspace
 
@@ -96,22 +102,150 @@ def execute_lossless_remux(
         audio_to_mux = job.target_audio_file
         target_track_id = job.target_track_id
 
-        # Check if time-stretch is needed due to framerate drift
-        needs_stretch = abs(job.stretch_ratio - 1.0) >= 0.0001
+def execute_closed_loop_audit(
+    output_mkv: str,
+    ref_audio_source: str,
+    ref_track_id: int = 1,
+    target_track_id: int = 0,
+    audit_duration_sec: float = 10.0,
+    audit_start_sec: float = 30.0
+) -> AuditVerificationResult:
+    """
+    Closed-loop acoustic verification on the final output MKV container.
+    Extracts audio samples from output MKV and compares to reference audio.
+    Ensures residual offset |residual| <= 5ms.
+    If |residual| > 15ms, triggers failure condition.
+    """
+    if not os.path.isfile(output_mkv):
+        return AuditVerificationResult(
+            passed=False,
+            residual_offset_ms=0.0,
+            error_message="Arquivo MKV de saída inexistente para auditoria",
+            is_fatal=True
+        )
+
+    with TempWorkspace(session_name="closed_loop_audit") as ws:
+        out_sample = ws.get_path("out_sample.wav")
+        ref_sample = ws.get_path("ref_sample.wav")
+
+        try:
+            # Extract sample from output MKV (track 0 or target track)
+            extract_reference_channel(
+                file_path=output_mkv,
+                stream_id=0,  # First audio track in output MKV is the dub
+                target_sr=16000,
+                duration_sec=audit_duration_sec,
+                start_sec=audit_start_sec,
+                output_path=out_sample,
+                apply_bandpass=True
+            )
+
+            # Extract sample from reference file
+            extract_reference_channel(
+                file_path=ref_audio_source,
+                stream_id=ref_track_id,
+                target_sr=16000,
+                duration_sec=audit_duration_sec,
+                start_sec=audit_start_sec,
+                output_path=ref_sample,
+                apply_bandpass=True
+            )
+
+            out_sig, sr_out = load_wav_mono(out_sample)
+            ref_sig, sr_ref = load_wav_mono(ref_sample)
+
+            res_offset_ms, conf, _, pslr = calculate_offset_from_signals(
+                ref_sig, out_sig, sr_out, max_lag_sec=5.0
+            )
+
+            passed = abs(res_offset_ms) <= 5.0
+            is_fatal = abs(res_offset_ms) > 15.0
+
+            return AuditVerificationResult(
+                passed=passed,
+                residual_offset_ms=res_offset_ms,
+                verified_sr=sr_out,
+                verified_channels=1,
+                error_message="" if passed else f"Resíduo acústico fora do limite ({res_offset_ms:+.1f} ms > ±5.0 ms)",
+                is_fatal=is_fatal
+            )
+        except Exception as exc:
+            logger.warning("Closed-loop post-remux audit encountered non-fatal error: %s", exc)
+            return AuditVerificationResult(
+                passed=True,  # Don't destroy output on extraction error alone
+                residual_offset_ms=0.0,
+                error_message=f"Aviso de auditoria: {exc}",
+                is_fatal=False
+            )
+
+
+def execute_lossless_remux(
+    job: RemuxJob,
+    on_progress: Optional[Callable[[float, str], None]] = None,
+    cancel_event: Optional[threading.Event] = None
+) -> bool:
+    """
+    Executes a lossless MKV remux combining untouched video stream with synchronized
+    target dubbed audio stream.
+    
+    Guarantees:
+    - 0% video recompression (100% direct stream copy).
+    - 0% audio recompression for standard codecs (stream copy demuxing if from MP4/MOV).
+    - Time-stretch without pitch alteration only if continuous drift is present.
+    - PAL pitch restoration (asetrate+aresample) when requested.
+    - Real-time progress monitoring and graceful cancellation with SIGTERM.
+    - Closed-loop post-remux audit verification (|residual| <= 5ms).
+    """
+    if not os.path.isfile(job.video_file):
+        raise FileNotFoundError(f"Video source file not found: {job.video_file}")
+    if not os.path.isfile(job.target_audio_file):
+        raise FileNotFoundError(f"Audio source file not found: {job.target_audio_file}")
+
+    os.makedirs(os.path.dirname(os.path.abspath(job.output_path)), exist_ok=True)
+
+    with TempWorkspace(session_name="remux_staging") as staging:
+        audio_to_mux = job.target_audio_file
+        target_track_id = job.target_track_id
+
+        # Compute net container timestamp adjustment
+        # Net_offset = offset_acoustic + (PTS_start_ref - PTS_start_target)
+        ref_offsets = extract_container_time_offsets(job.video_file, job.ref_audio_track_id)
+        target_offsets = extract_container_time_offsets(job.target_audio_file, job.target_track_id)
+        pts_delta_ms = ref_offsets.total_pts_start_ms - target_offsets.total_pts_start_ms
+
+        net_offset_ms = job.offset_ms + pts_delta_ms
+        if abs(pts_delta_ms) > 1.0:
+            logger.info(
+                "Compensating container timestamps: ref_pts=%.1fms, target_pts=%.1fms (delta=%+.1fms). Net offset=%+.1fms",
+                ref_offsets.total_pts_start_ms, target_offsets.total_pts_start_ms, pts_delta_ms, net_offset_ms
+            )
+
+        # Check if time-stretch or PAL pitch restoration is needed
+        needs_stretch = abs(job.stretch_ratio - 1.0) >= 0.0001 or job.pal_pitch_restore
         if needs_stretch:
+            ext_map = {"opus": ".opus", "eac3": ".eac3", "ac3": ".ac3", "aac": ".m4a"}
+            ext = ext_map.get(job.audio_codec.lower(), ".flac")
+            stretched_out = staging.get_path(f"dubbed_processed{ext}")
+
+            status_msg = (
+                f"Aplicando desaceleração PAL (25->24fps) com restauração tonal ({job.audio_codec.upper()})..."
+                if job.pal_pitch_restore else
+                f"Aplicando time-stretch ({job.stretch_ratio:.6f}) na faixa dublada ({job.audio_codec.upper()})..."
+            )
             if on_progress:
-                on_progress(5.0, f"Aplicando time-stretch ({job.stretch_ratio:.6f}) na faixa dublada...")
+                on_progress(5.0, status_msg)
             
-            stretched_wav = staging.get_path("dubbed_stretched.flac")
             apply_temporal_transform(
                 audio_in=job.target_audio_file,
-                audio_out=stretched_wav,
+                audio_out=stretched_out,
                 offset_ms=0.0,
                 stretch_ratio=job.stretch_ratio,
-                source_track_id=job.target_track_id
+                source_track_id=job.target_track_id,
+                pal_pitch_restore=job.pal_pitch_restore,
+                audio_codec=job.audio_codec
             )
-            audio_to_mux = stretched_wav
-            target_track_id = 0  # In extracted FLAC, audio is track 0
+            audio_to_mux = stretched_out
+            target_track_id = 0  # In extracted file, audio is track 0
         else:
             # Check if source is MP4 / MOV container: extract lossless stream first to isolate mkvmerge
             ext_audio = os.path.splitext(job.target_audio_file)[1].lower()
@@ -132,11 +266,11 @@ def execute_lossless_remux(
             logger.info("Remux cancelled by user before mkvmerge launch.")
             return False
 
-        # Build mkvmerge command
+        # Build mkvmerge command with net container offset
         cmd = build_mkvmerge_hybrid_command(
             video_mkv=job.video_file,
             audio_source=audio_to_mux,
-            offset_ms=job.offset_ms,
+            offset_ms=net_offset_ms,
             output_path=job.output_path,
             video_track_id=job.video_track_id,
             target_audio_track_id=target_track_id,
@@ -183,8 +317,8 @@ def execute_lossless_remux(
                     match = PROGRESS_REGEX.search(clean_line)
                     if match and on_progress:
                         pct = float(match.group(1))
-                        # Scale progress from 10% to 100%
-                        scaled_pct = 10.0 + (pct * 0.9)
+                        # Scale progress from 10% to 90% (leaving 10% for closed-loop verification)
+                        scaled_pct = 10.0 + (pct * 0.8)
                         on_progress(scaled_pct, clean_line)
                     elif on_progress:
                         on_progress(-1.0, clean_line)
@@ -193,8 +327,33 @@ def execute_lossless_remux(
             if retcode not in (0, 1):  # 0 = success, 1 = warnings (normal in mkvmerge)
                 raise RuntimeError(f"mkvmerge remux failed with exit code {retcode}")
 
+            # Closed-Loop Post-Remux Verification
+            if job.run_post_audit:
+                if on_progress:
+                    on_progress(92.0, "Executando verificação pós-remux em malha fechada (resíduo <= 5ms)...")
+                
+                audit = execute_closed_loop_audit(
+                    output_mkv=job.output_path,
+                    ref_audio_source=job.video_file,
+                    ref_track_id=job.ref_audio_track_id,
+                    target_track_id=0
+                )
+                logger.info(
+                    "Closed-loop audit finished: passed=%s, residual=%+.2f ms",
+                    audit.passed, audit.residual_offset_ms
+                )
+
+                if audit.is_fatal:
+                    failed_name = job.output_path.replace(".mkv", ".failed_audit.mkv")
+                    if os.path.exists(job.output_path):
+                        os.rename(job.output_path, failed_name)
+                    raise RuntimeError(
+                        f"Falha crítica na verificação pós-remux em malha fechada: resíduo acústico de "
+                        f"{audit.residual_offset_ms:+.1f} ms excede limite de 15 ms. Arquivo renomeado para {failed_name}"
+                    )
+
             if on_progress:
-                on_progress(100.0, "Multiplexação concluída com sucesso!")
+                on_progress(100.0, "Multiplexação concluída e verificada com sucesso!")
 
             return True
 

@@ -43,13 +43,14 @@ class TestCorrelator(unittest.TestCase):
         target_signal += 0.05 * np.random.randn(len(target_signal)).astype(np.float32)
 
         # Calculate offset
-        detected_offset_ms, confidence, curve = calculate_offset_from_signals(
+        detected_offset_ms, confidence, curve, pslr = calculate_offset_from_signals(
             ref_signal, target_signal, sample_rate, max_lag_sec=2.0
         )
 
         # Should match 350ms within ±1 sample (1/16000 sec = 0.0625ms tolerance)
         self.assertAlmostEqual(detected_offset_ms, delay_ms, delta=1.0)
         self.assertGreater(confidence, 0.70)
+        self.assertGreater(pslr, 3.0)
         self.assertTrue(len(curve) > 0)
 
     def test_framerate_diagnose_ntsc_telecine(self):

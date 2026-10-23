@@ -7,6 +7,35 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.1.0] - 2026-10-23
+
+### Adicionado
+- **Detecção de Descontinuidade Temporal Não Linear (Cortes de Montagem vs. Deriva Linear):**
+  - Algoritmo de diferenciação multi-janela identificando variações abruptas em degrau ($\Delta\text{Step}$) geradas por logos de distribuidora, cortes de montagem ou aberturas ausentes ($T_1 \approx T_2 \ll T_3$).
+  - Bloqueio automático de time-stretch cego com emissão de relatório de corte `DiscontinuityReport`, aviso contextual visual na interface e código de saída 2 na CLI.
+- **Métrica de Confiança Acústica Robusta (PSLR & Piso de Ruído):**
+  - Cálculo de Peak-to-Side-Lobe Ratio (PSLR) e escore Z estatístico contra o piso de ruído ($\text{Confidence} = (\text{Peak} - \mu_{\text{noise}}) / \sigma_{\text{noise}}$).
+  - Bloqueio de alinhamento cego e exigência de intervenção quando $\text{PSLR} < 3.5$ ou confiança $< 0.45$.
+- **Compensação Determinística de Carimbos de Contêiner (`start_time` e Edit Lists):**
+  - Probing profundo de carimbos `format.start_time`, `stream.start_time` e metadados de listas de edição (`elst`) em contêineres MP4/MOV/MKV.
+  - Cálculo do offset líquido: $\text{Offset}_{\text{net}} = \text{Offset}_{\text{acústico}} + (\text{PTS\_start}_{\text{ref}} - \text{PTS\_start}_{\text{target}})$, injetado diretamente no `--sync` do `mkvmerge`.
+- **Desaceleração com Restauração Tonal para Masters PAL (25 fps):**
+  - Filtro dedicado para restauração analógica de pitch drop: `asetrate=r=48000*24000/25000,aresample=resampler=soxr:osr=48000`.
+  - Checkbox na interface gráfica e flag `--pal-pitch-restore` na CLI.
+- **Parametrização de Codec de Recompressão de Áudio:**
+  - Suporte à seleção explícita de formato para casos onde o time-stretch ou restauração de tom seja mandatório: FLAC (Lossless bit-perfect), Opus (160k/450k), E-AC3/AC3 (640k) e AAC (256k).
+- **Verificação Acústica Pós-Remux em Malha Fechada (Closed-Loop Audit):**
+  - Validação acústica automatizada do contêiner `.mkv` de saída extraindo amostra do áudio multiplexado e correlacionando com o áudio de referência ($|\text{Resíduo}| \le 5\text{ ms}$).
+  - Renomeação para `.failed_audit.mkv` e aborto em caso de falha crítica ($> 15\text{ ms}$).
+  - Selo visual de verificação no modal de término e logs detalhados.
+- **Interface de Linha de Comando (CLI) Headless Completa:**
+  - Execução no terminal sem display via flags `--video`, `--dub`, `--output`, `--keep-original`, `--pal-pitch-restore`, `--audio-codec`, `--ignore-cuts`, `--no-audit`.
+  - Códigos de saída semânticos: `0` (sucesso auditado), `1` (dependência/erro de sistema), `2` (corte detectado), `3` (baixa confiança/piso de ruído).
+- **Suíte de Testes Expandida:**
+  - Inclusão de `tests/test_discontinuity.py` elevando a suíte de testes para 59 testes unitários (100% aprovados).
+
+---
+
 ## [1.0.0] - 2026-10-22
 
 ### Primeira Versão Estável (Release Oficial)

@@ -65,6 +65,7 @@ class StreamMetadata:
     channel_layout: str = ""
     container_format: str = "mkv"
     audio_profile: Optional[AudioProfile] = None
+    container_time_offsets: Optional["ContainerTimeOffsets"] = None
 
     def display_label(self) -> str:
         """User-friendly label for stream selection in GUI dropdowns."""
@@ -96,6 +97,7 @@ class MediaContainerInfo:
     audio_streams: List[StreamMetadata] = field(default_factory=list)
     all_streams: List[StreamMetadata] = field(default_factory=list)
     is_corrupted: bool = False
+    container_time_offsets: Optional["ContainerTimeOffsets"] = None
 
 
 @dataclass
@@ -122,6 +124,44 @@ class InspectionResult:
 
 
 @dataclass
+class ContainerTimeOffsets:
+    """Probed container timestamp offsets from format/stream headers and edit lists (elst)."""
+    format_start_time_ms: float = 0.0
+    stream_start_time_ms: float = 0.0
+    edit_list_offset_ms: float = 0.0
+    net_adjustment_ms: float = 0.0
+
+    @property
+    def total_pts_start_ms(self) -> float:
+        """Effective presentation start time in ms considering format/stream start and edit list."""
+        # When edit list specifies initial delay, or stream start_time is set
+        base_start = self.stream_start_time_ms if self.stream_start_time_ms != 0.0 else self.format_start_time_ms
+        return base_start + self.edit_list_offset_ms
+
+
+@dataclass
+class DiscontinuityReport:
+    """Report on non-linear step discontinuities (montage cuts, opening gaps, distributor logos)."""
+    has_cuts: bool = False
+    step_delta_ms: float = 0.0
+    estimated_split_timestamp_sec: Optional[float] = None
+    confidence: float = 0.0
+    diagnosis: str = "Linearidade temporal preservada (sem cortes detectados)"
+    window_offsets: List[Tuple[float, float, float]] = field(default_factory=list)
+
+
+@dataclass
+class AuditVerificationResult:
+    """Closed-loop post-remux acoustic verification result comparing output MKV to reference."""
+    passed: bool
+    residual_offset_ms: float
+    verified_sr: int = 48000
+    verified_channels: int = 2
+    error_message: str = ""
+    is_fatal: bool = False
+
+
+@dataclass
 class SyncMetrics:
     """Mathematical alignment metrics computed via FFT acoustic cross-correlation."""
     static_offset_ms: float
@@ -132,10 +172,15 @@ class SyncMetrics:
     fps_diagnosis: str = "Taxas de quadros congruentes (sem deriva contínua)"
     offsets_by_window: List[Tuple[float, float, float]] = field(default_factory=list)
     correlation_curve: List[float] = field(default_factory=list)
+    pslr_score: float = 0.0
+    discontinuity_report: Optional[DiscontinuityReport] = None
+    net_offset_ms: float = 0.0
 
     @property
     def is_confident(self) -> bool:
-        """Determines if the correlation peak meets the statistical threshold (> 0.35)."""
+        """Determines if the correlation peak meets the statistical threshold (confidence >= 0.45 or score >= 0.35 and pslr >= 3.5)."""
+        if self.pslr_score > 0:
+            return self.confidence_score >= 0.45 and self.pslr_score >= 3.5
         return self.confidence_score >= 0.35
 
 
@@ -155,6 +200,9 @@ class RemuxJob:
     target_audio_name: str = "Português (Brasil)"
     original_audio_language: str = "eng"
     original_audio_name: str = "Áudio Original"
+    pal_pitch_restore: bool = False
+    audio_codec: str = "flac"  # "flac", "opus", "eac3", "aac"
+    run_post_audit: bool = True
 
 
 @dataclass

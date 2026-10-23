@@ -64,12 +64,41 @@ A aplicação pode ser executada diretamente como um único arquivo executável 
 # Execução direta via terminal ou duplo clique
 ./dist/SyncFrame
 
+# Execução Headless Automatizada (v1.1.0)
+./dist/SyncFrame --video master_4k.mkv --dub audio_dublado.mp4 --output final_synced.mkv --keep-original
+
 # Diagnóstico de ferramentas do sistema via CLI
 ./dist/SyncFrame --cli-check
 
 # Exibir versão oficial
 ./dist/SyncFrame --version
 ```
+
+### 2. Automação CLI Headless (`src.main`)
+Para esteiras de automação e scripts no terminal sem display:
+
+```bash
+# Sincronização automática com preservação de áudio original e verificação pós-remux
+python3 src/main.py \
+  --video video_ref.mkv \
+  --dub audio_dub.mp4 \
+  --output resultado.mkv \
+  --keep-original
+
+# Dublagens originadas de masters PAL (25 fps) com desaceleração e restauração de tom
+python3 src/main.py \
+  --video video_film_24fps.mkv \
+  --dub dub_pal_25fps.mkv \
+  --output final_pal_restored.mkv \
+  --pal-pitch-restore \
+  --audio-codec opus
+```
+
+**Códigos de Saída do Terminal:**
+- `0`: Sucesso (remux concluído e auditado em malha fechada).
+- `1`: Erro operacional de sistema, arquivo ausente ou dependência.
+- `2`: Descontinuidade em degrau (corte de montagem ou abertura divergente detectado).
+- `3`: Confiança acústica insuficiente no pico de correlação (piso de ruído elevado).
 
 ### 2. Modo de Desenvolvimento Local (`run.sh`)
 Para desenvolvimento e inspeção do código-fonte:
@@ -149,8 +178,9 @@ SyncFrame/
 │   │       └── remux_worker.py     # Multiplexação com cancelamento gracioso
 │   └── utils/
 │       └── system_check.py         # Diagnóstico de integridade e logs de crash
-└── tests/                          # Suíte de 53 testes unitários automatizados
+└── tests/                          # Suíte de 59 testes unitários automatizados
     ├── test_completion_dialog.py
+    ├── test_discontinuity.py       # Cortes não lineares, PSLR e restauração PAL
     ├── test_ui_components.py
     ├── test_system_diagnostics.py
     ├── test_container_handling.py
@@ -167,7 +197,7 @@ SyncFrame/
 
 ## Suíte de Testes
 
-Para executar os 53 testes unitários da esteira matemática, interface e modelos:
+Para executar os 59 testes unitários da esteira matemática, interface e modelos:
 
 ```bash
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -v

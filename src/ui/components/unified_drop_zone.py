@@ -376,6 +376,23 @@ class UnifiedDropZone(QFrame):
         self.check_keep_original = AudioPreserveCheckbox(self.page_confirm, language_name="inglês")
         check_row.addWidget(self.check_keep_original)
 
+        self.check_pal_pitch = QCheckBox("Restauração Tonal PAL (25fps -> 24fps)")
+        self.check_pal_pitch.setStyleSheet("font-size: 11px; font-weight: 600; color: #c1c6cd;")
+        self.check_pal_pitch.setToolTip("Aplica desaceleração natural com correção de tom (asetrate+aresample soxr) para dublagens originadas de masters PAL (25 fps).")
+        check_row.addWidget(self.check_pal_pitch)
+
+        lbl_codec = QLabel("Codec Re-encode:")
+        lbl_codec.setStyleSheet("font-size: 11px; font-weight: 600; color: #7e8792;")
+        check_row.addWidget(lbl_codec)
+
+        self.combo_audio_codec = QComboBox()
+        self.combo_audio_codec.addItem("FLAC (Lossless)", "flac")
+        self.combo_audio_codec.addItem("Opus (160k/450k)", "opus")
+        self.combo_audio_codec.addItem("E-AC3 / AC3 (640k)", "eac3")
+        self.combo_audio_codec.addItem("AAC (256k)", "aac")
+        self.combo_audio_codec.setToolTip("Codec de saída caso time-stretch contínuo ou restauração PAL seja obrigatório.")
+        check_row.addWidget(self.combo_audio_codec)
+
         confirm_layout.addLayout(check_row)
 
         # Primary Action Row: Single button ("Sincronizar e Concluir")

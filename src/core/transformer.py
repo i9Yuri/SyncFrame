@@ -31,16 +31,33 @@ def _build_atempo_filter(stretch_ratio: float) -> str:
     return ",".join(factors)
 
 
+def build_pitch_restoration_filter(
+    input_fps: float = 25.0,
+    output_fps: float = 24.0,
+    target_sr: int = 48000
+) -> str:
+    """
+    Builds an FFmpeg filter chain that decelerates PAL 25fps audio to film 24fps (or 23.976fps)
+    with natural analog pitch drop restoration using asetrate + aresample (soxr engine).
+    Filter: asetrate=r=<target_sr>*<output_fps>/<input_fps>,aresample=resampler=soxr:osr=<target_sr>
+    """
+    ratio = output_fps / input_fps
+    sample_rate_rescaled = int(round(target_sr * ratio))
+    return f"asetrate=r={sample_rate_rescaled},aresample=resampler=soxr:osr={target_sr}"
+
+
 def apply_temporal_transform(
     audio_in: str,
     audio_out: str,
     offset_ms: float = 0.0,
     stretch_ratio: float = 1.0,
-    source_track_id: Optional[int] = None
+    source_track_id: Optional[int] = None,
+    pal_pitch_restore: bool = False,
+    audio_codec: str = "flac",
+    channels: int = 2
 ) -> str:
     """
-    Applies pitch-neutral time-stretching to an audio file using FFmpeg's atempo filter.
-    Preserves maximum audio fidelity by outputting to lossless FLAC or PCM.
+    Applies pitch-neutral time-stretching or PAL pitch restoration to an audio file using FFmpeg.
     
     Args:
         audio_in: Path to input audio or MKV file.
@@ -48,6 +65,9 @@ def apply_temporal_transform(
         offset_ms: Optional offset in ms to pre-pad or trim if requested.
         stretch_ratio: Factor to speed up (> 1.0) or slow down (< 1.0).
         source_track_id: Specific container track ID if audio_in is a container.
+        pal_pitch_restore: When True, uses asetrate+aresample for natural PAL (25fps -> 24fps) pitch drop.
+        audio_codec: Codec to re-encode to: 'flac', 'opus', 'eac3', or 'aac'.
+        channels: Channel count to configure appropriate bitrates.
         
     Returns:
         Absolute path to the transformed audio file.
@@ -70,15 +90,37 @@ def apply_temporal_transform(
 
     filters = []
 
-    # Time stretch filter
-    if abs(stretch_ratio - 1.0) >= 0.0001:
+    # Choose filter: PAL pitch restoration or standard atempo pitch-neutral stretch
+    if pal_pitch_restore:
+        # PAL slowdown 25 -> 24 (or exact stretch_ratio)
+        if abs(stretch_ratio - 1.0) >= 0.0001:
+            out_fps = 25.0 * stretch_ratio
+            filters.append(build_pitch_restoration_filter(input_fps=25.0, output_fps=out_fps, target_sr=48000))
+        else:
+            filters.append(build_pitch_restoration_filter(input_fps=25.0, output_fps=24.0, target_sr=48000))
+    elif abs(stretch_ratio - 1.0) >= 0.0001:
         filters.append(_build_atempo_filter(stretch_ratio))
 
     if filters:
         cmd.extend(["-filter:a", ",".join(filters)])
 
-    # Output in lossless FLAC to prevent transcoding quality degradation
-    cmd.extend(["-c:a", "flac", audio_out])
+    # Output codec configuration
+    codec_lower = audio_codec.lower()
+    if codec_lower == "opus":
+        # 160k for stereo 2.0, 450k for 5.1/7.1 surround
+        bitrate = "450k" if channels >= 6 else "160k"
+        cmd.extend(["-c:a", "libopus", "-b:a", bitrate])
+    elif codec_lower in ("eac3", "ac3"):
+        bitrate = "640k" if channels >= 6 else "384k"
+        cmd.extend(["-c:a", codec_lower, "-b:a", bitrate])
+    elif codec_lower == "aac":
+        bitrate = "384k" if channels >= 6 else "256k"
+        cmd.extend(["-c:a", "aac", "-b:a", bitrate])
+    else:
+        # Default lossless FLAC
+        cmd.extend(["-c:a", "flac"])
+
+    cmd.append(audio_out)
 
     logger.info("Executing temporal transform: %s", " ".join(cmd))
     res = subprocess.run(

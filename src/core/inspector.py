@@ -13,6 +13,7 @@ from .models import (
     AutoMatchVerdict,
     AudioProfile,
     MediaContainerInfo,
+    ContainerTimeOffsets,
     format_channel_layout_label
 )
 
@@ -123,6 +124,30 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
         width_int = int(width) if width and str(width).isdigit() else None
         height_int = int(height) if height and str(height).isdigit() else None
 
+        # Parse side data and start time offsets
+        stream_start_time_sec = float(s.get("start_time", 0.0) or 0.0)
+        stream_start_time_ms = stream_start_time_sec * 1000.0
+
+        # Check for edit list (elst) in side_data_list or tags
+        edit_list_offset_ms = 0.0
+        for side_data in s.get("side_data_list", []):
+            side_type = str(side_data.get("side_data_type", "")).lower()
+            if "edit list" in side_type or "elst" in side_type:
+                # If initial media time or start time is specified
+                media_time = side_data.get("media_time")
+                if media_time is not None:
+                    edit_list_offset_ms = float(media_time) / 1000.0
+
+        container_start_sec = float(format_info.get("start_time", 0.0) or 0.0)
+        container_start_ms = container_start_sec * 1000.0
+
+        stream_time_offsets = ContainerTimeOffsets(
+            format_start_time_ms=container_start_ms,
+            stream_start_time_ms=stream_start_time_ms,
+            edit_list_offset_ms=edit_list_offset_ms,
+            net_adjustment_ms=stream_start_time_ms + edit_list_offset_ms
+        )
+
         audio_profile = None
         if codec_type == "audio":
             audio_profile = AudioProfile(
@@ -150,7 +175,8 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
             height=height_int,
             channel_layout=channel_layout,
             container_format=container_format,
-            audio_profile=audio_profile
+            audio_profile=audio_profile,
+            container_time_offsets=stream_time_offsets
         )
 
         all_streams.append(meta)
@@ -159,6 +185,14 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
         elif codec_type == "audio":
             audio_streams.append(meta)
 
+    container_start_sec = float(format_info.get("start_time", 0.0) or 0.0)
+    container_offsets = ContainerTimeOffsets(
+        format_start_time_ms=container_start_sec * 1000.0,
+        stream_start_time_ms=audio_streams[0].container_time_offsets.stream_start_time_ms if (audio_streams and audio_streams[0].container_time_offsets) else 0.0,
+        edit_list_offset_ms=audio_streams[0].container_time_offsets.edit_list_offset_ms if (audio_streams and audio_streams[0].container_time_offsets) else 0.0,
+        net_adjustment_ms=container_start_sec * 1000.0
+    )
+
     return MediaContainerInfo(
         file_path=file_path,
         container_format=container_format,
@@ -166,7 +200,71 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
         video_streams=video_streams,
         audio_streams=audio_streams,
         all_streams=all_streams,
-        is_corrupted=is_corrupted
+        is_corrupted=is_corrupted,
+        container_time_offsets=container_offsets
+    )
+
+
+def extract_container_time_offsets(file_path: str, stream_index: Optional[int] = None) -> ContainerTimeOffsets:
+    """
+    Extracts deterministic start_time and edit list (elst) timestamps from any media container
+    using ffprobe with side_data extraction.
+    """
+    if not os.path.isfile(file_path):
+        return ContainerTimeOffsets()
+
+    cmd = [
+        "ffprobe",
+        "-v", "quiet",
+        "-print_format", "json",
+        "-show_format",
+        "-show_streams",
+        "-show_entries", "format=start_time:stream=index,codec_type,start_time:stream_side_data_list",
+        file_path
+    ]
+
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        data = json.loads(res.stdout)
+    except Exception as exc:
+        logger.warning("Failed to probe container timestamps for %s: %s", file_path, exc)
+        return ContainerTimeOffsets()
+
+    format_info = data.get("format", {})
+    fmt_start_sec = float(format_info.get("start_time", 0.0) or 0.0)
+    fmt_start_ms = fmt_start_sec * 1000.0
+
+    target_stream = None
+    streams = data.get("streams", [])
+    if stream_index is not None:
+        for s in streams:
+            if s.get("index") == stream_index:
+                target_stream = s
+                break
+
+    if target_stream is None:
+        # Default to first audio stream, or first stream
+        audio_s = [s for s in streams if s.get("codec_type") == "audio"]
+        target_stream = audio_s[0] if audio_s else (streams[0] if streams else {})
+
+    stream_start_sec = float(target_stream.get("start_time", 0.0) or 0.0)
+    stream_start_ms = stream_start_sec * 1000.0
+
+    edit_list_ms = 0.0
+    for side in target_stream.get("side_data_list", []):
+        st = str(side.get("side_data_type", "")).lower()
+        if "edit list" in st or "elst" in st:
+            m_time = side.get("media_time")
+            if m_time is not None:
+                edit_list_ms = float(m_time) / 1000.0
+
+    net_adj = (stream_start_ms if stream_start_ms != 0.0 else fmt_start_ms) + edit_list_ms
+
+    return ContainerTimeOffsets(
+        format_start_time_ms=fmt_start_ms,
+        stream_start_time_ms=stream_start_ms,
+        edit_list_offset_ms=edit_list_ms,
+        net_adjustment_ms=net_adj
     )
 
 

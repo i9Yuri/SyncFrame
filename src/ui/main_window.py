@@ -466,6 +466,9 @@ class SyncFrameMainWindow(QWidget):
             return
 
         keep_orig = self.drop_zone.check_keep_original.isChecked()
+        pal_pitch = getattr(self.drop_zone, "check_pal_pitch", None) and self.drop_zone.check_pal_pitch.isChecked()
+        codec = self.drop_zone.combo_audio_codec.currentData() if hasattr(self.drop_zone, "combo_audio_codec") else "flac"
+
         job = RemuxJob(
             output_path=out_path,
             video_file=self.video_path,
@@ -475,7 +478,9 @@ class SyncFrameMainWindow(QWidget):
             video_track_id=self.selected_video_track_id,
             target_audio_track_id=self.selected_target_audio_id,
             ref_audio_track_id=self.selected_ref_audio_id,
-            keep_original_audio=keep_orig
+            keep_original_audio=keep_orig,
+            pal_pitch_restore=bool(pal_pitch),
+            audio_codec=str(codec)
         )
 
         self.btn_cancel.setEnabled(True)
