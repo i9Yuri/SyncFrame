@@ -40,6 +40,21 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Suíte de Testes Expandida:**
   - Inclusão de `tests/test_discontinuity.py` elevando a suíte de testes para 59 testes unitários (100% aprovados).
 
+### Corrigido
+- **Erradicação de Artefatos Visuais e Caixas Pretas Duras:**
+  - Aplicação universal de `background: transparent; border: none;` no seletor base de `QLabel` nos temas Dark e Light, eliminando caixas retangulares escuras sobrepostas aos cards e seções.
+  - Remoção de sobrescritas pontuais de folhas de estilo em `UnifiedDropZone`, `PreviewPlayer`, `SyncControls` e diálogos modais que provocavam queda de herança de fundo.
+  - Correção do contraste, tipografia e contenção espacial em tags, badges, chips de dados e indicadores de telemetria.
+
+### Modificado
+- **Consolidação do Stepper em Linha de Progresso Contínua:**
+  - Substituição do container segmentado de botões e caixas do stepper por uma régua de progresso linear contínua e minimalista de 2px (`QProgressBar#pipelineRuler`) integrada à borda inferior da barra superior.
+  - Liberação de espaço vertical na bancada de trabalho mantendo total compatibilidade retroativa de controle de fases da pipeline.
+- **Harmonização do Bloco de Identidade e Topbar:**
+  - Integração do título da aplicação, subtítulo técnico e breadcrumb em layout com transparência contínua e separador vertical sutil de 1px.
+- **Novas Funções Auxiliares de Estilização em `style.py`:**
+  - Implementação e exportação de `get_clean_badge_style()`, `get_telemetry_display_style()` e `get_topbar_brand_style()` para padronização de micro-badges com cantos arredondados e visores monoespacados.
+
 ---
 
 ## [1.0.0] - 2026-10-22

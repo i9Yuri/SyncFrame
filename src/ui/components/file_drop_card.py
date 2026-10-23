@@ -85,7 +85,7 @@ class FileDropCard(QFrame):
 
         self.drop_label = QLabel("Arraste e solte o arquivo MKV aqui\nou clique para navegar")
         self.drop_label.setAlignment(Qt.AlignCenter)
-        self.drop_label.setStyleSheet("color: #94a3b8; font-size: 12px;")
+        self.drop_label.setStyleSheet("background: transparent; color: #94a3b8; font-size: 12px; border: none;")
         drop_layout.addWidget(self.drop_label)
 
         btn_browse = QPushButton("Selecionar Arquivo...")
@@ -105,7 +105,7 @@ class FileDropCard(QFrame):
         # Stream selector row
         stream_layout = QHBoxLayout()
         stream_lbl = QLabel("Faixa Ativa:")
-        stream_lbl.setStyleSheet("color: #cbd5e1; font-weight: 600;")
+        stream_lbl.setStyleSheet("background: transparent; color: #cbd5e1; font-weight: 600; border: none;")
         stream_layout.addWidget(stream_lbl)
 
         self.combo_streams = QComboBox()
@@ -160,7 +160,7 @@ class FileDropCard(QFrame):
         size_str = format_bytes(size_bytes)
         
         self.drop_label.setText(f"Arquivo carregado:\n{basename}")
-        self.drop_label.setStyleSheet("color: #38bdf8; font-weight: 600; font-size: 12px;")
+        self.drop_label.setStyleSheet("background: transparent; color: #38bdf8; font-weight: 600; font-size: 12px; border: none;")
         self.info_label.setText(f"Caminho: {path}\nTamanho: {size_str}")
         self.badge_status.setText("Pronto")
         self.badge_status.setProperty("class", "badgeGreen")

@@ -104,12 +104,14 @@ class SyncFrameMainWindow(QWidget):
         tb_layout.setContentsMargins(20, 10, 20, 10)
         tb_layout.setSpacing(14)
 
-        # Brand mark & Title
+        # Brand mark & Title in integrated transparent block
         brand_box = QHBoxLayout()
-        brand_box.setSpacing(10)
+        brand_box.setSpacing(12)
+        brand_box.setContentsMargins(0, 0, 0, 0)
 
         brand_texts = QVBoxLayout()
         brand_texts.setSpacing(1)
+        brand_texts.setContentsMargins(0, 0, 0, 0)
         self.lbl_brand_title = QLabel("SyncFrame")
         self.lbl_brand_title.setObjectName("brandTitle")
         brand_texts.addWidget(self.lbl_brand_title)
@@ -118,6 +120,12 @@ class SyncFrameMainWindow(QWidget):
         self.lbl_brand_sub.setObjectName("brandSubtitle")
         brand_texts.addWidget(self.lbl_brand_sub)
         brand_box.addLayout(brand_texts)
+
+        # Subtle vertical separator
+        crumb_sep = QFrame()
+        crumb_sep.setFrameShape(QFrame.VLine)
+        crumb_sep.setStyleSheet("background-color: #282d34; width: 1px; border: none; max-height: 24px;")
+        brand_box.addWidget(crumb_sep)
 
         self.lbl_crumb = QLabel("Workspace / <strong>Session 01</strong>")
         self.lbl_crumb.setObjectName("topCrumb")
@@ -144,64 +152,22 @@ class SyncFrameMainWindow(QWidget):
         root_layout.addWidget(self.topbar)
 
         # ======================================================================
-        # 2. Pipeline Stepper Bar (Linear Status Gauge)
+        # 2. Precision Pipeline Progress Ruler (Slim 2px continuous bar)
         # ======================================================================
-        stepper_container = QWidget()
-        stepper_layout = QHBoxLayout(stepper_container)
-        stepper_layout.setContentsMargins(20, 6, 20, 4)
-        stepper_layout.setSpacing(10)
+        self.pipeline_ruler = QProgressBar()
+        self.pipeline_ruler.setObjectName("pipelineRuler")
+        self.pipeline_ruler.setRange(0, 100)
+        self.pipeline_ruler.setValue(25)  # Phase 1: Ingestão active
+        self.pipeline_ruler.setTextVisible(False)
+        self.pipeline_ruler.setFixedHeight(2)
+        root_layout.addWidget(self.pipeline_ruler)
 
-        self.stepper_frame = QFrame()
-        self.stepper_frame.setObjectName("pipelineStepperFrame")
-        self.stepper_frame.setProperty("class", "stepperContainer")
-        sf_layout = QHBoxLayout(self.stepper_frame)
-        sf_layout.setContentsMargins(8, 3, 8, 3)
-        sf_layout.setSpacing(6)
-
+        # Retain passive step button/label references for backwards compatibility
         self.btn_step_01 = QPushButton("01 Ingestão")
-        self.btn_step_01.setProperty("class", "pipeStepBtn")
-        self.btn_step_01.setProperty("active", "true")
-        self.btn_step_01.setCursor(Qt.ArrowCursor)
-        self.btn_step_01.setFocusPolicy(Qt.NoFocus)
-        sf_layout.addWidget(self.btn_step_01)
-
-        sep1 = QLabel("→")
-        sep1.setStyleSheet("color: #3b424c; font-size: 11px;")
-        sf_layout.addWidget(sep1)
-
         self.btn_step_02 = QPushButton("02 Auditoria")
-        self.btn_step_02.setProperty("class", "pipeStepBtn")
-        self.btn_step_02.setCursor(Qt.ArrowCursor)
-        self.btn_step_02.setFocusPolicy(Qt.NoFocus)
-        sf_layout.addWidget(self.btn_step_02)
-
-        sep2 = QLabel("→")
-        sep2.setStyleSheet("color: #3b424c; font-size: 11px;")
-        sf_layout.addWidget(sep2)
-
         self.btn_step_03 = QPushButton("03 Sincronização")
-        self.btn_step_03.setProperty("class", "pipeStepBtn")
-        self.btn_step_03.setCursor(Qt.ArrowCursor)
-        self.btn_step_03.setFocusPolicy(Qt.NoFocus)
-        sf_layout.addWidget(self.btn_step_03)
-
-        sep3 = QLabel("→")
-        sep3.setStyleSheet("color: #3b424c; font-size: 11px;")
-        sf_layout.addWidget(sep3)
-
         self.btn_step_04 = QPushButton("04 Remux")
-        self.btn_step_04.setProperty("class", "pipeStepBtn")
-        self.btn_step_04.setCursor(Qt.ArrowCursor)
-        self.btn_step_04.setFocusPolicy(Qt.NoFocus)
-        sf_layout.addWidget(self.btn_step_04)
-
-        stepper_layout.addWidget(self.stepper_frame, 1)
-
         self.lbl_stepper_info = QLabel("Atalho de aprovação: ENTER")
-        self.lbl_stepper_info.setProperty("class", "subText")
-        stepper_layout.addWidget(self.lbl_stepper_info)
-
-        root_layout.addWidget(stepper_container)
 
         # ======================================================================
         # 3. Responsive Scroll Area for Central Workbench Layout
@@ -362,6 +328,9 @@ class SyncFrameMainWindow(QWidget):
         apply_workbench_theme(self, "dark")
 
     def _set_stepper_active(self, step_idx: int):
+        val = min(100, max(25, (step_idx + 1) * 25))
+        if hasattr(self, "pipeline_ruler"):
+            self.pipeline_ruler.setValue(val)
         btns = [self.btn_step_01, self.btn_step_02, self.btn_step_03, self.btn_step_04]
         for i, b in enumerate(btns):
             if i < step_idx:

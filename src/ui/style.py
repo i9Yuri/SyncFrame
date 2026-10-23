@@ -16,6 +16,13 @@ QWidget {
     selection-color: #15190b;
 }
 
+/* Universal Label Reset: Eradicate hard opaque backgrounds and border artifacts */
+QLabel {
+    background-color: transparent;
+    background: transparent;
+    border: none;
+}
+
 QScrollArea {
     background-color: transparent;
     border: none;
@@ -32,25 +39,30 @@ QWidget#workbenchTopbar {
 }
 
 QLabel#brandTitle {
+    background-color: transparent;
     color: #eef0f2;
     font-size: 15px;
     font-weight: 800;
     letter-spacing: -0.4px;
+    border: none;
 }
 
 QLabel#brandSubtitle {
+    background-color: transparent;
     color: #7e8792;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 1.2px;
+    border: none;
 }
 
 QLabel#topCrumb {
+    background-color: transparent;
     color: #7e8792;
     font-size: 12px;
-    border-left: 1px solid #282d34;
-    padding-left: 14px;
+    border: none;
+    padding-left: 2px;
 }
 
 QLabel#topCrumb strong {
@@ -58,7 +70,19 @@ QLabel#topCrumb strong {
     font-weight: 600;
 }
 
-/* Pipeline Stepper Bar */
+/* Precision Pipeline Progress Ruler (Slim 2px continuous bar) */
+QProgressBar#pipelineRuler {
+    background-color: #15181d;
+    border: none;
+    max-height: 2px;
+    min-height: 2px;
+}
+
+QProgressBar#pipelineRuler::chunk {
+    background-color: #d9f56b;
+}
+
+/* Pipeline Stepper Bar (Backwards-compatibility) */
 QFrame#pipelineStepperFrame {
     background-color: #111317;
     border: 1px solid #282d34;
@@ -121,14 +145,17 @@ QLabel.sectionIndex {
     background-color: #15181d;
     color: #7e8792;
     border: 1px solid #282d34;
-    border-radius: 5px;
-    padding: 2px 6px;
+    border-radius: 6px;
+    padding: 2px 7px;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 10px;
     font-weight: 700;
 }
 
 QLabel.panelTitle, QLabel.cardTitle {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #eef0f2;
     font-size: 13px;
     font-weight: 700;
@@ -136,11 +163,26 @@ QLabel.panelTitle, QLabel.cardTitle {
 }
 
 QLabel.panelSubtitle, QLabel.subText {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #7e8792;
     font-size: 11px;
 }
 
+QLabel.dropTitle {
+    background-color: transparent;
+    background: transparent;
+    border: none;
+    color: #eef0f2;
+    font-size: 14px;
+    font-weight: 700;
+}
+
 QLabel.eyebrowText {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #7e8792;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 10px;
@@ -151,6 +193,9 @@ QLabel.eyebrowText {
 
 /* Monospace Numbers & Metrics */
 QLabel.monoValue, QLabel.metricValue {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #eef0f2;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 18px;
@@ -159,6 +204,9 @@ QLabel.monoValue, QLabel.metricValue {
 }
 
 QLabel.largeOffsetDisplay {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #eef0f2;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 28px;
@@ -167,9 +215,34 @@ QLabel.largeOffsetDisplay {
 }
 
 QLabel.metricUnit {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #7e8792;
     font-size: 11px;
     font-weight: 500;
+}
+
+/* Discrete Precision Telemetry Chips & Banners */
+QLabel.diagnosisBanner {
+    background-color: #15181d;
+    color: #c1c6cd;
+    border: 1px solid #282d34;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+QLabel#lblTimecodeChip, QLabel.timecodeChip {
+    background-color: #15181d;
+    color: #d9f56b;
+    border: 1px solid #282d34;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
 }
 
 /* Micro-chips and Badges */
@@ -634,6 +707,13 @@ QWidget {
     selection-color: #1a2206;
 }
 
+/* Universal Label Reset: Eradicate hard opaque backgrounds and border artifacts */
+QLabel {
+    background-color: transparent;
+    background: transparent;
+    border: none;
+}
+
 QScrollArea {
     background-color: transparent;
     border: none;
@@ -650,25 +730,30 @@ QWidget#workbenchTopbar {
 }
 
 QLabel#brandTitle {
+    background-color: transparent;
     color: #191c1a;
     font-size: 15px;
     font-weight: 800;
     letter-spacing: -0.4px;
+    border: none;
 }
 
 QLabel#brandSubtitle {
+    background-color: transparent;
     color: #737c73;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 9px;
     font-weight: 600;
     letter-spacing: 1.2px;
+    border: none;
 }
 
 QLabel#topCrumb {
+    background-color: transparent;
     color: #737c73;
     font-size: 12px;
-    border-left: 1px solid #d9ddd7;
-    padding-left: 14px;
+    border: none;
+    padding-left: 2px;
 }
 
 QLabel#topCrumb strong {
@@ -676,7 +761,19 @@ QLabel#topCrumb strong {
     font-weight: 600;
 }
 
-/* Pipeline Stepper Bar */
+/* Precision Pipeline Progress Ruler (Slim 2px continuous bar) */
+QProgressBar#pipelineRuler {
+    background-color: #e3e6e2;
+    border: none;
+    max-height: 2px;
+    min-height: 2px;
+}
+
+QProgressBar#pipelineRuler::chunk {
+    background-color: #4d6700;
+}
+
+/* Pipeline Stepper Bar (Backwards-compatibility) */
 QFrame#pipelineStepperFrame {
     background-color: #fbfcfa;
     border: 1px solid #d9ddd7;
@@ -747,6 +844,9 @@ QLabel.sectionIndex {
 }
 
 QLabel.panelTitle, QLabel.cardTitle {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #191c1a;
     font-size: 13px;
     font-weight: 700;
@@ -754,11 +854,26 @@ QLabel.panelTitle, QLabel.cardTitle {
 }
 
 QLabel.panelSubtitle, QLabel.subText {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #737c73;
     font-size: 11px;
 }
 
+QLabel.dropTitle {
+    background-color: transparent;
+    background: transparent;
+    border: none;
+    color: #191c1a;
+    font-size: 14px;
+    font-weight: 700;
+}
+
 QLabel.eyebrowText {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #737c73;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 10px;
@@ -769,6 +884,9 @@ QLabel.eyebrowText {
 
 /* Monospace Numbers & Metrics */
 QLabel.monoValue, QLabel.metricValue {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #191c1a;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 18px;
@@ -777,6 +895,9 @@ QLabel.monoValue, QLabel.metricValue {
 }
 
 QLabel.largeOffsetDisplay {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #191c1a;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 28px;
@@ -785,9 +906,34 @@ QLabel.largeOffsetDisplay {
 }
 
 QLabel.metricUnit {
+    background-color: transparent;
+    background: transparent;
+    border: none;
     color: #737c73;
     font-size: 11px;
     font-weight: 500;
+}
+
+/* Discrete Precision Telemetry Chips & Banners */
+QLabel.diagnosisBanner {
+    background-color: #edf0ed;
+    color: #424943;
+    border: 1px solid #d9ddd7;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+QLabel#lblTimecodeChip, QLabel.timecodeChip {
+    background-color: #edf0ed;
+    color: #4d6700;
+    border: 1px solid #d9ddd7;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
 }
 
 /* Micro-chips and Badges */
@@ -1264,13 +1410,13 @@ def get_telemetry_badge_style(mode: Literal["dark", "light"] = "dark") -> str:
     if mode == "dark":
         return """
         QFrame.offsetCallout {
-            background-color: #111317;
+            background-color: #15181d;
             border: 1px solid #282d34;
             border-radius: 8px;
             padding: 8px 12px;
         }
         QFrame.metricCallout {
-            background-color: #0e1013;
+            background-color: #15181d;
             border: 1px solid #282d34;
             border-radius: 8px;
             padding: 6px 10px;
@@ -1297,7 +1443,7 @@ def get_player_viewport_style(mode: Literal["dark", "light"] = "dark") -> str:
     if mode == "dark":
         return """
         QFrame.viewportScreen {
-            background-color: #0a0b0d;
+            background-color: #0e1013;
             border: 1px solid #282d34;
             border-radius: 8px;
         }
@@ -1323,7 +1469,7 @@ def get_player_viewport_style(mode: Literal["dark", "light"] = "dark") -> str:
         """
     return """
     QFrame.viewportScreen {
-        background-color: #191c1a;
+        background-color: #f4f6f3;
         border: 1px solid #b9c0b7;
         border-radius: 8px;
     }
@@ -1353,50 +1499,91 @@ def get_stepper_style(mode: Literal["dark", "light"] = "dark") -> str:
     """Returns CSS styles for the linear status stepper bar."""
     if mode == "dark":
         return """
-        QFrame.stepperContainer {
-            background-color: #111317;
-            border: 1px solid #282d34;
-            border-radius: 8px;
-            padding: 4px 8px;
-        }
-        QFrame.stepperSegment {
+        QProgressBar#pipelineRuler {
+            background-color: #15181d;
             border: none;
-            background: transparent;
+            max-height: 2px;
+            min-height: 2px;
         }
-        QLabel.stepperLabel {
-            color: #7e8792;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        QLabel.stepperLabel[active="true"] {
-            color: #d9f56b;
-            font-weight: 700;
-        }
-        QLabel.stepperLabel[done="true"] {
-            color: #eef0f2;
+        QProgressBar#pipelineRuler::chunk {
+            background-color: #d9f56b;
         }
         """
     return """
-    QFrame.stepperContainer {
-        background-color: #edf0ed;
-        border: 1px solid #d9ddd7;
-        border-radius: 8px;
-        padding: 4px 8px;
-    }
-    QFrame.stepperSegment {
+    QProgressBar#pipelineRuler {
+        background-color: #e3e6e2;
         border: none;
-        background: transparent;
+        max-height: 2px;
+        min-height: 2px;
     }
-    QLabel.stepperLabel {
-        color: #727a6f;
-        font-size: 11px;
-        font-weight: 600;
+    QProgressBar#pipelineRuler::chunk {
+        background-color: #4d6700;
     }
-    QLabel.stepperLabel[active="true"] {
-        color: #4d6700;
+    """
+
+
+def get_clean_badge_style(radius: int = 6, bg: str = "#191d22", border: str = "#282d34") -> str:
+    """Returns CSS properties for clean, high-density micro-badges with smooth border-radius."""
+    return f"""
+        background-color: {bg};
+        border: 1px solid {border};
+        border-radius: {radius}px;
+        padding: 3px 8px;
+    """
+
+
+def get_telemetry_display_style(is_accent: bool = False) -> str:
+    """Returns CSS properties for precision telemetry boxes with rounded corners and no hard black backgrounds."""
+    if is_accent:
+        return """
+            background-color: rgba(217, 245, 107, 0.12);
+            color: #d9f56b;
+            border: 1px solid rgba(217, 245, 107, 0.35);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+            font-weight: 700;
+        """
+    return """
+        background-color: #15181d;
+        color: #eef0f2;
+        border: 1px solid #282d34;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
         font-weight: 700;
-    }
-    QLabel.stepperLabel[done="true"] {
-        color: #191c1a;
-    }
+    """
+
+
+def get_topbar_brand_style() -> str:
+    """Returns CSS styling for the topbar branding block with zero hard backgrounds and clean vector alignment."""
+    return """
+        QLabel#brandTitle {
+            background-color: transparent;
+            color: #eef0f2;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+            border: none;
+        }
+        QLabel#brandSubtitle {
+            background-color: transparent;
+            color: #7e8792;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            border: none;
+        }
+        QLabel#topCrumb {
+            background-color: transparent;
+            color: #7e8792;
+            font-size: 12px;
+            border: none;
+            padding-left: 2px;
+        }
+        QLabel#topCrumb strong {
+            color: #c1c6cd;
+            font-weight: 600;
+        }
     """

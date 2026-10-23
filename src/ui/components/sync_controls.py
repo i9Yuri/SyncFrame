@@ -188,10 +188,10 @@ class SyncControls(QFrame):
         fd_layout = QVBoxLayout(self.frame_discont)
         fd_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_discont_title = QLabel("AVISO: DESCONTINUIDADE EM DEGRAU (CORTE/LOGO)")
-        self.lbl_discont_title.setStyleSheet("color: #e7a19b; font-size: 10px; font-weight: 700;")
+        self.lbl_discont_title.setStyleSheet("background: transparent; color: #e7a19b; font-size: 10px; font-weight: 700; border: none;")
         fd_layout.addWidget(self.lbl_discont_title)
         self.lbl_discont_msg = QLabel("")
-        self.lbl_discont_msg.setStyleSheet("color: #eef0f2; font-size: 11px;")
+        self.lbl_discont_msg.setStyleSheet("background: transparent; color: #eef0f2; font-size: 11px; border: none;")
         self.lbl_discont_msg.setWordWrap(True)
         fd_layout.addWidget(self.lbl_discont_msg)
         self.frame_discont.setVisible(False)
@@ -199,8 +199,7 @@ class SyncControls(QFrame):
 
         # FPS Diagnostic banner
         self.lbl_diagnosis = QLabel("Taxas de quadros congruentes (sem deriva contínua)")
-        self.lbl_diagnosis.setProperty("class", "badgeNeutral")
-        self.lbl_diagnosis.setStyleSheet("padding: 6px 10px; font-size: 11px;")
+        self.lbl_diagnosis.setProperty("class", "diagnosisBanner")
         layout.addWidget(self.lbl_diagnosis)
 
     def set_metrics(self, metrics: SyncMetrics):

@@ -84,18 +84,21 @@ class PreviewPlayer(QFrame):
         overlay_row = QHBoxLayout()
         lbl_screen_tag = QLabel("VISOR DE SINAL")
         lbl_screen_tag.setProperty("class", "eyebrowText")
+        lbl_screen_tag.setStyleSheet("background: transparent; color: #7e8792; font-size: 10px; font-weight: 600; letter-spacing: 1px; border: none;")
         overlay_row.addWidget(lbl_screen_tag)
         overlay_row.addStretch()
         self.lbl_timecode = QLabel("00:00:00.000")
+        self.lbl_timecode.setObjectName("lblTimecodeChip")
+        self.lbl_timecode.setProperty("class", "timecodeChip")
         self.lbl_timecode.setStyleSheet(
-            "font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; color: #d9f56b; font-weight: 700;"
+            "background-color: #15181d; color: #d9f56b; border: 1px solid #282d34; border-radius: 5px; padding: 2px 8px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; font-weight: 700;"
         )
         overlay_row.addWidget(self.lbl_timecode)
         ms_layout.addLayout(overlay_row)
 
         ms_layout.addStretch()
         self.status_label = QLabel("Aguardando carregamento de fontes para inspeção")
-        self.status_label.setStyleSheet("color: #7e8792; font-size: 11px;")
+        self.status_label.setStyleSheet("background: transparent; color: #7e8792; font-size: 11px; border: none;")
         ms_layout.addWidget(self.status_label)
         mid_row.addWidget(self.monitor_screen, 1)
 
@@ -121,6 +124,13 @@ class PreviewPlayer(QFrame):
         mid_row.addLayout(marker_stack)
         layout.addLayout(mid_row)
 
+    def _set_status(self, text: str, color: str = "#7e8792", bold: bool = False):
+        weight = "700" if bold else "400"
+        self.status_label.setText(text)
+        self.status_label.setStyleSheet(
+            f"background: transparent; color: {color}; font-size: 11px; font-weight: {weight}; border: none;"
+        )
+
     def set_media_sources(
         self,
         video_path: Optional[str],
@@ -134,19 +144,16 @@ class PreviewPlayer(QFrame):
         self.current_offset_ms = offset_ms
 
         if self.video_path and self.audio_path:
-            self.status_label.setText("Pronto para reprodução sincronizada nos marcadores")
-            self.status_label.setStyleSheet("color: #bce7a0; font-size: 11px; font-weight: 600;")
+            self._set_status("Pronto para reprodução sincronizada nos marcadores", color="#bce7a0", bold=True)
         else:
-            self.status_label.setText("Aguardando carregamento de fontes para inspeção")
-            self.status_label.setStyleSheet("color: #7e8792; font-size: 11px;")
+            self._set_status("Aguardando carregamento de fontes para inspeção", color="#7e8792")
 
     def update_offset(self, offset_ms: float):
         self.current_offset_ms = offset_ms
 
     def play_marker(self, fraction: float):
         if not self.video_path or not self.audio_path:
-            self.status_label.setText("Fontes de mídia não carregadas.")
-            self.status_label.setStyleSheet("color: #e7c783; font-size: 11px;")
+            self._set_status("Fontes de mídia não carregadas.", color="#e7c783")
             return
 
         self.stop_preview()
@@ -163,8 +170,7 @@ class PreviewPlayer(QFrame):
 
         player_bin = shutil.which("mpv")
         if not player_bin:
-            self.status_label.setText("mpv não instalado no sistema.")
-            self.status_label.setStyleSheet("color: #e7a19b; font-size: 11px;")
+            self._set_status("mpv não instalado no sistema.", color="#e7a19b")
             return
 
         cmd = [
@@ -184,14 +190,13 @@ class PreviewPlayer(QFrame):
             self.active_proc = subprocess.Popen(cmd)
             self.btn_stop.setEnabled(True)
             self._set_active_marker_fraction(fraction)
-            self.status_label.setText(
-                f"Reproduzindo trecho ({int(fraction * 100)}%) com delay de {player_delay_sec:+.3f}s"
+            self._set_status(
+                f"Reproduzindo trecho ({int(fraction * 100)}%) com delay de {player_delay_sec:+.3f}s",
+                color="#d9f56b"
             )
-            self.status_label.setStyleSheet("color: #d9f56b; font-size: 11px;")
         except Exception as exc:
             logger.error("Failed to launch preview player: %s", exc)
-            self.status_label.setText(f"Erro ao iniciar player: {exc}")
-            self.status_label.setStyleSheet("color: #e7a19b; font-size: 11px;")
+            self._set_status(f"Erro ao iniciar player: {exc}", color="#e7a19b")
 
     def _set_active_marker_fraction(self, fraction: Optional[float]):
         for btn, frac in [(self.btn_p05, 0.05), (self.btn_p50, 0.50), (self.btn_p90, 0.90)]:
@@ -209,5 +214,4 @@ class PreviewPlayer(QFrame):
         self.active_proc = None
         self._set_active_marker_fraction(None)
         self.btn_stop.setEnabled(False)
-        self.status_label.setText("Reprodução encerrada.")
-        self.status_label.setStyleSheet("color: #7e8792; font-size: 11px;")
+        self._set_status("Reprodução encerrada.", color="#7e8792")

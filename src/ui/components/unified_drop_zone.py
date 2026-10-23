@@ -66,22 +66,21 @@ class UnifiedDropZone(QFrame):
 
         tag_row = QHBoxLayout()
         tag_row.setAlignment(Qt.AlignCenter)
-        idx_chip = QLabel("01")
-        idx_chip.setProperty("class", "sectionIndex")
-        tag_row.addWidget(idx_chip)
-        lbl_ingest_tag = QLabel("INGESTAO DE FONTES")
-        lbl_ingest_tag.setProperty("class", "eyebrowText")
-        tag_row.addWidget(lbl_ingest_tag)
+        tag_ingest = QLabel("01  INGESTÃO DE FONTES")
+        tag_ingest.setProperty("class", "systemChip")
+        tag_row.addWidget(tag_ingest)
         empty_layout.addLayout(tag_row)
 
         self.lbl_empty_title = QLabel("Arraste e solte os 2 arquivos de mídia aqui\nou selecione ambos pelo navegador")
         self.lbl_empty_title.setAlignment(Qt.AlignCenter)
-        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #eef0f2;")
+        self.lbl_empty_title.setProperty("class", "dropTitle")
+        self.lbl_empty_title.setStyleSheet("background: transparent; font-size: 14px; font-weight: 700; color: #eef0f2; border: none;")
         empty_layout.addWidget(self.lbl_empty_title)
 
         lbl_hint = QLabel("MKV / MP4 / M4V / MOV  •  1 Vídeo de Referência + 1 Faixa de Dublagem")
         lbl_hint.setAlignment(Qt.AlignCenter)
         lbl_hint.setProperty("class", "subText")
+        lbl_hint.setStyleSheet("background: transparent; color: #7e8792; font-size: 11px; border: none;")
         empty_layout.addWidget(lbl_hint)
 
         btn_browse = QPushButton("Selecionar Arquivos...")
@@ -108,7 +107,7 @@ class UnifiedDropZone(QFrame):
 
         self.lbl_single_filename = QLabel("")
         self.lbl_single_filename.setStyleSheet(
-            "font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 13px; color: #eef0f2;"
+            "background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 13px; color: #eef0f2; border: none;"
         )
         self.lbl_single_filename.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(self.lbl_single_filename)
@@ -188,11 +187,11 @@ class UnifiedDropZone(QFrame):
         cf_v_layout.addLayout(head_v)
 
         self.lbl_v_filename = QLabel("video_ref.mkv")
-        self.lbl_v_filename.setStyleSheet("font-weight: 700; font-size: 12px; color: #eef0f2;")
+        self.lbl_v_filename.setStyleSheet("background: transparent; font-weight: 700; font-size: 12px; color: #eef0f2; border: none;")
         cf_v_layout.addWidget(self.lbl_v_filename)
 
         self.lbl_v_meta = QLabel("0.0 GB  •  00:00:00")
-        self.lbl_v_meta.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792;")
+        self.lbl_v_meta.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792; border: none;")
         cf_v_layout.addWidget(self.lbl_v_meta)
         pair_row.addWidget(self.card_file_v, 1)
 
@@ -214,11 +213,11 @@ class UnifiedDropZone(QFrame):
         cf_a_layout.addLayout(head_a)
 
         self.lbl_a_filename = QLabel("audio_dub.mp4")
-        self.lbl_a_filename.setStyleSheet("font-weight: 700; font-size: 12px; color: #eef0f2;")
+        self.lbl_a_filename.setStyleSheet("background: transparent; font-weight: 700; font-size: 12px; color: #eef0f2; border: none;")
         cf_a_layout.addWidget(self.lbl_a_filename)
 
         self.lbl_a_meta = QLabel("0.0 MB  •  00:00:00")
-        self.lbl_a_meta.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792;")
+        self.lbl_a_meta.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792; border: none;")
         cf_a_layout.addWidget(self.lbl_a_meta)
         pair_row.addWidget(self.card_file_a, 1)
 
@@ -237,7 +236,7 @@ class UnifiedDropZone(QFrame):
         amb_layout = QHBoxLayout(self.frame_ambiguity)
         amb_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_ambiguity = QLabel("")
-        self.lbl_ambiguity.setStyleSheet("color: #e7c783; font-size: 11px; font-weight: 600;")
+        self.lbl_ambiguity.setStyleSheet("background: transparent; color: #e7c783; font-size: 11px; font-weight: 600; border: none;")
         amb_layout.addWidget(self.lbl_ambiguity)
         self.frame_ambiguity.setVisible(False)
         confirm_layout.addWidget(self.frame_ambiguity)
@@ -268,7 +267,7 @@ class UnifiedDropZone(QFrame):
 
         # Row 1: Primary Video
         lbl_v_tag = QLabel("V01 / Vídeo:")
-        lbl_v_tag.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd;")
+        lbl_v_tag.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
         table_grid.addWidget(lbl_v_tag, 0, 0)
 
         self.badge_v_status = QLabel("Melhor Imagem")
@@ -287,7 +286,7 @@ class UnifiedDropZone(QFrame):
 
         # Row 2: Target Dubbed Audio
         lbl_a_tag = QLabel("A02 / Alvo (PT):")
-        lbl_a_tag.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd;")
+        lbl_a_tag.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
         table_grid.addWidget(lbl_a_tag, 1, 0)
 
         self.badge_a_status = QLabel("Português")
@@ -306,7 +305,7 @@ class UnifiedDropZone(QFrame):
 
         # Row 3: Reference Audio
         lbl_ref_tag = QLabel("A01 / Ref. (ENG):")
-        lbl_ref_tag.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd;")
+        lbl_ref_tag.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
         table_grid.addWidget(lbl_ref_tag, 2, 0)
 
         self.badge_ref_status = QLabel("Referência FFT")
@@ -336,7 +335,7 @@ class UnifiedDropZone(QFrame):
         audit_layout.setSpacing(10)
 
         lbl_audit_title = QLabel("Auditoria de Canais:")
-        lbl_audit_title.setStyleSheet("font-weight: 700; font-size: 11px; color: #c1c6cd;")
+        lbl_audit_title.setStyleSheet("background: transparent; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
         audit_layout.addWidget(lbl_audit_title)
 
         self.lbl_audit_origin = QLabel("")
@@ -349,7 +348,7 @@ class UnifiedDropZone(QFrame):
 
         self.lbl_audit_specs = QLabel("")
         self.lbl_audit_specs.setStyleSheet(
-            "font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; font-weight: 600; color: #eef0f2;"
+            "background: transparent; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; font-weight: 600; color: #eef0f2; border: none;"
         )
         audit_layout.addWidget(self.lbl_audit_specs)
 
@@ -364,7 +363,7 @@ class UnifiedDropZone(QFrame):
         alert_layout = QHBoxLayout(self.frame_channel_alert)
         alert_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_channel_alert = QLabel("")
-        self.lbl_channel_alert.setStyleSheet("color: #e7c783; font-size: 11px; font-weight: 600;")
+        self.lbl_channel_alert.setStyleSheet("background: transparent; color: #e7c783; font-size: 11px; font-weight: 600; border: none;")
         alert_layout.addWidget(self.lbl_channel_alert)
         self.frame_channel_alert.setVisible(False)
         confirm_layout.addWidget(self.frame_channel_alert)
@@ -377,12 +376,12 @@ class UnifiedDropZone(QFrame):
         check_row.addWidget(self.check_keep_original)
 
         self.check_pal_pitch = QCheckBox("Restauração Tonal PAL (25fps -> 24fps)")
-        self.check_pal_pitch.setStyleSheet("font-size: 11px; font-weight: 600; color: #c1c6cd;")
+        self.check_pal_pitch.setStyleSheet("background: transparent; font-size: 11px; font-weight: 600; color: #c1c6cd; border: none;")
         self.check_pal_pitch.setToolTip("Aplica desaceleração natural com correção de tom (asetrate+aresample soxr) para dublagens originadas de masters PAL (25 fps).")
         check_row.addWidget(self.check_pal_pitch)
 
         lbl_codec = QLabel("Codec Re-encode:")
-        lbl_codec.setStyleSheet("font-size: 11px; font-weight: 600; color: #7e8792;")
+        lbl_codec.setStyleSheet("background: transparent; font-size: 11px; font-weight: 600; color: #7e8792; border: none;")
         check_row.addWidget(lbl_codec)
 
         self.combo_audio_codec = QComboBox()

@@ -52,7 +52,7 @@ class StreamSelectorModal(QDialog):
         header_box = QVBoxLayout()
         header_box.setSpacing(3)
         title = QLabel("Revisão de Trilhas & Mapeamento Automático")
-        title.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
+        title.setStyleSheet("background: transparent; font-size: 18px; font-weight: 800; color: #f8fafc; border: none;")
         header_box.addWidget(title)
 
         subtitle = QLabel("O motor analisou os metadados e selecionou as melhores fontes. Valide ou ajuste:")
@@ -74,7 +74,7 @@ class StreamSelectorModal(QDialog):
             al_layout = QHBoxLayout(alert_frame)
             al_layout.setContentsMargins(8, 6, 8, 6)
             al_text = QLabel(f"[ATENCAO] {self.verdict.ambiguity_reason}")
-            al_text.setStyleSheet("color: #fbbf24; font-size: 12px; font-weight: 600;")
+            al_text.setStyleSheet("background: transparent; color: #fbbf24; font-size: 12px; font-weight: 600; border: none;")
             al_layout.addWidget(al_text)
             root.addWidget(alert_frame)
 

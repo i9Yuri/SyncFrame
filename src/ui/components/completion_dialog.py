@@ -120,7 +120,6 @@ class CompletionDialog(QDialog):
 
         badge_audit = QLabel("AUDITADO EM MALHA FECHADA")
         badge_audit.setProperty("class", "badgeGreen")
-        badge_audit.setStyleSheet("font-size: 10px; font-weight: 700; padding: 4px 8px;")
         header_row.addWidget(badge_audit)
 
         root_layout.addLayout(header_row)

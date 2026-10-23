@@ -41,7 +41,7 @@ class LogDrawer(QFrame):
         header.setSpacing(10)
 
         self.title_lbl = QLabel("Event log")
-        self.title_lbl.setStyleSheet("color: #eef0f2; font-weight: 700; font-size: 12px;")
+        self.title_lbl.setStyleSheet("background: transparent; color: #eef0f2; font-weight: 700; font-size: 12px; border: none;")
         header.addWidget(self.title_lbl)
 
         self.badge_count = QLabel("00 EVENTS")
