@@ -295,6 +295,63 @@ QPushButton.btnSecondary:pressed {
     background-color: #0e1013;
 }
 
+/* Refined Telemetry Callout Containers (replaces raw/blocky boxes) */
+QFrame.offsetCallout {
+    background-color: #15181d;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+
+QFrame.offsetCallout:hover {
+    border-color: #3b424c;
+    background-color: #191d22;
+}
+
+QFrame.metricCallout {
+    background-color: #0e1013;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+QFrame.metricCallout:hover {
+    border-color: #3b424c;
+}
+
+/* Modernized Lip-Sync Viewport & Marker Buttons */
+QFrame.viewportScreen {
+    background-color: #0e1013;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+    min-height: 84px;
+}
+
+QPushButton.markerBtn {
+    background-color: #15181d;
+    color: #c1c6cd;
+    border: 1px solid #282d34;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: left;
+}
+
+QPushButton.markerBtn:hover {
+    background-color: #191d22;
+    border-color: #3b424c;
+    color: #eef0f2;
+}
+
+QPushButton.markerBtn[active="true"] {
+    background-color: #191d22;
+    border: 1px solid #d9f56b;
+    color: #d9f56b;
+    font-weight: 700;
+}
+
 QPushButton.btnNudge {
     background-color: #15181d;
     color: #c1c6cd;
@@ -856,6 +913,63 @@ QPushButton.btnSecondary:pressed {
     background-color: #dfe3dc;
 }
 
+/* Refined Telemetry Callout Containers (replaces raw/blocky boxes) */
+QFrame.offsetCallout {
+    background-color: #f1f3ef;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+
+QFrame.offsetCallout:hover {
+    border-color: #b9c0b7;
+    background-color: #e8ebe6;
+}
+
+QFrame.metricCallout {
+    background-color: #fbfcfa;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+QFrame.metricCallout:hover {
+    border-color: #b9c0b7;
+}
+
+/* Modernized Lip-Sync Viewport & Marker Buttons */
+QFrame.viewportScreen {
+    background-color: #fbfcfa;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    min-height: 84px;
+}
+
+QPushButton.markerBtn {
+    background-color: #f1f3ef;
+    color: #424943;
+    border: 1px solid #d9ddd7;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: left;
+}
+
+QPushButton.markerBtn:hover {
+    background-color: #e8ebe6;
+    border-color: #b9c0b7;
+    color: #191c1a;
+}
+
+QPushButton.markerBtn[active="true"] {
+    background-color: #e8ebe6;
+    border: 1px solid #c1df50;
+    color: #1a2206;
+    font-weight: 700;
+}
+
 QPushButton.btnNudge {
     background-color: #f1f3ef;
     color: #424943;
@@ -1143,3 +1257,146 @@ def apply_workbench_theme(widget, mode: Literal["dark", "light"] = "dark"):
 def apply_theme(target_widget, mode: Literal["dark", "light"] = "dark"):
     """Backwards-compatible alias for apply_workbench_theme."""
     apply_workbench_theme(target_widget, mode)
+
+
+def get_telemetry_badge_style(mode: Literal["dark", "light"] = "dark") -> str:
+    """Returns CSS styles for telemetry callouts and contrast badges."""
+    if mode == "dark":
+        return """
+        QFrame.offsetCallout {
+            background-color: #111317;
+            border: 1px solid #282d34;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+        QFrame.metricCallout {
+            background-color: #0e1013;
+            border: 1px solid #282d34;
+            border-radius: 8px;
+            padding: 6px 10px;
+        }
+        """
+    return """
+    QFrame.offsetCallout {
+        background-color: #edf0ed;
+        border: 1px solid #d9ddd7;
+        border-radius: 8px;
+        padding: 8px 12px;
+    }
+    QFrame.metricCallout {
+        background-color: #f4f6f3;
+        border: 1px solid #d9ddd7;
+        border-radius: 8px;
+        padding: 6px 10px;
+    }
+    """
+
+
+def get_player_viewport_style(mode: Literal["dark", "light"] = "dark") -> str:
+    """Returns CSS styles for the preview monitor and lip-sync player controls."""
+    if mode == "dark":
+        return """
+        QFrame.viewportScreen {
+            background-color: #0a0b0d;
+            border: 1px solid #282d34;
+            border-radius: 8px;
+        }
+        QPushButton.markerBtn {
+            background-color: #15181d;
+            color: #b5bcc5;
+            border: 1px solid #282d34;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        QPushButton.markerBtn:hover {
+            background-color: #1c2026;
+            border-color: #3b424c;
+            color: #eef0f2;
+        }
+        QPushButton.markerBtn[active="true"] {
+            background-color: rgba(217, 245, 107, 0.15);
+            border-color: #d9f56b;
+            color: #d9f56b;
+        }
+        """
+    return """
+    QFrame.viewportScreen {
+        background-color: #191c1a;
+        border: 1px solid #b9c0b7;
+        border-radius: 8px;
+    }
+    QPushButton.markerBtn {
+        background-color: #edf0ed;
+        color: #4b5249;
+        border: 1px solid #d9ddd7;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    QPushButton.markerBtn:hover {
+        background-color: #e3e6e2;
+        border-color: #b9c0b7;
+        color: #191c1a;
+    }
+    QPushButton.markerBtn[active="true"] {
+        background-color: rgba(77, 103, 0, 0.12);
+        border-color: #4d6700;
+        color: #4d6700;
+    }
+    """
+
+
+def get_stepper_style(mode: Literal["dark", "light"] = "dark") -> str:
+    """Returns CSS styles for the linear status stepper bar."""
+    if mode == "dark":
+        return """
+        QFrame.stepperContainer {
+            background-color: #111317;
+            border: 1px solid #282d34;
+            border-radius: 8px;
+            padding: 4px 8px;
+        }
+        QFrame.stepperSegment {
+            border: none;
+            background: transparent;
+        }
+        QLabel.stepperLabel {
+            color: #7e8792;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        QLabel.stepperLabel[active="true"] {
+            color: #d9f56b;
+            font-weight: 700;
+        }
+        QLabel.stepperLabel[done="true"] {
+            color: #eef0f2;
+        }
+        """
+    return """
+    QFrame.stepperContainer {
+        background-color: #edf0ed;
+        border: 1px solid #d9ddd7;
+        border-radius: 8px;
+        padding: 4px 8px;
+    }
+    QFrame.stepperSegment {
+        border: none;
+        background: transparent;
+    }
+    QLabel.stepperLabel {
+        color: #727a6f;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    QLabel.stepperLabel[active="true"] {
+        color: #4d6700;
+        font-weight: 700;
+    }
+    QLabel.stepperLabel[done="true"] {
+        color: #191c1a;
+    }
+    """

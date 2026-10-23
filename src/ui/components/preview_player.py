@@ -76,11 +76,10 @@ class PreviewPlayer(QFrame):
 
         # Screen Monitor Frame
         self.monitor_screen = QFrame()
-        self.monitor_screen.setStyleSheet(
-            "background-color: #07080a; border: 1px solid #282d34; border-radius: 8px; min-height: 90px;"
-        )
+        self.monitor_screen.setProperty("class", "viewportScreen")
+        self.monitor_screen.setMinimumHeight(84)
         ms_layout = QVBoxLayout(self.monitor_screen)
-        ms_layout.setContentsMargins(10, 10, 10, 10)
+        ms_layout.setContentsMargins(12, 10, 12, 10)
 
         overlay_row = QHBoxLayout()
         lbl_screen_tag = QLabel("VISOR DE SINAL")
@@ -105,17 +104,17 @@ class PreviewPlayer(QFrame):
         marker_stack.setSpacing(6)
 
         self.btn_p05 = QPushButton("05% Opening")
-        self.btn_p05.setProperty("class", "btnSecondary")
+        self.btn_p05.setProperty("class", "markerBtn")
         self.btn_p05.clicked.connect(lambda: self.play_marker(0.05))
         marker_stack.addWidget(self.btn_p05)
 
         self.btn_p50 = QPushButton("50% Midpoint")
-        self.btn_p50.setProperty("class", "btnSecondary")
+        self.btn_p50.setProperty("class", "markerBtn")
         self.btn_p50.clicked.connect(lambda: self.play_marker(0.50))
         marker_stack.addWidget(self.btn_p50)
 
         self.btn_p90 = QPushButton("90% Final Act")
-        self.btn_p90.setProperty("class", "btnSecondary")
+        self.btn_p90.setProperty("class", "markerBtn")
         self.btn_p90.clicked.connect(lambda: self.play_marker(0.90))
         marker_stack.addWidget(self.btn_p90)
 
@@ -184,6 +183,7 @@ class PreviewPlayer(QFrame):
         try:
             self.active_proc = subprocess.Popen(cmd)
             self.btn_stop.setEnabled(True)
+            self._set_active_marker_fraction(fraction)
             self.status_label.setText(
                 f"Reproduzindo trecho ({int(fraction * 100)}%) com delay de {player_delay_sec:+.3f}s"
             )
@@ -193,6 +193,13 @@ class PreviewPlayer(QFrame):
             self.status_label.setText(f"Erro ao iniciar player: {exc}")
             self.status_label.setStyleSheet("color: #e7a19b; font-size: 11px;")
 
+    def _set_active_marker_fraction(self, fraction: Optional[float]):
+        for btn, frac in [(self.btn_p05, 0.05), (self.btn_p50, 0.50), (self.btn_p90, 0.90)]:
+            is_active = "true" if fraction is not None and abs(fraction - frac) < 0.01 else "false"
+            btn.setProperty("active", is_active)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
     def stop_preview(self):
         if self.active_proc and self.active_proc.poll() is None:
             try:
@@ -200,6 +207,7 @@ class PreviewPlayer(QFrame):
             except Exception:
                 pass
         self.active_proc = None
+        self._set_active_marker_fraction(None)
         self.btn_stop.setEnabled(False)
         self.status_label.setText("Reprodução encerrada.")
         self.status_label.setStyleSheet("color: #7e8792; font-size: 11px;")

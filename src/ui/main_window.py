@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget
 )
@@ -143,34 +144,55 @@ class SyncFrameMainWindow(QWidget):
         root_layout.addWidget(self.topbar)
 
         # ======================================================================
-        # 2. Pipeline Stepper Bar
+        # 2. Pipeline Stepper Bar (Linear Status Gauge)
         # ======================================================================
         stepper_container = QWidget()
         stepper_layout = QHBoxLayout(stepper_container)
-        stepper_layout.setContentsMargins(20, 10, 20, 6)
-        stepper_layout.setSpacing(8)
+        stepper_layout.setContentsMargins(20, 6, 20, 4)
+        stepper_layout.setSpacing(10)
 
         self.stepper_frame = QFrame()
         self.stepper_frame.setObjectName("pipelineStepperFrame")
+        self.stepper_frame.setProperty("class", "stepperContainer")
         sf_layout = QHBoxLayout(self.stepper_frame)
-        sf_layout.setContentsMargins(4, 4, 4, 4)
-        sf_layout.setSpacing(4)
+        sf_layout.setContentsMargins(8, 3, 8, 3)
+        sf_layout.setSpacing(6)
 
-        self.btn_step_01 = QPushButton("01  Ingestão")
+        self.btn_step_01 = QPushButton("01 Ingestão")
         self.btn_step_01.setProperty("class", "pipeStepBtn")
         self.btn_step_01.setProperty("active", "true")
+        self.btn_step_01.setCursor(Qt.ArrowCursor)
+        self.btn_step_01.setFocusPolicy(Qt.NoFocus)
         sf_layout.addWidget(self.btn_step_01)
 
-        self.btn_step_02 = QPushButton("02  Auditoria")
+        sep1 = QLabel("→")
+        sep1.setStyleSheet("color: #3b424c; font-size: 11px;")
+        sf_layout.addWidget(sep1)
+
+        self.btn_step_02 = QPushButton("02 Auditoria")
         self.btn_step_02.setProperty("class", "pipeStepBtn")
+        self.btn_step_02.setCursor(Qt.ArrowCursor)
+        self.btn_step_02.setFocusPolicy(Qt.NoFocus)
         sf_layout.addWidget(self.btn_step_02)
 
-        self.btn_step_03 = QPushButton("03  Sincronização")
+        sep2 = QLabel("→")
+        sep2.setStyleSheet("color: #3b424c; font-size: 11px;")
+        sf_layout.addWidget(sep2)
+
+        self.btn_step_03 = QPushButton("03 Sincronização")
         self.btn_step_03.setProperty("class", "pipeStepBtn")
+        self.btn_step_03.setCursor(Qt.ArrowCursor)
+        self.btn_step_03.setFocusPolicy(Qt.NoFocus)
         sf_layout.addWidget(self.btn_step_03)
 
-        self.btn_step_04 = QPushButton("04  Remux")
+        sep3 = QLabel("→")
+        sep3.setStyleSheet("color: #3b424c; font-size: 11px;")
+        sf_layout.addWidget(sep3)
+
+        self.btn_step_04 = QPushButton("04 Remux")
         self.btn_step_04.setProperty("class", "pipeStepBtn")
+        self.btn_step_04.setCursor(Qt.ArrowCursor)
+        self.btn_step_04.setFocusPolicy(Qt.NoFocus)
         sf_layout.addWidget(self.btn_step_04)
 
         stepper_layout.addWidget(self.stepper_frame, 1)
@@ -191,9 +213,10 @@ class SyncFrameMainWindow(QWidget):
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         body_container = QWidget()
+        body_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         body_layout = QHBoxLayout(body_container)
-        body_layout.setSpacing(16)
-        body_layout.setContentsMargins(20, 10, 20, 20)
+        body_layout.setSpacing(14)
+        body_layout.setContentsMargins(18, 6, 18, 14)
 
         # ----------------------------------------------------------------------
         # LEFT COLUMN (Stack 1: Operational & Decision Gate)

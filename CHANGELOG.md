@@ -31,6 +31,12 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Interface de Linha de Comando (CLI) Headless Completa:**
   - Execução no terminal sem display via flags `--video`, `--dub`, `--output`, `--keep-original`, `--pal-pitch-restore`, `--audio-codec`, `--ignore-cuts`, `--no-audit`.
   - Códigos de saída semânticos: `0` (sucesso auditado), `1` (dependência/erro de sistema), `2` (corte detectado), `3` (baixa confiança/piso de ruído).
+- **Refinamento Ergonômico e Estético da Interface (Responsividade e Player Lip-Sync):**
+  - Resolução definitiva de truncamento vertical no modo janela através de hierarquia de dimensionamento flexível em `QScrollArea`, eliminando cortes no card de Remux e na barra inferior.
+  - Modernização das caixas de contraste e badges de telemetria (`.offsetCallout` e `.metricCallout`): substituição do formato sólido cru por molduras com cantos arredondados (`border-radius: 8px`), borda sutil de 1px e padding proporcional.
+  - Redesenho da seção *03B Lip-Sync Spot Check & Player*: visor de sinal estilizado (`.viewportScreen`), display de timecode monoespacado e botões de marcadores de inspeção (`05%`, `50%`, `90%`) com destaque de estado ativo em Signal verde (`#d9f56b`).
+  - Consolidação do stepper superior em indicador linear de status com separadores discretos, otimizando o aproveitamento vertical de tela.
+  - Implementação de métodos auxiliares `get_telemetry_badge_style()`, `get_player_viewport_style()` e `get_stepper_style()` em `src/ui/style.py`.
 - **Suíte de Testes Expandida:**
   - Inclusão de `tests/test_discontinuity.py` elevando a suíte de testes para 59 testes unitários (100% aprovados).
 

@@ -59,8 +59,11 @@ class SyncControls(QFrame):
         header_layout.addWidget(self.chip_track)
         layout.addLayout(header_layout)
 
-        # Large Monospace Offset Display Area
-        disp_box = QHBoxLayout()
+        # Large Monospace Offset Display Area wrapped in offsetCallout frame
+        offset_callout_frame = QFrame()
+        offset_callout_frame.setProperty("class", "offsetCallout")
+        disp_box = QHBoxLayout(offset_callout_frame)
+        disp_box.setContentsMargins(12, 10, 12, 10)
         disp_box.setSpacing(12)
 
         disp_sub = QVBoxLayout()
@@ -80,7 +83,7 @@ class SyncControls(QFrame):
         self.btn_reset.setProperty("class", "btnSecondary")
         self.btn_reset.clicked.connect(self.reset_to_calculated)
         disp_box.addWidget(self.btn_reset, alignment=Qt.AlignVCenter)
-        layout.addLayout(disp_box)
+        layout.addWidget(offset_callout_frame)
 
         # Interactive Slider with range labels
         slider_box = QVBoxLayout()
@@ -151,9 +154,9 @@ class SyncControls(QFrame):
 
         # Metric: Drift Ratio
         box_drift = QFrame()
-        box_drift.setProperty("class", "subCard")
+        box_drift.setProperty("class", "metricCallout")
         bd_layout = QVBoxLayout(box_drift)
-        bd_layout.setContentsMargins(8, 8, 8, 8)
+        bd_layout.setContentsMargins(10, 8, 10, 8)
         lbl_drift_title = QLabel("DERIVA TEMPORAL")
         lbl_drift_title.setProperty("class", "eyebrowText")
         bd_layout.addWidget(lbl_drift_title)
@@ -164,9 +167,9 @@ class SyncControls(QFrame):
 
         # Metric: Confidence & PSLR
         box_conf = QFrame()
-        box_conf.setProperty("class", "subCard")
+        box_conf.setProperty("class", "metricCallout")
         bc_layout = QVBoxLayout(box_conf)
-        bc_layout.setContentsMargins(8, 8, 8, 8)
+        bc_layout.setContentsMargins(10, 8, 10, 8)
         lbl_conf_title = QLabel("CONFIANCA FFT / PSLR")
         lbl_conf_title.setProperty("class", "eyebrowText")
         bc_layout.addWidget(lbl_conf_title)
