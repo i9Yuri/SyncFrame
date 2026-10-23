@@ -10,6 +10,17 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [1.0.0] - 2026-10-22
 
 ### Primeira Versão Estável (Release Oficial)
+- **Reestruturação Visual da Interface Gráfica — Precision Bench (Media Alignment Workbench):**
+  - Implementação da linguagem estética industrial inspirada no protótipo de bancada de precisão:
+    - Paleta de alta densidade no modo escuro (`#0a0b0d` base, `#111317` painéis, `#282d34` divisórias) com realce no acento Signal verde-limão cirúrgico (`#d9f56b`) e texto de alto contraste (`#15190b`).
+    - Paleta correspondente no modo claro (`#f2f3f1` base, `#fbfcfa` painéis, `#d9ddd7` linhas) com acento chartreuse (`#c1df50`).
+  - Topbar técnica compacta (~54px) com marca "SyncFrame", subtítulo "MEDIA ALIGNMENT WORKBENCH", breadcrumb de sessão, chip de status "LOCAL WORKSPACE", alternador de tema dinâmico e indicador de versão.
+  - Stepper de pipeline segmentado na barra superior ilustrando as 4 fases do processo: 01 Ingestão, 02 Auditoria, 03 Sincronização, 04 Remux.
+  - Distribuição assimétrica em duas colunas responsivas envelopadas em `QScrollArea` com rolagem fluida e sem achatamento de widgets:
+    - Coluna Esquerda (Operacional e Decisório): Ingestão unificada com subcards horizontais em par (vídeo de referência + dublagem), tabela de auditoria (Review Gate) com chips de codecs e ações (`Copy` / `Align`), e card de saída do remux sem perdas com botão primário Signal.
+    - Coluna Direita (Auditoria Acústica e Instrumentação): Auditoria de canais nativos com avisos contextuais, tela de correlação FFT via `QPainter` com pico destacado em Signal, micro-ajuste temporal com grande display monoespacado, slider linear e botões de nudge (±1, ±10, ±50, ±250 ms), e player de validação labial (05%, 50%, 90%).
+  - Gaveta de logs inferior estilo console (`Event log`) com contagem de eventos e formatação alinhada.
+  - Preservação estrita de 100% dos fluxos de backend, chamadas de subprocessos e contratos matemáticos existentes.
 - **Modal de Conclusão Estilizado com Custo Zero de Latência:**
   - Substituição do `QMessageBox.information` nativo pelo componente `CompletionDialog` (`src/ui/components/completion_dialog.py`), integrado à estética neutra monocromática.
   - Glifo discreto em verde utilitário, caixa de texto delimitada em tipografia monospace exibindo o caminho absoluto do arquivo MKV final.

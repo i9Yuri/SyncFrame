@@ -1,10 +1,10 @@
-"""Main application window with responsive layout and unified ingestion."""
+"""Main application window implementing the Precision Bench Media Alignment Workbench."""
 
 import logging
 import os
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -30,7 +30,7 @@ from .components.preview_player import PreviewPlayer
 from .components.sync_controls import SyncControls
 from .components.stream_selector_modal import StreamSelectorModal
 from .components.unified_drop_zone import UnifiedDropZone
-from .style import apply_theme, get_theme_qss
+from .style import apply_workbench_theme, get_theme_stylesheet
 from .workers.analyze_worker import AnalyzeWorker
 from .workers.remux_worker import RemuxWorker
 from .workers.unified_pipeline_worker import UnifiedPipelineWorker
@@ -43,14 +43,19 @@ logger = logging.getLogger(__name__)
 
 class SyncFrameMainWindow(QWidget):
     """
-    Main application window implementing neutral monochrome aesthetics,
-    responsive scrollable layout, unified drop ingestion, and autonomous execution.
+    Main application window implementing the Media Alignment Workbench (Precision Bench):
+    - Topbar técnica compacta (~56px) com indicador LOCAL WORKSPACE e alternador de tema
+    - Stepper de pipeline segmentado (01 Ingestão -> 02 Auditoria -> 03 Sincronização -> 04 Remux)
+    - Grid assimétrico de 2 colunas em QScrollArea fluida:
+      * Coluna Esquerda (Operacional & Decisório): Ingestão, Review Gate, Saída & Execução Remux
+      * Coluna Direita (Auditoria & Instrumentação): Auditoria acústica, Correlação FFT, Alinhamento temporal, Miniplayer
+    - Gaveta retrátil inferior de Event Logs
     """
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SyncFrame — Lossless Audio/Video Synchronizer")
-        self.resize(1180, 840)
+        self.setWindowTitle("SyncFrame — Media Alignment Workbench")
+        self.resize(1280, 840)
         self.setMinimumSize(800, 540)
 
         self.current_theme: str = "dark"
@@ -71,6 +76,9 @@ class SyncFrameMainWindow(QWidget):
         self.setAcceptDrops(True)
         self.init_ui()
 
+    def minimumSizeHint(self) -> QSize:
+        return QSize(800, 540)
+
     @property
     def check_keep_original(self):
         """Forwarding property for backwards-compatibility with existing tests."""
@@ -86,39 +94,96 @@ class SyncFrameMainWindow(QWidget):
         root_layout.setSpacing(0)
         root_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 1. Fixed Clean Header Bar
-        header_widget = QWidget()
-        header_widget.setObjectName("headerBar")
-        header = QHBoxLayout(header_widget)
-        header.setContentsMargins(20, 14, 20, 14)
+        # ======================================================================
+        # 1. Fixed Technical Topbar
+        # ======================================================================
+        self.topbar = QWidget()
+        self.topbar.setObjectName("workbenchTopbar")
+        tb_layout = QHBoxLayout(self.topbar)
+        tb_layout.setContentsMargins(20, 10, 20, 10)
+        tb_layout.setSpacing(14)
 
-        header_text_box = QVBoxLayout()
-        header_text_box.setSpacing(2)
+        # Brand mark & Title
+        brand_box = QHBoxLayout()
+        brand_box.setSpacing(10)
 
-        title = QLabel("SyncFrame")
-        title.setStyleSheet("font-size: 20px; font-weight: 800; letter-spacing: -0.5px;")
-        header_text_box.addWidget(title)
+        brand_texts = QVBoxLayout()
+        brand_texts.setSpacing(1)
+        self.lbl_brand_title = QLabel("SyncFrame")
+        self.lbl_brand_title.setObjectName("brandTitle")
+        brand_texts.addWidget(self.lbl_brand_title)
 
-        subtitle = QLabel("Automação de Sincronia Acústica por FFT & Lossless Remux de Alta Fidelidade")
-        subtitle.setProperty("class", "subText")
-        header_text_box.addWidget(subtitle)
-        header.addLayout(header_text_box)
+        self.lbl_brand_sub = QLabel("MEDIA ALIGNMENT WORKBENCH")
+        self.lbl_brand_sub.setObjectName("brandSubtitle")
+        brand_texts.addWidget(self.lbl_brand_sub)
+        brand_box.addLayout(brand_texts)
 
-        header.addStretch()
+        self.lbl_crumb = QLabel("Workspace / <strong>Session 01</strong>")
+        self.lbl_crumb.setObjectName("topCrumb")
+        brand_box.addWidget(self.lbl_crumb)
+        tb_layout.addLayout(brand_box)
+
+        tb_layout.addStretch()
+
+        # Right actions: Local workspace chip, theme switcher
+        self.chip_workspace = QLabel("● LOCAL WORKSPACE")
+        self.chip_workspace.setProperty("class", "systemChip")
+        tb_layout.addWidget(self.chip_workspace)
 
         self.btn_theme = QPushButton("Modo Claro")
         self.btn_theme.setProperty("class", "btnSecondary")
-        self.btn_theme.setToolTip("Alternar entre modo Escuro e Claro Neutro")
+        self.btn_theme.setToolTip("Alternar entre Dark e Light Mode")
         self.btn_theme.clicked.connect(self._toggle_theme)
-        header.addWidget(self.btn_theme)
+        tb_layout.addWidget(self.btn_theme)
 
         badge_v = QLabel("v1.0.0")
         badge_v.setProperty("class", "badgeNeutral")
-        header.addWidget(badge_v)
+        tb_layout.addWidget(badge_v)
 
-        root_layout.addWidget(header_widget)
+        root_layout.addWidget(self.topbar)
 
-        # 2. Scroll Area for Responsive Windowed Operation
+        # ======================================================================
+        # 2. Pipeline Stepper Bar
+        # ======================================================================
+        stepper_container = QWidget()
+        stepper_layout = QHBoxLayout(stepper_container)
+        stepper_layout.setContentsMargins(20, 10, 20, 6)
+        stepper_layout.setSpacing(8)
+
+        self.stepper_frame = QFrame()
+        self.stepper_frame.setObjectName("pipelineStepperFrame")
+        sf_layout = QHBoxLayout(self.stepper_frame)
+        sf_layout.setContentsMargins(4, 4, 4, 4)
+        sf_layout.setSpacing(4)
+
+        self.btn_step_01 = QPushButton("01  Ingestão")
+        self.btn_step_01.setProperty("class", "pipeStepBtn")
+        self.btn_step_01.setProperty("active", "true")
+        sf_layout.addWidget(self.btn_step_01)
+
+        self.btn_step_02 = QPushButton("02  Auditoria")
+        self.btn_step_02.setProperty("class", "pipeStepBtn")
+        sf_layout.addWidget(self.btn_step_02)
+
+        self.btn_step_03 = QPushButton("03  Sincronização")
+        self.btn_step_03.setProperty("class", "pipeStepBtn")
+        sf_layout.addWidget(self.btn_step_03)
+
+        self.btn_step_04 = QPushButton("04  Remux")
+        self.btn_step_04.setProperty("class", "pipeStepBtn")
+        sf_layout.addWidget(self.btn_step_04)
+
+        stepper_layout.addWidget(self.stepper_frame, 1)
+
+        self.lbl_stepper_info = QLabel("Atalho de aprovação: ENTER")
+        self.lbl_stepper_info.setProperty("class", "subText")
+        stepper_layout.addWidget(self.lbl_stepper_info)
+
+        root_layout.addWidget(stepper_container)
+
+        # ======================================================================
+        # 3. Responsive Scroll Area for Central Workbench Layout
+        # ======================================================================
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
@@ -126,66 +191,54 @@ class SyncFrameMainWindow(QWidget):
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         body_container = QWidget()
-        body_layout = QVBoxLayout(body_container)
-        body_layout.setSpacing(14)
-        body_layout.setContentsMargins(20, 8, 20, 20)
+        body_layout = QHBoxLayout(body_container)
+        body_layout.setSpacing(16)
+        body_layout.setContentsMargins(20, 10, 20, 20)
 
-        # 3. Unified Drop Zone & Review Gate
+        # ----------------------------------------------------------------------
+        # LEFT COLUMN (Stack 1: Operational & Decision Gate)
+        # ----------------------------------------------------------------------
+        col_left = QVBoxLayout()
+        col_left.setSpacing(16)
+
+        # Card 01 & 02: Unified Drop Zone & Review Gate
         self.drop_zone = UnifiedDropZone()
         self.drop_zone.files_ready.connect(self._on_files_ready)
         self.drop_zone.confirmation_confirmed.connect(self._on_confirmation_confirmed)
         self.drop_zone.reset_requested.connect(self._on_reset_requested)
-        body_layout.addWidget(self.drop_zone)
+        col_left.addWidget(self.drop_zone)
 
-        # 4. Retractable Drawer: Advanced Controls & Lip-Sync Inspection (CollapsibleSection)
-        self.advanced_drawer = CollapsibleSection("Ajustes Avançados e Inspeção Labial", self)
+        # Card 04: Lossless Remux (Saída e Execução)
+        self.card_remux_exec = QFrame()
+        self.card_remux_exec.setObjectName("panelCardRemux")
+        self.card_remux_exec.setProperty("class", "panelCard")
+        cre_layout = QVBoxLayout(self.card_remux_exec)
+        cre_layout.setContentsMargins(18, 16, 18, 16)
+        cre_layout.setSpacing(12)
 
-        # Drawer Content: Waveform + Controls + Miniplayer
-        drawer_content_layout = QVBoxLayout()
-        drawer_content_layout.setSpacing(10)
+        cre_head = QHBoxLayout()
+        cre_head.setSpacing(8)
+        idx_c04 = QLabel("04")
+        idx_c04.setProperty("class", "sectionIndex")
+        cre_head.addWidget(idx_c04)
+        cre_title = QLabel("Lossless Remux (Saída & Execução)")
+        cre_title.setProperty("class", "cardTitle")
+        cre_head.addWidget(cre_title)
+        cre_head.addStretch()
+        badge_passthrough = QLabel("ZERO RE-ENCODE")
+        badge_passthrough.setProperty("class", "badgeGreen")
+        cre_head.addWidget(badge_passthrough)
+        cre_layout.addLayout(cre_head)
 
-        mid_layout = QHBoxLayout()
-        mid_layout.setSpacing(12)
+        # Destination Path selector
+        path_box = QVBoxLayout()
+        path_box.setSpacing(6)
+        lbl_dest_desc = QLabel("ARQUIVO DE SAIDA (DESTINO)")
+        lbl_dest_desc.setProperty("class", "eyebrowText")
+        path_box.addWidget(lbl_dest_desc)
 
-        # Left: Correlation Canvas
-        self.correlation_view = CorrelationView()
-        mid_layout.addWidget(self.correlation_view, 1)
-
-        # Right: Sync Controls & Fine-Tuning Steps
-        self.sync_controls = SyncControls()
-        self.sync_controls.offset_changed.connect(self._on_manual_offset_changed)
-        mid_layout.addWidget(self.sync_controls, 1)
-
-        drawer_content_layout.addLayout(mid_layout)
-
-        # Miniplayer for spot-check preview
-        self.preview_player = PreviewPlayer()
-        drawer_content_layout.addWidget(self.preview_player)
-
-        self.advanced_drawer.add_layout(drawer_content_layout)
-        body_layout.addWidget(self.advanced_drawer)
-
-        # 5. Destination & Execution Status Card
-        dest_card = QFrame()
-        dest_card.setObjectName("bentoCard")
-        dest_card.setProperty("class", "bentoCard")
-        dest_layout = QVBoxLayout(dest_card)
-        dest_layout.setSpacing(10)
-        dest_layout.setContentsMargins(16, 14, 16, 14)
-
-        dest_header = QHBoxLayout()
-        dest_title = QLabel("Destino & Conclusão do Processamento")
-        dest_title.setProperty("class", "cardTitle")
-        dest_header.addWidget(dest_title)
-        dest_header.addStretch()
-        dest_layout.addLayout(dest_header)
-
-        # Output Path selector
         path_row = QHBoxLayout()
-        path_lbl = QLabel("Arquivo de Saída:")
-        path_lbl.setStyleSheet("color: #b0b0b0; font-weight: 600;")
-        path_row.addWidget(path_lbl)
-
+        path_row.setSpacing(8)
         self.txt_output_path = QLineEdit()
         self.txt_output_path.setPlaceholderText("Defina o caminho de destino do arquivo MKV sincronizado...")
         path_row.addWidget(self.txt_output_path, 1)
@@ -194,12 +247,14 @@ class SyncFrameMainWindow(QWidget):
         btn_browse_dest.setProperty("class", "btnSecondary")
         btn_browse_dest.clicked.connect(self._browse_destination)
         path_row.addWidget(btn_browse_dest)
+        path_box.addLayout(path_row)
+        cre_layout.addLayout(path_box)
 
-        dest_layout.addLayout(path_row)
-
-        # Progress Bar and Contextual Cancel Button
+        # Progress bar & Cancel action
+        prog_box = QVBoxLayout()
+        prog_box.setSpacing(6)
         action_row = QHBoxLayout()
-        action_row.setSpacing(12)
+        action_row.setSpacing(10)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
@@ -207,29 +262,98 @@ class SyncFrameMainWindow(QWidget):
         self.progress_bar.setTextVisible(True)
         action_row.addWidget(self.progress_bar, 1)
 
-        self.btn_cancel = QPushButton("Cancelar Operação")
+        self.btn_cancel = QPushButton("Cancelar")
         self.btn_cancel.setProperty("class", "btnDanger")
         self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self.cancel_active_operation)
         action_row.addWidget(self.btn_cancel)
-
-        dest_layout.addLayout(action_row)
+        prog_box.addLayout(action_row)
 
         self.lbl_progress_status = QLabel("Pronto para operação.")
         self.lbl_progress_status.setProperty("class", "subText")
-        dest_layout.addWidget(self.lbl_progress_status)
+        prog_box.addWidget(self.lbl_progress_status)
+        cre_layout.addLayout(prog_box)
 
-        body_layout.addWidget(dest_card)
+        col_left.addWidget(self.card_remux_exec)
+        body_layout.addLayout(col_left, 6)
 
-        # 6. Retractable Terminal Logs Drawer
-        self.log_drawer = LogDrawer()
-        body_layout.addWidget(self.log_drawer)
+        # ----------------------------------------------------------------------
+        # RIGHT COLUMN (Stack 2: Acoustic Audit & Instrumentation)
+        # ----------------------------------------------------------------------
+        col_right = QVBoxLayout()
+        col_right.setSpacing(16)
+
+        # Card 03: Acoustic Audit (FFT & Drift Diagnosis)
+        card_acoustic = QFrame()
+        card_acoustic.setProperty("class", "panelCard")
+        ca_layout = QVBoxLayout(card_acoustic)
+        ca_layout.setContentsMargins(18, 16, 18, 16)
+        ca_layout.setSpacing(12)
+
+        ca_head = QHBoxLayout()
+        ca_head.setSpacing(8)
+        idx_c03 = QLabel("03")
+        idx_c03.setProperty("class", "sectionIndex")
+        ca_head.addWidget(idx_c03)
+        ca_title = QLabel("Acoustic Audit & Correlação FFT")
+        ca_title.setProperty("class", "cardTitle")
+        ca_head.addWidget(ca_title)
+        ca_head.addStretch()
+        chip_fft = QLabel("FFT READY")
+        chip_fft.setProperty("class", "badgeSignal")
+        ca_head.addWidget(chip_fft)
+        ca_layout.addLayout(ca_head)
+
+        # Correlation view canvas (Hardware-accelerated QPainter)
+        self.correlation_view = CorrelationView()
+        ca_layout.addWidget(self.correlation_view)
+
+        col_right.addWidget(card_acoustic)
+
+        # Card 03A: Temporal Alignment (Micro-ajuste & métricas)
+        self.sync_controls = SyncControls()
+        self.sync_controls.offset_changed.connect(self._on_manual_offset_changed)
+        col_right.addWidget(self.sync_controls)
+
+        # Card 03B: Lip-sync Spot Check (Preview Player)
+        self.preview_player = PreviewPlayer()
+        col_right.addWidget(self.preview_player)
+
+        # Retractable wrapper for secondary inspection if needed
+        self.advanced_drawer = CollapsibleSection("Gaveta de Instrumentação Avançada", self)
+        self.advanced_drawer.setVisible(False)  # Hidden since widgets are now organized in 2-column workbench
+        col_right.addWidget(self.advanced_drawer)
+
+        body_layout.addLayout(col_right, 5)
 
         self.scroll_area.setWidget(body_container)
-        root_layout.addWidget(self.scroll_area)
+        root_layout.addWidget(self.scroll_area, 1)
+
+        # ======================================================================
+        # 4. Fixed Base Event Log Drawer
+        # ======================================================================
+        self.log_drawer = LogDrawer()
+        root_layout.addWidget(self.log_drawer)
+
+        # Set default dark theme
+        apply_workbench_theme(self, "dark")
+
+    def _set_stepper_active(self, step_idx: int):
+        btns = [self.btn_step_01, self.btn_step_02, self.btn_step_03, self.btn_step_04]
+        for i, b in enumerate(btns):
+            if i < step_idx:
+                b.setProperty("done", "true")
+                b.setProperty("active", "false")
+            elif i == step_idx:
+                b.setProperty("active", "true")
+                b.setProperty("done", "false")
+            else:
+                b.setProperty("active", "false")
+                b.setProperty("done", "false")
+            b.setStyle(b.style())
 
     def _toggle_theme(self):
-        """Toggles between neutral dark and neutral light theme."""
+        """Toggles between neutral dark and neutral light workbench theme."""
         if self.current_theme == "dark":
             self.current_theme = "light"
             self.btn_theme.setText("Modo Escuro")
@@ -237,9 +361,10 @@ class SyncFrameMainWindow(QWidget):
             self.current_theme = "dark"
             self.btn_theme.setText("Modo Claro")
 
+        self.correlation_view.set_theme_mode(self.current_theme)
         app = QApplication.instance()
         target = app if app else self
-        apply_theme(target, self.current_theme)
+        apply_workbench_theme(target, self.current_theme)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -252,230 +377,160 @@ class SyncFrameMainWindow(QWidget):
             self.drop_zone.ingest_files(valid)
 
     def _on_files_ready(self, file_a: str, file_b: str):
-        """Triggers heuristic evaluation when two files are loaded in UnifiedDropZone."""
-        self.log_drawer.append_log(
-            f"[AUTO-MATCH] Inspecionando fontes e avaliando heurística determinística:\n"
-            f"  Fonte A: {os.path.basename(file_a)}\n  Fonte B: {os.path.basename(file_b)}"
+        self.log_drawer.append_log(f"Fontes recebidas: {os.path.basename(file_a)}, {os.path.basename(file_b)}")
+        self._set_stepper_active(1)
+
+        # Inspect both files
+        insp_a = inspect_media(file_a)
+        insp_b = inspect_media(file_b)
+
+        verdict = evaluate_media_streams(insp_a, insp_b)
+        self.drop_zone.set_verdict(verdict)
+
+        default_out = os.path.join(
+            os.path.dirname(verdict.recommended_video.file_path),
+            f"{os.path.splitext(os.path.basename(verdict.recommended_video.file_path))[0]}.SYNCED.mkv"
         )
-        try:
-            verdict = evaluate_media_streams(file_a, file_b)
-            self.drop_zone.set_verdict(verdict)
-            tgt_name = os.path.basename(verdict.recommended_target_audio.file_path) if verdict.recommended_target_audio else "N/A"
-            self.log_drawer.append_log(
-                f"[AUTO-MATCH] Heurística concluída:\n"
-                f"  Vídeo recomendado: '{os.path.basename(verdict.recommended_video.file_path)}'\n"
-                f"  Dublagem alvo: '{tgt_name}'"
-            )
-        except Exception as exc:
-            logger.error("Auto match evaluation failed: %s", exc)
-            QMessageBox.critical(
-                self,
-                "Falha na Avaliação Heurística",
-                f"Ocorreu um erro ao inspecionar as fontes:\n\n{exc}"
-            )
-            self.drop_zone.reset()
+        self.txt_output_path.setText(default_out)
 
     def _on_confirmation_confirmed(
         self,
         chosen_video: StreamCandidate,
-        chosen_target: StreamCandidate,
-        chosen_ref: Optional[StreamCandidate],
-        keep_orig: bool
+        chosen_target_audio: StreamCandidate,
+        chosen_ref_audio: Optional[StreamCandidate],
+        keep_original_audio: bool
     ):
-        """Handles 1-click confirmation from UnifiedDropZone's Review Gate."""
-        if not chosen_video or not chosen_target:
-            QMessageBox.warning(self, "Seleção Incompleta", "É necessário selecionar tanto o vídeo quanto o áudio dublado.")
-            return
-
+        self._set_stepper_active(2)
         self.video_path = chosen_video.file_path
-        self.audio_path = chosen_target.file_path
+        self.audio_path = chosen_target_audio.file_path
         self.selected_video_track_id = chosen_video.stream.id
-        self.selected_ref_audio_id = chosen_ref.stream.id if chosen_ref else 0
-        self.selected_target_audio_id = chosen_target.stream.id
-        self.total_duration_sec = (chosen_video.stream.duration_ms / 1000.0) if chosen_video.stream.duration_ms > 0 else 7200.0
+        self.selected_target_audio_id = chosen_target_audio.stream.id
 
-        self.check_keep_original.setChecked(keep_orig)
+        if chosen_ref_audio:
+            self.selected_ref_audio_id = chosen_ref_audio.stream.id
+        else:
+            self.selected_ref_audio_id = 1
 
-        # Auto suggest output path
-        base, _ = os.path.splitext(self.video_path)
-        self.txt_output_path.setText(f"{base}_synced.mkv")
-
-        self._update_preview_sources()
-
-        fmt_v = chosen_video.stream.container_format.upper() if chosen_video.stream.container_format else "MKV"
-        fmt_a = chosen_target.stream.container_format.upper() if chosen_target.stream.container_format else "MKV"
-        layout_name = format_channel_layout_label(chosen_target.stream.channels, chosen_target.stream.channel_layout)
-
-        self.log_drawer.append_log(
-            f"[CONFIRMADO] Vídeo #{self.selected_video_track_id} ({os.path.basename(self.video_path)} [{fmt_v}]) | "
-            f"Dublagem #{self.selected_target_audio_id} ({os.path.basename(self.audio_path)} [{fmt_a}]: {layout_name}, {chosen_target.stream.codec.upper()}) | "
-            f"Ref #{self.selected_ref_audio_id}"
+        self.total_duration_sec = (chosen_video.stream.duration_ms or 60000.0) / 1000.0
+        self.preview_player.set_media_sources(
+            self.video_path,
+            self.audio_path,
+            self.total_duration_sec,
+            0.0
         )
 
-        # Deflagra sequencialmente e sem novas intervenções a extração, FFT e remux
+        # Set default output path if not yet populated
+        if not self.txt_output_path.text().strip():
+            base_dir = os.path.dirname(self.video_path) or "."
+            base_name = os.path.splitext(os.path.basename(self.video_path))[0]
+            self.txt_output_path.setText(os.path.join(base_dir, f"{base_name}_synced.mkv"))
+
         self.auto_chain_remux = True
         self.start_analysis()
 
     def _on_reset_requested(self):
-        """Resets all media and analysis state when files are cleared."""
+        self._set_stepper_active(0)
         self.video_path = None
         self.audio_path = None
-        self.selected_video_track_id = 0
-        self.selected_ref_audio_id = 1
-        self.selected_target_audio_id = 0
-        self.total_duration_sec = 0.0
         self.latest_metrics = None
-        self.manual_offset_override = None
-        self.txt_output_path.clear()
         self.correlation_view.clear()
         self.sync_controls.reset()
-        self.preview_player.reset()
-        self.lbl_progress_status.setText("Pronto para operação.")
+        self.preview_player.set_media_sources(None, None, 0.0, 0.0)
+        self.txt_output_path.clear()
         self.progress_bar.setValue(0)
-        self.log_drawer.append_log("[RESET] Fontes e parâmetros resetados.")
+        self.lbl_progress_status.setText("Pronto para operação.")
+        self.btn_cancel.setEnabled(False)
+
+    def _browse_destination(self):
+        f, _ = QFileDialog.getSaveFileName(
+            self,
+            "Salvar Vídeo Sincronizado",
+            self.txt_output_path.text() or "output_synced.mkv",
+            "Matroska Video (*.mkv)"
+        )
+        if f:
+            self.txt_output_path.setText(f)
+
+    def start_analysis(self):
+        if not self.video_path or not self.audio_path:
+            return
+
+        out_path = self.txt_output_path.text().strip()
+        if not out_path:
+            QMessageBox.warning(self, "Aviso", "Por favor, defina o arquivo de saída.")
+            return
+
+        ok, msg = check_disk_space(os.path.dirname(out_path) or ".", 2 * 1024 * 1024 * 1024)
+        if not ok:
+            QMessageBox.critical(self, "Espaço Insuficiente", msg)
+            return
+
+        keep_orig = self.drop_zone.check_keep_original.isChecked()
+        job = RemuxJob(
+            output_path=out_path,
+            video_file=self.video_path,
+            target_audio_file=self.audio_path,
+            offset_ms=0.0,
+            stretch_ratio=1.0,
+            video_track_id=self.selected_video_track_id,
+            target_audio_track_id=self.selected_target_audio_id,
+            ref_audio_track_id=self.selected_ref_audio_id,
+            keep_original_audio=keep_orig
+        )
+
+        self.btn_cancel.setEnabled(True)
+        self.lbl_progress_status.setText("Iniciando esteira unificada de processamento...")
+        self.progress_bar.setValue(5)
+        self.log_drawer.append_log("Disparando UnifiedPipelineWorker...")
+
+        self.pipeline_worker = UnifiedPipelineWorker(
+            job,
+            manual_offset_override=self.manual_offset_override,
+            parent=self
+        )
+        self.pipeline_worker.progress.connect(self._on_worker_progress)
+        self.pipeline_worker.log_message.connect(self.log_drawer.append_log)
+        self.pipeline_worker.metrics_ready.connect(self._on_metrics_ready)
+        self.pipeline_worker.completed.connect(self._on_pipeline_completed)
+        self.pipeline_worker.start()
 
     def _on_manual_offset_changed(self, offset_ms: float):
         self.manual_offset_override = offset_ms
         self.preview_player.update_offset(offset_ms)
-        if self.latest_metrics:
-            self.correlation_view.set_data(
-                self.latest_metrics.correlation_curve,
-                offset_ms,
-                self.latest_metrics.confidence_score,
-                f"Offset Ajustado: {offset_ms:+.1f} ms"
-            )
 
-    def _update_preview_sources(self):
-        offset = self.sync_controls.get_offset_ms()
-        self.preview_player.set_media_sources(
-            video_path=self.video_path,
-            audio_path=self.audio_path,
-            duration_sec=self.total_duration_sec,
-            offset_ms=offset
-        )
-
-    def _browse_destination(self):
-        current = self.txt_output_path.text() or os.path.expanduser("~")
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Definir Arquivo de Saída MKV",
-            current,
-            "Matroska Video (*.mkv)"
-        )
-        if path:
-            if not path.endswith(".mkv"):
-                path += ".mkv"
-            self.txt_output_path.setText(path)
-
-    def start_analysis(self):
-        """Starts the unified execution pipeline (backwards-compatible with tests)."""
-        self.start_unified_pipeline()
-
-    def start_remux(self):
-        """Starts the unified execution pipeline (backwards-compatible with tests)."""
-        self.start_unified_pipeline()
-
-    def start_unified_pipeline(self):
-        """Orchestrates single-action extraction, FFT cross-correlation, and lossless remuxing."""
-        if not self.video_path or not self.audio_path:
-            QMessageBox.warning(self, "Fontes Incompletas", "Carregue os arquivos de vídeo e áudio dublado antes de sincronizar.")
-            return
-
-        output_path = self.txt_output_path.text().strip()
-        if not output_path:
-            QMessageBox.warning(self, "Destino Ausente", "Defina o caminho do arquivo MKV de saída.")
-            return
-
-        # Pre-flight disk space check
-        has_space, free_b, req_b = check_disk_space(output_path, self.video_path, self.audio_path)
-        if not has_space:
-            QMessageBox.critical(
-                self,
-                "Espaço em Disco Insuficiente",
-                f"Espaço livre insuficiente na partição de destino!\n\n"
-                f"Disponível: {format_bytes(free_b)}\n"
-                f"Estimado necessário: {format_bytes(req_b)}\n\n"
-                f"Libere espaço ou selecione outra partição."
-            )
-            return
-
-        offset_ms = self.sync_controls.get_offset_ms()
-        stretch_ratio = self.latest_metrics.time_stretch_ratio if self.latest_metrics else 1.0
-
-        job = RemuxJob(
-            output_path=output_path,
-            video_file=self.video_path,
-            target_audio_file=self.audio_path,
-            offset_ms=offset_ms,
-            stretch_ratio=stretch_ratio,
-            keep_original_audio=self.check_keep_original.isChecked(),
-            target_track_id=self.selected_target_audio_id,
-            ref_audio_track_id=self.selected_ref_audio_id,
-            video_track_id=self.selected_video_track_id
-        )
-
-        self.btn_remux.setEnabled(False)
-        self.btn_cancel.setEnabled(True)
-        self.progress_bar.setValue(0)
-        self.lbl_progress_status.setText("Iniciando esteira unificada de sincronização e remux...")
-        self.log_drawer.append_log("[PIPELINE] Esteira unificada deflagrada: extração, correlação acústica e lossless remux...")
-
-        self.pipeline_worker = UnifiedPipelineWorker(job, manual_offset_override=self.manual_offset_override)
-        self.pipeline_worker.progress.connect(self._on_worker_progress)
-        self.pipeline_worker.metrics_ready.connect(self._on_metrics_ready)
-        self.pipeline_worker.completed.connect(self._on_pipeline_completed)
-        self.pipeline_worker.error.connect(self._on_worker_error)
-        self.pipeline_worker.start()
+    def _on_worker_progress(self, pct: int, status_str: str):
+        self.progress_bar.setValue(pct)
+        self.lbl_progress_status.setText(status_str)
 
     def _on_metrics_ready(self, metrics: SyncMetrics):
         self.latest_metrics = metrics
         self.sync_controls.set_metrics(metrics)
+        self.preview_player.update_offset(metrics.static_offset_ms)
         self.correlation_view.set_data(
-            metrics.correlation_curve,
+            metrics.correlation_points,
             metrics.static_offset_ms,
             metrics.confidence_score
         )
-        self.preview_player.update_offset(metrics.static_offset_ms)
-        self.log_drawer.append_log(
-            f"[ACÚSTICA] FFT concluída: Offset {metrics.static_offset_ms:+.1f} ms | "
-            f"Drift: {metrics.drift_ratio:.6f}x | Confiança: {metrics.confidence_score*100:.1f}%"
-        )
-
-    def _on_worker_progress(self, pct: float, log_line: str):
-        if pct >= 0:
-            self.progress_bar.setValue(int(pct))
-        self.lbl_progress_status.setText(log_line)
-        self.log_drawer.append_log(log_line)
 
     def _on_pipeline_completed(self, success: bool, msg: str):
-        self.btn_remux.setEnabled(True)
         self.btn_cancel.setEnabled(False)
+        self.progress_bar.setValue(100 if success else 0)
+        self.lbl_progress_status.setText(msg)
 
         if success:
-            self.progress_bar.setValue(100)
-            self.lbl_progress_status.setText("Sincronização e remux finalizados com sucesso!")
-            self.log_drawer.append_log(f"[SUCESSO] {msg}")
-            out_file = self.txt_output_path.text().strip()
-            show_completion_modal(self, out_file)
+            self._set_stepper_active(3)
+            self.log_drawer.append_log(f"Concluído com êxito: {self.txt_output_path.text()}")
+            show_completion_modal(self, self.txt_output_path.text().strip())
         else:
-            self.lbl_progress_status.setText(msg)
-            self.log_drawer.append_log(f"[INTERROMPIDO] {msg}")
-
-    def _on_worker_error(self, err_msg: str):
-        self.btn_remux.setEnabled(True)
-        self.btn_cancel.setEnabled(False)
-        self.lbl_progress_status.setText(f"Erro: {err_msg}")
-        self.log_drawer.append_log(f"[ERRO CRÍTICO] {err_msg}")
-        QMessageBox.critical(self, "Falha na Operação", f"Ocorreu um erro no pipeline:\n\n{err_msg}")
+            self.log_drawer.append_log(f"Falha na operação: {msg}")
+            QMessageBox.critical(self, "Erro no Remux", msg)
 
     def cancel_active_operation(self):
         if self.pipeline_worker and self.pipeline_worker.isRunning():
+            self.lbl_progress_status.setText("Cancelando esteira...")
             self.pipeline_worker.cancel()
-            self.lbl_progress_status.setText("Cancelando operação e finalizando subprocessos...")
         if self.analyze_worker and self.analyze_worker.isRunning():
             self.analyze_worker.cancel()
-            self.lbl_progress_status.setText("Cancelando análise...")
         if self.remux_worker and self.remux_worker.isRunning():
             self.remux_worker.cancel()
-            self.lbl_progress_status.setText("Cancelando remux e finalizando subprocessos...")
         self.btn_cancel.setEnabled(False)

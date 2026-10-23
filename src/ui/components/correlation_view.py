@@ -10,18 +10,26 @@ from PySide6.QtWidgets import QFrame, QWidget
 class CorrelationView(QFrame):
     """
     Renders the cross-correlation energy curve and alignment peak using hardware-accelerated QPainter.
-    Adheres to the neutral monochrome palette (grays, whites, and utilitarian status indicators).
+    Adheres strictly to the Precision Bench workbench design system:
+    - Neutral grid lines and scale indicators
+    - Crisp high-contrast signal trace
+    - Main peak highlighted in Signal Accent (#d9f56b / #c1df50)
     """
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setMinimumHeight(140)
+        self.setMinimumHeight(155)
         self.setObjectName("bentoCard")
         self.setProperty("class", "bentoCard")
         self.curve_points: List[float] = []
         self.peak_offset_ms: float = 0.0
         self.confidence: float = 0.0
         self.status_text: str = "Aguardando execução da correlação espectral"
+        self.is_light_mode: bool = False
+
+    def set_theme_mode(self, mode: str):
+        self.is_light_mode = (mode == "light")
+        self.update()
 
     def set_data(self, points: List[float], offset_ms: float, confidence: float, status: str = ""):
         self.curve_points = points
@@ -44,39 +52,57 @@ class CorrelationView(QFrame):
 
         w = self.width()
         h = self.height()
-        margin_x = 20
-        margin_y = 25
+        margin_x = 24
+        margin_y = 28
         plot_w = w - (2 * margin_x)
         plot_h = h - (2 * margin_y)
 
-        # Draw background grid lines
-        grid_pen = QPen(QColor("#2a2a2a"))
+        # Dynamic palette according to theme
+        if self.is_light_mode:
+            grid_color = QColor("#d9ddd7")
+            center_color = QColor("#b9c0b7")
+            curve_color = QColor("#191c1a")
+            signal_color = QColor("#c1df50")
+            signal_fill = QColor(193, 223, 80, 24)
+            text_color = QColor("#737c73")
+            header_color = QColor("#191c1a")
+        else:
+            grid_color = QColor("#282d34")
+            center_color = QColor("#3b424c")
+            curve_color = QColor("#eef0f2")
+            signal_color = QColor("#d9f56b")
+            signal_fill = QColor(217, 245, 107, 22)
+            text_color = QColor("#7e8792")
+            header_color = QColor("#eef0f2")
+
+        # Draw background grid lines (horizontal)
+        grid_pen = QPen(grid_color)
         grid_pen.setWidth(1)
-        grid_pen.setStyle(Qt.DashLine)
+        grid_pen.setStyle(Qt.DotLine)
         painter.setPen(grid_pen)
 
-        # 3 horizontal grid lines
         for frac in (0.25, 0.5, 0.75):
             y_pos = int(margin_y + frac * plot_h)
             painter.drawLine(margin_x, y_pos, w - margin_x, y_pos)
 
-        # Central alignment line
+        # Vertical time scale division lines
+        for frac in (0.166, 0.333, 0.5, 0.666, 0.833):
+            x_pos = int(margin_x + frac * plot_w)
+            painter.drawLine(x_pos, margin_y, x_pos, h - margin_y)
+
+        # Central alignment line (0ms baseline)
         center_x = int(margin_x + (plot_w / 2.0))
-        center_pen = QPen(QColor("#3d3d3d"))
+        center_pen = QPen(center_color)
         center_pen.setWidth(1)
         painter.setPen(center_pen)
         painter.drawLine(center_x, margin_y, center_x, h - margin_y)
 
         if not self.curve_points or len(self.curve_points) < 2:
-            # Render placeholder text
-            painter.setPen(QColor("#737373"))
-            font = QFont("Inter", 11)
+            # Render placeholder state
+            painter.setPen(text_color)
+            font = QFont("SFMono-Regular", 10)
             painter.setFont(font)
-            painter.drawText(
-                self.rect(),
-                Qt.AlignCenter,
-                self.status_text
-            )
+            painter.drawText(self.rect(), Qt.AlignCenter, self.status_text)
             return
 
         # Normalize points to plot height
@@ -103,27 +129,35 @@ class CorrelationView(QFrame):
                 highest_y = y
                 peak_idx = i
 
-        # Draw energy curve in high-contrast neutral light
-        curve_pen = QPen(QColor("#e5e5e5"))
+        # Fill under curve
+        fill_path = QPainterPath(path)
+        fill_path.lineTo(margin_x + plot_w, margin_y + plot_h)
+        fill_path.lineTo(margin_x, margin_y + plot_h)
+        fill_path.closeSubpath()
+        painter.fillPath(fill_path, signal_fill)
+
+        # Draw energy curve
+        curve_pen = QPen(curve_color)
         curve_pen.setWidth(2)
         painter.setPen(curve_pen)
         painter.drawPath(path)
 
-        # Highlight peak with green/amber utilitarian marker
+        # Highlight peak with signal accent line
         peak_x = margin_x + (peak_idx / float(n_points - 1)) * plot_w
-        peak_color = QColor("#22c55e") if self.confidence >= 0.35 else QColor("#f59e0b")
-        peak_pen = QPen(peak_color)
+        peak_pen = QPen(signal_color)
         peak_pen.setWidth(2)
+        peak_pen.setStyle(Qt.DashLine)
         painter.setPen(peak_pen)
         painter.drawLine(int(peak_x), margin_y, int(peak_x), h - margin_y)
 
-        # Draw circle on peak
-        painter.setBrush(peak_color)
+        # Peak indicator dot
+        painter.setBrush(signal_color)
+        painter.setPen(Qt.NoPen)
         painter.drawEllipse(QPointF(peak_x, highest_y), 4.5, 4.5)
 
-        # Render status banner at top
-        painter.setPen(QColor("#ffffff"))
-        font = QFont("JetBrains Mono", 10)
+        # Telemetry Header Text
+        painter.setPen(header_color)
+        font = QFont("SFMono-Regular", 10)
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(margin_x, margin_y - 8, self.status_text)
+        painter.drawText(margin_x, margin_y - 10, self.status_text)

@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 class PreviewPlayer(QFrame):
     """
-    Mini inspection preview runner that launches a spot-check player at 5%, 50%, or 90%
-    timestamps with the calculated/adjusted audio delay applied in real-time.
+    Mini inspection preview runner styled as a technical monitor with timecode overlay
+    and fast marker selector buttons (05% Opening, 50% Midpoint, 90% Final Act).
     """
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -42,16 +42,27 @@ class PreviewPlayer(QFrame):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+        layout.setContentsMargins(18, 16, 18, 16)
 
+        # Header with Title and Section Index
         header = QHBoxLayout()
-        title = QLabel("Player de Inspeção & Validação Labial")
+        header.setSpacing(8)
+
+        idx_badge = QLabel("03B")
+        idx_badge.setProperty("class", "sectionIndex")
+        header.addWidget(idx_badge)
+
+        title = QLabel("Lip-Sync Spot Check & Player")
         title.setProperty("class", "cardTitle")
         header.addWidget(title)
         header.addStretch()
 
-        self.btn_stop = QPushButton("Parar Reprodução")
+        badge_backend = QLabel("MPV BACKEND")
+        badge_backend.setProperty("class", "badgeNeutral")
+        header.addWidget(badge_backend)
+
+        self.btn_stop = QPushButton("Parar")
         self.btn_stop.setProperty("class", "btnDanger")
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_preview)
@@ -59,38 +70,57 @@ class PreviewPlayer(QFrame):
 
         layout.addLayout(header)
 
-        desc = QLabel(
-            "Reproduza trechos curtos de 12 segundos com o áudio dublado compensado pelo offset atual "
-            "para validar visualmente a sincronia labial nos pontos críticos da mídia:"
+        # Monitor visor display & markers layout
+        mid_row = QHBoxLayout()
+        mid_row.setSpacing(12)
+
+        # Screen Monitor Frame
+        self.monitor_screen = QFrame()
+        self.monitor_screen.setStyleSheet(
+            "background-color: #07080a; border: 1px solid #282d34; border-radius: 8px; min-height: 90px;"
         )
-        desc.setProperty("class", "subText")
-        desc.setWordWrap(True)
-        layout.addWidget(desc)
+        ms_layout = QVBoxLayout(self.monitor_screen)
+        ms_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Buttons Row: 5%, 50%, 90%
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(10)
+        overlay_row = QHBoxLayout()
+        lbl_screen_tag = QLabel("VISOR DE SINAL")
+        lbl_screen_tag.setProperty("class", "eyebrowText")
+        overlay_row.addWidget(lbl_screen_tag)
+        overlay_row.addStretch()
+        self.lbl_timecode = QLabel("00:00:00.000")
+        self.lbl_timecode.setStyleSheet(
+            "font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; color: #d9f56b; font-weight: 700;"
+        )
+        overlay_row.addWidget(self.lbl_timecode)
+        ms_layout.addLayout(overlay_row)
 
-        self.btn_p05 = QPushButton("Prévia Início (05%)")
+        ms_layout.addStretch()
+        self.status_label = QLabel("Aguardando carregamento de fontes para inspeção")
+        self.status_label.setStyleSheet("color: #7e8792; font-size: 11px;")
+        ms_layout.addWidget(self.status_label)
+        mid_row.addWidget(self.monitor_screen, 1)
+
+        # Vertical Marker Selector Stack
+        marker_stack = QVBoxLayout()
+        marker_stack.setSpacing(6)
+
+        self.btn_p05 = QPushButton("05% Opening")
         self.btn_p05.setProperty("class", "btnSecondary")
         self.btn_p05.clicked.connect(lambda: self.play_marker(0.05))
-        btn_layout.addWidget(self.btn_p05)
+        marker_stack.addWidget(self.btn_p05)
 
-        self.btn_p50 = QPushButton("Prévia Meio (50%)")
+        self.btn_p50 = QPushButton("50% Midpoint")
         self.btn_p50.setProperty("class", "btnSecondary")
         self.btn_p50.clicked.connect(lambda: self.play_marker(0.50))
-        btn_layout.addWidget(self.btn_p50)
+        marker_stack.addWidget(self.btn_p50)
 
-        self.btn_p90 = QPushButton("Prévia Fim (90%)")
+        self.btn_p90 = QPushButton("90% Final Act")
         self.btn_p90.setProperty("class", "btnSecondary")
         self.btn_p90.clicked.connect(lambda: self.play_marker(0.90))
-        btn_layout.addWidget(self.btn_p90)
+        marker_stack.addWidget(self.btn_p90)
 
-        layout.addLayout(btn_layout)
-
-        self.status_label = QLabel("Aguardando carregamento de fontes para inspeção")
-        self.status_label.setStyleSheet("color: #8c8c8c; font-size: 11px;")
-        layout.addWidget(self.status_label)
+        mid_row.addLayout(marker_stack)
+        layout.addLayout(mid_row)
 
     def set_media_sources(
         self,
@@ -104,94 +134,72 @@ class PreviewPlayer(QFrame):
         self.total_duration_sec = duration_sec
         self.current_offset_ms = offset_ms
 
-        ready = bool(video_path and os.path.isfile(video_path) and audio_path and os.path.isfile(audio_path))
-        self.btn_p05.setEnabled(ready)
-        self.btn_p50.setEnabled(ready)
-        self.btn_p90.setEnabled(ready)
-
-        if ready:
-            self.status_label.setText(f"Fontes prontas para teste (Duração nominal: {duration_sec / 60.0:.1f} min)")
+        if self.video_path and self.audio_path:
+            self.status_label.setText("Pronto para reprodução sincronizada nos marcadores")
+            self.status_label.setStyleSheet("color: #bce7a0; font-size: 11px; font-weight: 600;")
         else:
-            self.status_label.setText("Selecione os arquivos de vídeo e áudio para habilitar o preview")
+            self.status_label.setText("Aguardando carregamento de fontes para inspeção")
+            self.status_label.setStyleSheet("color: #7e8792; font-size: 11px;")
 
     def update_offset(self, offset_ms: float):
         self.current_offset_ms = offset_ms
+
+    def play_marker(self, fraction: float):
+        if not self.video_path or not self.audio_path:
+            self.status_label.setText("Fontes de mídia não carregadas.")
+            self.status_label.setStyleSheet("color: #e7c783; font-size: 11px;")
+            return
+
+        self.stop_preview()
+
+        start_time = max(0.0, self.total_duration_sec * fraction)
+
+        # Format timecode (hh:mm:ss.zzz)
+        hours = int(start_time // 3600)
+        minutes = int((start_time % 3600) // 60)
+        seconds = start_time % 60
+        self.lbl_timecode.setText(f"{hours:02d}:{minutes:02d}:{seconds:06.3f}")
+
+        player_delay_sec = map_offset_to_player_delay(self.current_offset_ms)
+
+        player_bin = shutil.which("mpv")
+        if not player_bin:
+            self.status_label.setText("mpv não instalado no sistema.")
+            self.status_label.setStyleSheet("color: #e7a19b; font-size: 11px;")
+            return
+
+        cmd = [
+            player_bin,
+            self.video_path,
+            f"--audio-file={self.audio_path}",
+            f"--audio-delay={player_delay_sec:.4f}",
+            f"--start={start_time:.2f}",
+            "--length=12",
+            "--title=SyncFrame — Lip-Sync Inspection",
+            "--keep-open=no",
+            "--no-terminal",
+            "--geometry=854x480-20+40"
+        ]
+
+        try:
+            self.active_proc = subprocess.Popen(cmd)
+            self.btn_stop.setEnabled(True)
+            self.status_label.setText(
+                f"Reproduzindo trecho ({int(fraction * 100)}%) com delay de {player_delay_sec:+.3f}s"
+            )
+            self.status_label.setStyleSheet("color: #d9f56b; font-size: 11px;")
+        except Exception as exc:
+            logger.error("Failed to launch preview player: %s", exc)
+            self.status_label.setText(f"Erro ao iniciar player: {exc}")
+            self.status_label.setStyleSheet("color: #e7a19b; font-size: 11px;")
 
     def stop_preview(self):
         if self.active_proc and self.active_proc.poll() is None:
             try:
                 self.active_proc.terminate()
-                self.active_proc.wait(timeout=1.0)
             except Exception:
-                try:
-                    self.active_proc.kill()
-                except Exception:
-                    pass
+                pass
         self.active_proc = None
         self.btn_stop.setEnabled(False)
-        self.status_label.setText("Reprodução interrompida.")
-
-    def reset(self):
-        """Stops any active playback and resets preview media sources."""
-        self.stop_preview()
-        self.set_media_sources(None, None, 0.0, 0.0)
-        self.status_label.setText("Aguardando carregamento de fontes para inspeção")
-
-    def play_marker(self, fraction: float):
-        self.stop_preview()
-
-        if not self.video_path or not self.audio_path:
-            return
-
-        start_time = max(0.0, self.total_duration_sec * fraction)
-        duration_clip = 12.0  # 12 seconds preview
-
-        # Audio delay normalized deterministically via map_offset_to_player_delay:
-        # A positive offset (audio is late) needs negative delay in mpv to advance audio.
-        delay_sec = map_offset_to_player_delay(self.current_offset_ms, "mpv")
-
-        pct_label = int(fraction * 100)
-        self.status_label.setText(
-            f"Reproduzindo trecho aos {pct_label}% (posição {start_time / 60.0:.2f} min, offset: {self.current_offset_ms:+.1f} ms)..."
-        )
-        self.btn_stop.setEnabled(True)
-
-        mpv_bin = shutil.which("mpv")
-        ffplay_bin = shutil.which("ffplay")
-
-        if mpv_bin:
-            cmd = [
-                mpv_bin,
-                f"--start={start_time:.2f}",
-                f"--length={duration_clip:.2f}",
-                f"--audio-file={self.audio_path}",
-                f"--audio-delay={delay_sec:.4f}",
-                "--title=SyncFrame Preview",
-                "--geometry=800x450",
-                self.video_path
-            ]
-        elif ffplay_bin:
-            # Fallback to ffplay with audio filter delay
-            cmd = [
-                ffplay_bin,
-                "-ss", f"{start_time:.2f}",
-                "-t", f"{duration_clip:.2f}",
-                "-window_title", "SyncFrame Preview",
-                "-x", "800", "-y", "450",
-                self.video_path
-            ]
-        else:
-            self.status_label.setText("Erro: mpv ou ffplay não encontrados no PATH do sistema.")
-            self.btn_stop.setEnabled(False)
-            return
-
-        try:
-            self.active_proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-        except Exception as exc:
-            logger.error("Failed to launch preview player: %s", exc)
-            self.status_label.setText(f"Erro ao iniciar player de prévia: {exc}")
-            self.btn_stop.setEnabled(False)
+        self.status_label.setText("Reprodução encerrada.")
+        self.status_label.setStyleSheet("color: #7e8792; font-size: 11px;")

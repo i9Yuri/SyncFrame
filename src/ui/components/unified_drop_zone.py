@@ -29,6 +29,7 @@ class UnifiedDropZone(QFrame):
     Unified ingestion zone supporting:
     - Drag & drop of 1 or 2 files simultaneously (.mkv, .mp4, .m4v, .mov).
     - Single system file picker for selecting both media files.
+    - Paired horizontal subcards for video and dubbed audio sources.
     - Clean tabular Review Gate with pre-selected streams, acoustic channel audit, and composition options.
     """
     files_ready = Signal(str, str)
@@ -48,34 +49,44 @@ class UnifiedDropZone(QFrame):
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(14, 14, 14, 14)
-        root_layout.setSpacing(10)
+        root_layout.setContentsMargins(18, 16, 18, 16)
+        root_layout.setSpacing(12)
 
         self.stack = QStackedWidget()
 
         # ======================================================================
-        # Page 0: Standby / Empty Drop Zone
+        # Page 0: Standby / Empty Drop Zone (Card 01 - Unified Drop Zone)
         # ======================================================================
         self.page_empty = QFrame()
         self.page_empty.setObjectName("dropFrameEmpty")
-        self.page_empty.setProperty("class", "dropFrame")
         empty_layout = QVBoxLayout(self.page_empty)
         empty_layout.setAlignment(Qt.AlignCenter)
         empty_layout.setSpacing(10)
+        empty_layout.setContentsMargins(20, 24, 20, 24)
 
-        self.lbl_empty_title = QLabel("Arraste e solte os 2 arquivos aqui\nou clique para navegar e selecionar ambos")
+        tag_row = QHBoxLayout()
+        tag_row.setAlignment(Qt.AlignCenter)
+        idx_chip = QLabel("01")
+        idx_chip.setProperty("class", "sectionIndex")
+        tag_row.addWidget(idx_chip)
+        lbl_ingest_tag = QLabel("INGESTAO DE FONTES")
+        lbl_ingest_tag.setProperty("class", "eyebrowText")
+        tag_row.addWidget(lbl_ingest_tag)
+        empty_layout.addLayout(tag_row)
+
+        self.lbl_empty_title = QLabel("Arraste e solte os 2 arquivos de mídia aqui\nou selecione ambos pelo navegador")
         self.lbl_empty_title.setAlignment(Qt.AlignCenter)
-        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700;")
+        self.lbl_empty_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #eef0f2;")
         empty_layout.addWidget(self.lbl_empty_title)
 
-        lbl_hint = QLabel("Suporte agnóstico a contêineres: MKV, MP4, M4V, MOV (alta fidelidade visual + dublagem)")
+        lbl_hint = QLabel("MKV / MP4 / M4V / MOV  •  1 Vídeo de Referência + 1 Faixa de Dublagem")
         lbl_hint.setAlignment(Qt.AlignCenter)
         lbl_hint.setProperty("class", "subText")
         empty_layout.addWidget(lbl_hint)
 
-        btn_browse = QPushButton("Selecionar Arquivos (MKV / MP4)...")
+        btn_browse = QPushButton("Selecionar Arquivos...")
         btn_browse.setProperty("class", "btnPrimary")
-        btn_browse.setFixedWidth(240)
+        btn_browse.setFixedWidth(200)
         btn_browse.clicked.connect(self._open_file_dialog)
         empty_layout.addWidget(btn_browse, alignment=Qt.AlignCenter)
 
@@ -86,21 +97,23 @@ class UnifiedDropZone(QFrame):
         # ======================================================================
         self.page_single = QFrame()
         self.page_single.setObjectName("dropFrameSingle")
-        self.page_single.setProperty("class", "dropFrame")
         single_layout = QVBoxLayout(self.page_single)
         single_layout.setAlignment(Qt.AlignCenter)
-        single_layout.setSpacing(8)
+        single_layout.setSpacing(10)
+        single_layout.setContentsMargins(20, 20, 20, 20)
 
         self.badge_waiting = QLabel("1 de 2 arquivos carregados — Aguardando segundo arquivo")
         self.badge_waiting.setProperty("class", "badgeAmber")
         single_layout.addWidget(self.badge_waiting, alignment=Qt.AlignCenter)
 
         self.lbl_single_filename = QLabel("")
-        self.lbl_single_filename.setStyleSheet("font-weight: 700; font-size: 13px;")
+        self.lbl_single_filename.setStyleSheet(
+            "font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 13px; color: #eef0f2;"
+        )
         self.lbl_single_filename.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(self.lbl_single_filename)
 
-        lbl_single_instruction = QLabel("Arraste o segundo arquivo de mídia aqui ou selecione manualmente:")
+        lbl_single_instruction = QLabel("Arraste a segunda fonte aqui ou selecione manualmente:")
         lbl_single_instruction.setProperty("class", "subText")
         lbl_single_instruction.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(lbl_single_instruction)
@@ -123,19 +136,29 @@ class UnifiedDropZone(QFrame):
         self.stack.addWidget(self.page_single)
 
         # ======================================================================
-        # Page 2: 2 Files Ingested (Tabular Review Gate & Confirmation Panel)
+        # Page 2: 2 Files Ingested (Workbench Paired File Cards + Review Gate)
         # ======================================================================
         self.page_confirm = QWidget()
         confirm_layout = QVBoxLayout(self.page_confirm)
         confirm_layout.setContentsMargins(0, 0, 0, 0)
-        confirm_layout.setSpacing(10)
+        confirm_layout.setSpacing(12)
 
-        # Header with status & reset
+        # Header with Card 01 Tag and Change button
         conf_header = QHBoxLayout()
-        conf_title = QLabel("Confirmação de Trilhas & Mapeamento Assistido")
+        conf_header.setSpacing(8)
+
+        idx_c01 = QLabel("01")
+        idx_c01.setProperty("class", "sectionIndex")
+        conf_header.addWidget(idx_c01)
+
+        conf_title = QLabel("Fontes Ingeridas (File Pair)")
         conf_title.setProperty("class", "cardTitle")
         conf_header.addWidget(conf_title)
         conf_header.addStretch()
+
+        self.chip_sources_count = QLabel("2 / 2 SOURCES")
+        self.chip_sources_count.setProperty("class", "badgeGreen")
+        conf_header.addWidget(self.chip_sources_count)
 
         btn_change_files = QPushButton("Trocar Arquivos")
         btn_change_files.setProperty("class", "btnSecondary")
@@ -143,84 +166,177 @@ class UnifiedDropZone(QFrame):
         conf_header.addWidget(btn_change_files)
         confirm_layout.addLayout(conf_header)
 
-        # Files summary strip
+        # Paired Horizontal File Cards
+        pair_row = QHBoxLayout()
+        pair_row.setSpacing(10)
+
+        # File Card: Video Reference
+        self.card_file_v = QFrame()
+        self.card_file_v.setProperty("class", "fileCardWorkbench")
+        cf_v_layout = QVBoxLayout(self.card_file_v)
+        cf_v_layout.setContentsMargins(10, 8, 10, 8)
+        cf_v_layout.setSpacing(4)
+
+        head_v = QHBoxLayout()
+        lbl_v_role = QLabel("REFERENCIA DE VIDEO")
+        lbl_v_role.setProperty("class", "eyebrowText")
+        head_v.addWidget(lbl_v_role)
+        head_v.addStretch()
+        self.badge_v_fmt = QLabel("MKV")
+        self.badge_v_fmt.setProperty("class", "codecChip")
+        head_v.addWidget(self.badge_v_fmt)
+        cf_v_layout.addLayout(head_v)
+
+        self.lbl_v_filename = QLabel("video_ref.mkv")
+        self.lbl_v_filename.setStyleSheet("font-weight: 700; font-size: 12px; color: #eef0f2;")
+        cf_v_layout.addWidget(self.lbl_v_filename)
+
+        self.lbl_v_meta = QLabel("0.0 GB  •  00:00:00")
+        self.lbl_v_meta.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792;")
+        cf_v_layout.addWidget(self.lbl_v_meta)
+        pair_row.addWidget(self.card_file_v, 1)
+
+        # File Card: Dubbed Audio Source
+        self.card_file_a = QFrame()
+        self.card_file_a.setProperty("class", "fileCardWorkbench")
+        cf_a_layout = QVBoxLayout(self.card_file_a)
+        cf_a_layout.setContentsMargins(10, 8, 10, 8)
+        cf_a_layout.setSpacing(4)
+
+        head_a = QHBoxLayout()
+        lbl_a_role = QLabel("AUDIO DUBLADO")
+        lbl_a_role.setProperty("class", "eyebrowText")
+        head_a.addWidget(lbl_a_role)
+        head_a.addStretch()
+        self.badge_a_fmt = QLabel("MP4")
+        self.badge_a_fmt.setProperty("class", "badgeSignal")
+        head_a.addWidget(self.badge_a_fmt)
+        cf_a_layout.addLayout(head_a)
+
+        self.lbl_a_filename = QLabel("audio_dub.mp4")
+        self.lbl_a_filename.setStyleSheet("font-weight: 700; font-size: 12px; color: #eef0f2;")
+        cf_a_layout.addWidget(self.lbl_a_filename)
+
+        self.lbl_a_meta = QLabel("0.0 MB  •  00:00:00")
+        self.lbl_a_meta.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792;")
+        cf_a_layout.addWidget(self.lbl_a_meta)
+        pair_row.addWidget(self.card_file_a, 1)
+
+        confirm_layout.addLayout(pair_row)
+
+        # Files summary strip (preserved for test compatibility)
         self.lbl_files_summary = QLabel("")
-        self.lbl_files_summary.setProperty("class", "summaryStrip")
-        self.lbl_files_summary.setStyleSheet("font-size: 11px;")
+        self.lbl_files_summary.setVisible(False)
         confirm_layout.addWidget(self.lbl_files_summary)
 
         # Ambiguity Banner
         self.frame_ambiguity = QFrame()
         self.frame_ambiguity.setStyleSheet(
-            "background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 6px 10px;"
+            "background-color: rgba(231, 199, 131, 0.1); border: 1px solid rgba(231, 199, 131, 0.35); border-radius: 6px; padding: 6px 10px;"
         )
         amb_layout = QHBoxLayout(self.frame_ambiguity)
         amb_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_ambiguity = QLabel("")
-        self.lbl_ambiguity.setStyleSheet("color: #fbbf24; font-size: 11px; font-weight: 600;")
+        self.lbl_ambiguity.setStyleSheet("color: #e7c783; font-size: 11px; font-weight: 600;")
         amb_layout.addWidget(self.lbl_ambiguity)
         self.frame_ambiguity.setVisible(False)
         confirm_layout.addWidget(self.frame_ambiguity)
 
+        # Card 02: Stream Review Gate (Tabela de Auditoria)
+        review_frame = QFrame()
+        review_frame.setProperty("class", "subCard")
+        rf_layout = QVBoxLayout(review_frame)
+        rf_layout.setContentsMargins(12, 12, 12, 12)
+        rf_layout.setSpacing(10)
+
+        rf_head = QHBoxLayout()
+        idx_c02 = QLabel("02")
+        idx_c02.setProperty("class", "sectionIndex")
+        rf_head.addWidget(idx_c02)
+        rf_title = QLabel("Stream Review Gate (Mapeamento de Faixas)")
+        rf_title.setProperty("class", "cardTitle")
+        rf_head.addWidget(rf_title)
+        rf_head.addStretch()
+        lbl_no_rec = QLabel("SEM REENCODIFICACAO DE VIDEO")
+        lbl_no_rec.setProperty("class", "eyebrowText")
+        rf_head.addWidget(lbl_no_rec)
+        rf_layout.addLayout(rf_head)
+
         # Table Grid for Selections
         table_grid = QGridLayout()
-        table_grid.setSpacing(10)
+        table_grid.setSpacing(8)
 
         # Row 1: Primary Video
-        lbl_v_tag = QLabel("Vídeo:")
-        lbl_v_tag.setStyleSheet("font-weight: 700; font-size: 12px;")
+        lbl_v_tag = QLabel("V01 / Vídeo:")
+        lbl_v_tag.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd;")
         table_grid.addWidget(lbl_v_tag, 0, 0)
 
         self.badge_v_status = QLabel("Melhor Imagem")
         self.badge_v_status.setProperty("class", "badgeGreen")
-        self.badge_v_status.setFixedWidth(130)
+        self.badge_v_status.setFixedWidth(120)
         table_grid.addWidget(self.badge_v_status, 0, 1)
 
         self.combo_video = QComboBox()
         self.combo_video.currentIndexChanged.connect(self._update_audio_audit)
         table_grid.addWidget(self.combo_video, 0, 2)
 
+        chip_v_act = QLabel("Copy")
+        chip_v_act.setProperty("class", "systemChip")
+        chip_v_act.setFixedWidth(54)
+        table_grid.addWidget(chip_v_act, 0, 3)
+
         # Row 2: Target Dubbed Audio
-        lbl_a_tag = QLabel("Áudio Dublado:")
-        lbl_a_tag.setStyleSheet("font-weight: 700; font-size: 12px;")
+        lbl_a_tag = QLabel("A02 / Alvo (PT):")
+        lbl_a_tag.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd;")
         table_grid.addWidget(lbl_a_tag, 1, 0)
 
         self.badge_a_status = QLabel("Português")
-        self.badge_a_status.setProperty("class", "badgeGreen")
-        self.badge_a_status.setFixedWidth(130)
+        self.badge_a_status.setProperty("class", "badgeSignal")
+        self.badge_a_status.setFixedWidth(120)
         table_grid.addWidget(self.badge_a_status, 1, 1)
 
         self.combo_target_audio = QComboBox()
         self.combo_target_audio.currentIndexChanged.connect(self._update_audio_audit)
         table_grid.addWidget(self.combo_target_audio, 1, 2)
 
+        chip_a_act = QLabel("Align")
+        chip_a_act.setProperty("class", "badgeSignal")
+        chip_a_act.setFixedWidth(54)
+        table_grid.addWidget(chip_a_act, 1, 3)
+
         # Row 3: Reference Audio
-        lbl_ref_tag = QLabel("Áudio Referência:")
-        lbl_ref_tag.setStyleSheet("font-weight: 700; font-size: 12px;")
+        lbl_ref_tag = QLabel("A01 / Ref. (ENG):")
+        lbl_ref_tag.setStyleSheet("font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd;")
         table_grid.addWidget(lbl_ref_tag, 2, 0)
 
         self.badge_ref_status = QLabel("Referência FFT")
         self.badge_ref_status.setProperty("class", "badgeNeutral")
-        self.badge_ref_status.setFixedWidth(130)
+        self.badge_ref_status.setFixedWidth(120)
         table_grid.addWidget(self.badge_ref_status, 2, 1)
 
         self.combo_ref_audio = QComboBox()
         self.combo_ref_audio.currentIndexChanged.connect(self._update_audio_audit)
         table_grid.addWidget(self.combo_ref_audio, 2, 2)
 
-        confirm_layout.addLayout(table_grid)
+        chip_ref_act = QLabel("Copy")
+        chip_ref_act.setProperty("class", "systemChip")
+        chip_ref_act.setFixedWidth(54)
+        table_grid.addWidget(chip_ref_act, 2, 3)
+
+        rf_layout.addLayout(table_grid)
+        confirm_layout.addWidget(review_frame)
 
         # ======================================================================
         # Acoustic Audit Card & Channel Configuration Badges
         # ======================================================================
         self.frame_audio_audit = QFrame()
-        self.frame_audio_audit.setProperty("class", "auditCard")
+        self.frame_audio_audit.setProperty("class", "subCard")
         audit_layout = QHBoxLayout(self.frame_audio_audit)
-        audit_layout.setContentsMargins(0, 0, 0, 0)
+        audit_layout.setContentsMargins(10, 8, 10, 8)
         audit_layout.setSpacing(10)
 
-        lbl_audit_title = QLabel("Auditoria da Dublagem:")
-        lbl_audit_title.setStyleSheet("font-weight: 700; font-size: 11px;")
+        lbl_audit_title = QLabel("Auditoria de Canais:")
+        lbl_audit_title.setStyleSheet("font-weight: 700; font-size: 11px; color: #c1c6cd;")
         audit_layout.addWidget(lbl_audit_title)
 
         self.lbl_audit_origin = QLabel("")
@@ -233,7 +349,7 @@ class UnifiedDropZone(QFrame):
 
         self.lbl_audit_specs = QLabel("")
         self.lbl_audit_specs.setStyleSheet(
-            "font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;"
+            "font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; font-weight: 600; color: #eef0f2;"
         )
         audit_layout.addWidget(self.lbl_audit_specs)
 
@@ -243,12 +359,12 @@ class UnifiedDropZone(QFrame):
         # Contextual Channel Difference Alert
         self.frame_channel_alert = QFrame()
         self.frame_channel_alert.setStyleSheet(
-            "background-color: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px; padding: 6px 10px;"
+            "background-color: rgba(231, 199, 131, 0.08); border: 1px solid rgba(231, 199, 131, 0.3); border-radius: 6px; padding: 6px 10px;"
         )
         alert_layout = QHBoxLayout(self.frame_channel_alert)
         alert_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_channel_alert = QLabel("")
-        self.lbl_channel_alert.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: 600;")
+        self.lbl_channel_alert.setStyleSheet("color: #e7c783; font-size: 11px; font-weight: 600;")
         alert_layout.addWidget(self.lbl_channel_alert)
         self.frame_channel_alert.setVisible(False)
         confirm_layout.addWidget(self.frame_channel_alert)
@@ -288,79 +404,88 @@ class UnifiedDropZone(QFrame):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
             self.page_empty.setStyleSheet("""
-                QFrame {
-                    border: 2px dashed #666666;
-                    border-radius: 8px;
-                    background-color: #1f1f1f;
+                QFrame#dropFrameEmpty {
+                    border: 2px dashed #d9f56b;
+                    border-radius: 11px;
+                    background-color: #15181d;
                 }
             """)
 
     def dragLeaveEvent(self, event):
         self.page_empty.setStyleSheet("""
-            QFrame {
-                border: 2px dashed #383838;
-                border-radius: 8px;
-                background-color: #141414;
+            QFrame#dropFrameEmpty {
+                border: 1px dashed #3b424c;
+                border-radius: 11px;
+                background-color: #0e1013;
             }
         """)
 
     def dropEvent(self, event: QDropEvent):
-        self.dragLeaveEvent(event)
         urls = event.mimeData().urls()
-        valid_paths = [u.toLocalFile() for u in urls if os.path.isfile(u.toLocalFile())]
-        if valid_paths:
-            self.ingest_files(valid_paths)
+        files = [u.toLocalFile() for u in urls if os.path.isfile(u.toLocalFile())]
+        self.dragLeaveEvent(None)
+        if files:
+            self.ingest_files(files)
 
     def _open_file_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Selecionar os 2 Arquivos de Mídia (Vídeo de Alta Resolução + Dublado)",
-            os.path.expanduser("~"),
-            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos os Arquivos (*.*)"
+            "Selecionar Arquivos (Vídeo + Áudio)",
+            "",
+            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos (*.*)"
         )
         if files:
             self.ingest_files(files)
 
     def _open_single_file_dialog(self):
-        file_path, _ = QFileDialog.getOpenFileName(
+        f, _ = QFileDialog.getOpenFileName(
             self,
-            "Selecionar o Segundo Arquivo de Mídia",
-            os.path.expanduser("~"),
-            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos os Arquivos (*.*)"
+            "Selecionar Segundo Arquivo de Mídia",
+            "",
+            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos (*.*)"
         )
-        if file_path:
-            self.ingest_files([file_path])
+        if f:
+            self.ingest_files([f])
 
-    def ingest_files(self, paths: List[str]):
-        """Processes newly ingested file paths."""
-        for p in paths:
-            abs_p = os.path.abspath(p)
-            if abs_p not in self.loaded_files:
-                self.loaded_files.append(abs_p)
+    def ingest_files(self, file_paths: List[str]):
+        supported_exts = (".mkv", ".mp4", ".m4v", ".mov")
+        valid_files = [f for f in file_paths if f.lower().endswith(supported_exts)]
+
+        if not valid_files:
+            return
+
+        for f in valid_files:
+            if f not in self.loaded_files and len(self.loaded_files) < 2:
+                self.loaded_files.append(f)
 
         if len(self.loaded_files) == 1:
+            self.lbl_single_filename.setText(os.path.basename(self.loaded_files[0]))
             self.stack.setCurrentIndex(1)
-            file_0 = self.loaded_files[0]
-            bname = os.path.basename(file_0)
-            sz = format_bytes(os.path.getsize(file_0)) if os.path.exists(file_0) else "0 B"
-            self.lbl_single_filename.setText(f"{bname} ({sz})")
         elif len(self.loaded_files) >= 2:
-            file_a, file_b = self.loaded_files[0], self.loaded_files[1]
-            self.files_ready.emit(file_a, file_b)
+            self.files_ready.emit(self.loaded_files[0], self.loaded_files[1])
 
     def set_verdict(self, verdict: AutoMatchVerdict):
-        """Populates the confirmation table with heuristic verdict choices."""
         self.current_verdict = verdict
         self.stack.setCurrentIndex(2)
 
         file_v = verdict.recommended_video.file_path
         file_a = verdict.recommended_target_audio.file_path if verdict.recommended_target_audio else ""
 
-        sz_v = format_bytes(os.path.getsize(file_v)) if os.path.isfile(file_v) else ""
-        sz_a = format_bytes(os.path.getsize(file_a)) if os.path.isfile(file_a) else ""
+        sz_v = format_bytes(os.path.getsize(file_v)) if os.path.exists(file_v) else ""
+        sz_a = format_bytes(os.path.getsize(file_a)) if file_a and os.path.exists(file_a) else ""
 
-        ext_v = os.path.splitext(file_v)[1].upper().lstrip(".")
-        ext_a = os.path.splitext(file_a)[1].upper().lstrip(".")
+        ext_v = os.path.splitext(file_v)[1].replace(".", "").upper()
+        ext_a = os.path.splitext(file_a)[1].replace(".", "").upper() if file_a else ""
+
+        self.lbl_v_filename.setText(os.path.basename(file_v))
+        self.lbl_v_meta.setText(f"{sz_v}  •  {verdict.recommended_video.stream.fps:.3f} fps")
+        self.badge_v_fmt.setText(ext_v)
+
+        if file_a:
+            self.lbl_a_filename.setText(os.path.basename(file_a))
+            sr = verdict.recommended_target_audio.stream.sample_rate or 48000
+            self.lbl_a_meta.setText(f"{sz_a}  •  {sr} Hz")
+            self.badge_a_fmt.setText(ext_a)
 
         self.lbl_files_summary.setText(
             f"Fonte Vídeo: {os.path.basename(file_v)} ({sz_v}) [{ext_v}]  |  "
@@ -399,7 +524,7 @@ class UnifiedDropZone(QFrame):
             self.badge_a_status.setProperty("class", "badgeAmber")
         else:
             self.badge_a_status.setText("Português OK")
-            self.badge_a_status.setProperty("class", "badgeGreen")
+            self.badge_a_status.setProperty("class", "badgeSignal")
         self.badge_a_status.setStyle(self.badge_a_status.style())
 
         # Reference audio combo
@@ -466,7 +591,6 @@ class UnifiedDropZone(QFrame):
         self.lbl_audit_specs.setText(spec_str)
 
         # Contextual Channel Difference Alert
-        # Emits neutral alert if dubbed audio is stereo 2.0 while reference English audio is 5.1/7.1
         if tgt_stream.channels in (1, 2) and ref_cand and ref_cand.stream.channels >= 6:
             ref_layout = format_channel_layout_label(ref_cand.stream.channels, ref_cand.stream.channel_layout)
             self.lbl_channel_alert.setText(
