@@ -13,7 +13,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Modal de Conclusão Estilizado com Custo Zero de Latência:**
   - Substituição do `QMessageBox.information` nativo pelo componente `CompletionDialog` (`src/ui/components/completion_dialog.py`), integrado à estética neutra monocromática.
   - Glifo discreto em verde utilitário, caixa de texto delimitada em tipografia monospace exibindo o caminho absoluto do arquivo MKV final.
-  - Botão secundário *"📁 Abrir Diretório"* com lançamento não-bloqueante do gerenciador de arquivos nativo do host (Dolphin, Nautilus, xdg-open) e fallback inteligente com cópia instantânea para a área de transferência (`QClipboard`).
+  - Botão secundário *"Abrir Diretório"* com lançamento não-bloqueante do gerenciador de arquivos nativo do host (Dolphin, Nautilus, xdg-open) e fallback inteligente com cópia instantânea para a área de transferência (`QClipboard`).
   - Botão primário *"OK / Fechar"* com acionamento padrão imediato via tecla **Enter** ou **Esc**.
   - Montagem estática sem animações ou blur (latência imperceptível de 0ms).
 - **Distribuição em Binário Único Autônomo (Standalone Linux ELF):**
@@ -33,7 +33,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Cálculo de desalinhamento temporal por correlação cruzada FFT multi-janela (5%, 50%, 85%) com filtro passa-faixa (300Hz-4000Hz).
   - Normalização estrita do contrato de sinal de offset: delay negativo no cabeçalho MKV (`--sync 0:-offset_ms`) e adiantamento no player (`--audio-delay=-offset_sec`) para dublagens atrasadas.
   - Time-stretch lossless sem alteração de tom via filtro `atempo` exclusivamente quando diagnosticada deriva contínua de framerate ($23.976 \leftrightarrow 24.000 \leftrightarrow 25.000$ fps).
-- **Pipeline de Ação Única ("Jogou ➔ Confirmou ➔ Concluiu"):**
+- **Pipeline de Ação Única ("Jogou -> Confirmou -> Concluiu"):**
   - Eliminação de botões concorrentes em favor do fluxo linear de aprovação assistida em 1 clique via `UnifiedPipelineWorker`.
   - Botão contextual *"Cancelar Operação"* durante a execução.
   - Gaveta retrátil `CollapsibleSection` (*"Ajustes Avançados e Inspeção Labial"*) encapsulando waveform, micro-ajustes manuais ($\pm 50\text{ ms}$, $\pm 250\text{ ms}$, slider) e miniplayer labial (`mpv`).
@@ -62,10 +62,10 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Blindagem contra exaustão de RAM em arquivos longos (`load_wav_mono` com teto padrão de leitura de 600 segundos).
 
 - **Fluxo de Ação Única & Simplificação Radical da Interface:**
-  - Consolidação dos fluxos dispersos no modelo de ação linear ("Jogou ➔ Confirmou ➔ Concluiu") orquestrado por `UnifiedPipelineWorker` (`src/ui/workers/unified_pipeline_worker.py`).
+  - Consolidação dos fluxos dispersos no modelo de ação linear ("Jogou -> Confirmou -> Concluiu") orquestrado por `UnifiedPipelineWorker` (`src/ui/workers/unified_pipeline_worker.py`).
   - Eliminação de botões concorrentes e redundantes ("Calcular Sincronia", "Iniciar Sincronização e Remux", "Executar Lossless Remux") em favor de um botão único principal: `"Sincronizar e Concluir"`.
   - Botão contextual `"Cancelar Operação"` acionável durante a execução com cancelamento gracioso de subprocessos.
-  - Novo componente de gaveta retrátil `CollapsibleSection` (`src/ui/components/collapsible_section.py`) recolhido por padrão com alternador `▶ / ▼`, encapsulando a curva de correlação (`CorrelationView`), micro-ajustes manuais ($\pm 50\text{ ms}$, $\pm 250\text{ ms}$, slider) e o miniplayer de inspeção labial (`PreviewPlayer`).
+  - Novo componente de gaveta retrátil `CollapsibleSection` (`src/ui/components/collapsible_section.py`) recolhido por padrão com alternador `[+] / [-]`, encapsulando a curva de correlação (`CorrelationView`), micro-ajustes manuais ($\pm 50\text{ ms}$, $\pm 250\text{ ms}$, slider) e o miniplayer de inspeção labial (`PreviewPlayer`).
   - Novo controle de alto contraste `AudioPreserveCheckbox` (`src/ui/components/audio_preserve_checkbox.py`) com fundo esmeralda `#10b981`, ícone SVG de checkmark nítido quando ativo, e texto dinâmico inequívoco (`"Preservar áudio original em inglês: Sim (Faixa Secundária)"` vs `"Não"`).
   - Auditoria e saneamento completo de herança visual no tema claro, eliminando cores escuras inline fixadas (`#141414`, `#121212`, `#ffffff`) em favor de classes semânticas QSS neutras.
 
@@ -118,7 +118,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 - **Redesign Neutro Monocromático & Unified Drop Zone (v0.1.1):**
   - Eliminação completa de matizes saturados (azuis/cianocromáticos) em prol de uma estética neutra, minimalista e limpa em escala de cinza (`#121212`, `#1e1e1e`, `#2e2e2e`, `#e5e5e5`, `#ffffff`).
-  - Suporte estruturado e reativo a temas Claro e Escuro Neutros com alternador dinâmico (`🌓`) no cabeçalho via `apply_theme` e `get_theme_qss`.
+  - Suporte estruturado e reativo a temas Claro e Escuro Neutros com alternador dinâmico no cabeçalho via `apply_theme` e `get_theme_qss`.
   - Remoção de insígnias e textos descontextualizados ("Anti-Slop Engine"), mantendo cabeçalho puramente técnico com numeração de versão.
   - Resolução definitiva de achatamento e sobreposição de widgets em modo janela via envelopamento do layout em `QScrollArea` com `setWidgetResizable(True)` e barra de rolagem vertical sob demanda.
   - Substituição dos cards duplos de drop por um componente central unificado (`UnifiedDropZone`) com máquina de estados (vazio -> 1 arquivo -> Review Gate tabular inline).
@@ -129,6 +129,6 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Dataclasses enriquecidas em `src/core/models.py`: `AudioProfile`, `MediaContainerInfo`, `ExtractedAudioResult` e função `format_channel_layout_label` (Mono 1.0, Estéreo 2.0, Surround 5.1, Surround 7.1).
   - Extração não destrutiva de áudio em `src/core/extractor.py` via `extract_audio_lossless` em modo cópia direta de stream (`ffmpeg -c:a copy`), preservando os codecs nativos (AAC, AC3, EAC3, MP3, Opus, DTS, FLAC) e fallback para FLAC multicanal sem perdas para formatos exóticos.
   - Montagem de comando de remux híbrido em `src/core/remuxer.py` (`build_mkvmerge_hybrid_command`) e demuxing automático em staging para contêineres MP4/MOV, blindando o `mkvmerge` contra inconsistências de empacotamento.
-  - Card de Auditoria Acústica no Review Gate de `src/ui/components/unified_drop_zone.py` com badges de origem (`MP4 ➔ MKV Remux`), layout de canais, especificação acústica (`AAC • 48.000 Hz`) e alerta contextual neutro quando a dublagem for Estéreo 2.0 e o áudio original for 5.1/7.1.
+  - Card de Auditoria Acústica no Review Gate de `src/ui/components/unified_drop_zone.py` com badges de origem (`MP4 -> MKV Remux`), layout de canais, especificação acústica (`AAC • 48.000 Hz`) e alerta contextual neutro quando a dublagem for Estéreo 2.0 e o áudio original for 5.1/7.1.
   - Suporte formal a `.mkv`, `.mp4`, `.m4v`, `.mov` nos diálogos de arquivos e validação do drag-and-drop.
   - Suíte de testes em `tests/test_container_handling.py` elevando a suíte para 30 testes unitários automatizados (100% aprovados).

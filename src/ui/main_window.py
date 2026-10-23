@@ -106,13 +106,13 @@ class SyncFrameMainWindow(QWidget):
 
         header.addStretch()
 
-        self.btn_theme = QPushButton("🌓 Modo Claro")
+        self.btn_theme = QPushButton("Modo Claro")
         self.btn_theme.setProperty("class", "btnSecondary")
         self.btn_theme.setToolTip("Alternar entre modo Escuro e Claro Neutro")
         self.btn_theme.clicked.connect(self._toggle_theme)
         header.addWidget(self.btn_theme)
 
-        badge_v = QLabel("v0.1.0")
+        badge_v = QLabel("v1.0.0")
         badge_v.setProperty("class", "badgeNeutral")
         header.addWidget(badge_v)
 
@@ -232,10 +232,10 @@ class SyncFrameMainWindow(QWidget):
         """Toggles between neutral dark and neutral light theme."""
         if self.current_theme == "dark":
             self.current_theme = "light"
-            self.btn_theme.setText("🌓 Modo Escuro")
+            self.btn_theme.setText("Modo Escuro")
         else:
             self.current_theme = "dark"
-            self.btn_theme.setText("🌓 Modo Claro")
+            self.btn_theme.setText("Modo Claro")
 
         app = QApplication.instance()
         target = app if app else self

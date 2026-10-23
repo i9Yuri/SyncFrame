@@ -28,7 +28,7 @@ class TestCompletionDialog(unittest.TestCase):
         self.assertEqual(dialog.output_file_path, sample_path)
         self.assertEqual(dialog.txt_path.text(), sample_path)
         self.assertTrue(dialog.txt_path.isReadOnly())
-        self.assertEqual(dialog.glyph_badge.text(), "✓")
+        self.assertEqual(dialog.glyph_badge.text(), "OK")
         self.assertEqual(dialog.windowTitle(), "Processo Concluído — SyncFrame")
         self.assertTrue(dialog.btn_close.isDefault())
 

@@ -58,7 +58,7 @@ BINARY_SIZE="$(du -h "${TARGET_BINARY}" | cut -f1)"
 
 echo ""
 echo "========================================================================"
-echo "  [✓] Compilação Concluída com Sucesso em ${ELAPSED} segundos!"
+echo "  [OK] Compilacao Concluida com Sucesso em ${ELAPSED} segundos!"
 echo "========================================================================"
 echo "  • Caminho do Executável : ${TARGET_BINARY}"
 echo "  • Tamanho do Binário    : ${BINARY_SIZE}"

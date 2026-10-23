@@ -6,7 +6,7 @@ Projetado com uma interface neutra, minimalista e de alta densidade de informaç
 
 ---
 
-## ⚡ Características Principais
+## Características Principais
 
 - **Fidelidade Visual 100% Intocada (Zero-Loss Passthrough):** O vídeo de referência **nunca** é reencodificado; o fluxo é transmitido diretamente bit-a-bit via `mkvmerge`.
 - **Suporte Agnóstico a Múltiplos Contêineres (MKV, MP4, M4V, MOV):** Ingestão transparente e combinação híbrida de fontes (ex.: Vídeo 4K de um MKV + Áudio dublado de um MP4/MOV de torrent).
@@ -15,10 +15,10 @@ Projetado com uma interface neutra, minimalista e de alta densidade de informaç
 - **Card de Auditoria Acústica no Review Gate:** Apresentação clara de layout de canais (Mono 1.0, Estéreo 2.0, Surround 5.1, Surround 7.1), codec, taxa de amostragem em Hz e bitrate, acompanhado de alerta contextual neutro quando a dublagem for estéreo e o original for multicanal surround.
 - **Zero Recompressão para Offsets Estáticos:** Se as taxas de quadros forem congruentes, o atraso/adiantamento é aplicado nativamente no cabeçalho do contêiner MKV (`--sync <TRACK_ID>:<OFFSET_MS>`).
 - **Detecção de Framerate & Correlação FFT Multi-Janela:** Extrai trechos acústicos filtrados (bandpass 300Hz-4000Hz mono PCM) no início (5%), meio (50%) e fim (85%) para isolar transientes, trilhas incidentais e foley idênticos entre idiomas, diagnosticando divergências de frame rate conhecidas:
-  - `23.976 fps ↔ 24.000 fps` (deriva telecine NTSC de $1001/1000 \approx +0.1001\%$)
-  - `24.000 fps ↔ 25.000 fps` (PAL Speedup/Slowdown de $25/24 \approx +4.167\%$)
+  - `23.976 fps <-> 24.000 fps` (deriva telecine NTSC de $1001/1000 \approx +0.1001\%$)
+  - `24.000 fps <-> 25.000 fps` (PAL Speedup/Slowdown de $25/24 \approx +4.167\%$)
 - **Zona Unificada de Entrada (Unified Drop Zone) & Review Gate Tabular:** Zona central inteligente que aceita 1 ou 2 arquivos simultaneamente (.mkv, .mp4, .m4v, .mov), com aprovação instantânea em 1 clique ou via tecla **Enter**.
-- **Estética Neutra Monocromática & Modo Escuro/Claro:** Design refinado em escala de cinza neutra, preto e branco, com alternador dinâmico de tema (`🌓`) no cabeçalho.
+- **Estética Neutra Monocromática & Modo Escuro/Claro:** Design refinado em escala de cinza neutra, preto e branco, com alternador dinâmico de tema (Modo Escuro / Modo Claro) no cabeçalho.
 - **Layout Totalmente Responsivo com Scroll Vertical:** Estrutura envelopada em `QScrollArea` que garante perfeita usabilidade em modo janela (`1024x650`, `900x550`), eliminando achatamento ou sobreposição de widgets.
 - **Time-Stretch Inteligente sem Alteração de Pitch:** Se e somente se houver deriva contínua significativa ($\text{drift} \neq 1.0$), o filtro `atempo` do FFmpeg é aplicado em cópia temporária de alta precisão (FLAC lossless).
 - **Player de Inspeção Instantânea:** Teste de reprodução em tempo real nos marcadores 5%, 50% e 90% via `mpv` com compensação de atraso instantânea para validação labial antes do remux.
@@ -26,7 +26,7 @@ Projetado com uma interface neutra, minimalista e de alta densidade de informaç
 
 ---
 
-## 🛠 Pré-requisitos de Sistema
+## Pré-requisitos de Sistema
 
 O SyncFrame requer utilitários nativos de mídia no sistema operacional do host:
 
@@ -53,7 +53,7 @@ sudo pacman -S ffmpeg mkvtoolnix-cli mpv
 
 ---
 
-## 🚀 Modos de Execução
+## Modos de Execução
 
 O **SyncFrame** oferece dois métodos de execução no Linux:
 
@@ -84,7 +84,7 @@ chmod +x run.sh
 
 ---
 
-## 📦 Compilação do Binário Único (`build_bin.sh`)
+## Compilação do Binário Único (`build_bin.sh`)
 
 Para compilar o binário único ELF autônomo com exclusão seletiva de footprints desnecessários:
 
@@ -98,7 +98,7 @@ O script limpa builds anteriores, compila o binário em `dist/SyncFrame` usando 
 
 ---
 
-## 🎛 Tabela de Compatibilidade de Mídias e Codecs
+## Tabela de Compatibilidade de Mídias e Codecs
 
 | Componente | Formatos / Codecs Suportados | Método de Processamento |
 | :--- | :--- | :--- |
@@ -111,7 +111,7 @@ O script limpa builds anteriores, compila o binário em `dist/SyncFrame` usando 
 
 ---
 
-## 🏗 Arquitetura Modular
+## Arquitetura Modular
 
 ```
 SyncFrame/
@@ -165,7 +165,7 @@ SyncFrame/
 
 ---
 
-## 🧪 Suíte de Testes
+## Suíte de Testes
 
 Para executar os 53 testes unitários da esteira matemática, interface e modelos:
 
@@ -175,6 +175,6 @@ QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -
 
 ---
 
-## 📜 Licença
+## Licença
 
 Distribuído sob licença MIT. Consulte `LICENSE` para mais detalhes.

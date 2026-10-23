@@ -369,7 +369,7 @@ class UnifiedDropZone(QFrame):
 
         # Ambiguity banner
         if verdict.is_ambiguous:
-            self.lbl_ambiguity.setText(f"⚠ {verdict.ambiguity_reason}")
+            self.lbl_ambiguity.setText(f"[ATENCAO] {verdict.ambiguity_reason}")
             self.frame_ambiguity.setVisible(True)
         else:
             self.frame_ambiguity.setVisible(False)
@@ -441,7 +441,7 @@ class UnifiedDropZone(QFrame):
         # Origin indicator
         is_hybrid = (tgt_fmt != "MKV") or (video_cand and target_cand.file_path != video_cand.file_path)
         if is_hybrid:
-            self.lbl_audit_origin.setText(f"{tgt_fmt} ➔ MKV Remux")
+            self.lbl_audit_origin.setText(f"{tgt_fmt} -> MKV Remux")
             self.lbl_audit_origin.setProperty("class", "badgeAmber" if tgt_fmt != "MKV" else "badgeNeutral")
         else:
             self.lbl_audit_origin.setText(f"{tgt_fmt} Nativo")
@@ -470,7 +470,7 @@ class UnifiedDropZone(QFrame):
         if tgt_stream.channels in (1, 2) and ref_cand and ref_cand.stream.channels >= 6:
             ref_layout = format_channel_layout_label(ref_cand.stream.channels, ref_cand.stream.channel_layout)
             self.lbl_channel_alert.setText(
-                f"ℹ {layout_text} identificado na dublagem; áudio original em inglês possui {ref_layout} ({ref_cand.stream.channels} canais)."
+                f"[INFO] {layout_text} identificado na dublagem; áudio original em inglês possui {ref_layout} ({ref_cand.stream.channels} canais)."
             )
             self.frame_channel_alert.setVisible(True)
         else:

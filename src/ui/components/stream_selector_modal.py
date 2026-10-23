@@ -73,7 +73,7 @@ class StreamSelectorModal(QDialog):
             """)
             al_layout = QHBoxLayout(alert_frame)
             al_layout.setContentsMargins(8, 6, 8, 6)
-            al_text = QLabel(f"⚠ {self.verdict.ambiguity_reason}")
+            al_text = QLabel(f"[ATENCAO] {self.verdict.ambiguity_reason}")
             al_text.setStyleSheet("color: #fbbf24; font-size: 12px; font-weight: 600;")
             al_layout.addWidget(al_text)
             root.addWidget(alert_frame)
@@ -194,7 +194,7 @@ class StreamSelectorModal(QDialog):
 
         btn_layout.addStretch()
 
-        self.btn_confirm = QPushButton("Confirmar e Sincronizar Tudo ➔")
+        self.btn_confirm = QPushButton("Confirmar e Sincronizar Tudo")
         self.btn_confirm.setProperty("class", "btnSuccess")
         self.btn_confirm.setDefault(True)
         self.btn_confirm.setFocus()

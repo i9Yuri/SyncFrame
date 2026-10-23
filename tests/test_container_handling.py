@@ -216,7 +216,7 @@ class TestContainerHandling(unittest.TestCase):
 
         # Audit frame should be displayed
         self.assertFalse(zone.frame_audio_audit.isHidden())
-        self.assertIn("MP4 ➔ MKV", zone.lbl_audit_origin.text())
+        self.assertIn("MP4 -> MKV", zone.lbl_audit_origin.text())
         self.assertEqual(zone.badge_audit_layout.text(), "Estéreo 2.0")
         self.assertIn("AAC", zone.lbl_audit_specs.text())
 

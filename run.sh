@@ -16,7 +16,7 @@ AMBER='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${CYAN}⚡ Inicializando SyncFrame v0.1.0...${NC}"
+echo -e "${CYAN}[INFO] Inicializando SyncFrame v1.0.0...${NC}"
 
 # 1. Checagem de ferramentas essenciais do sistema operacional
 MISSING_DEPS=()
@@ -28,8 +28,8 @@ for bin in ffmpeg ffprobe mkvmerge; do
 done
 
 if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
-    echo -e "${RED}✖ ERRO CRÍTICO: Ferramentas do sistema ausentes:${NC} ${MISSING_DEPS[*]}"
-    echo -e "${AMBER}Instale os pacotes requeridos através do gerenciador de sua distribuição:${NC}"
+    echo -e "${RED}[ERRO CRITICO] Ferramentas do sistema ausentes:${NC} ${MISSING_DEPS[*]}"
+    echo -e "${AMBER}Instale os pacotes requeridos atraves do gerenciador de sua distribuicao:${NC}"
     echo -e "  • Nobara / Fedora: ${CYAN}sudo dnf install ffmpeg mkvtoolnix mpv${NC}"
     echo -e "  • Ubuntu / Debian: ${CYAN}sudo apt install ffmpeg mkvtoolnix mpv${NC}"
     echo -e "  • Arch Linux:      ${CYAN}sudo pacman -S ffmpeg mkvtoolnix-cli mpv${NC}"
@@ -40,7 +40,7 @@ fi
 VENV_DIR="$PROJECT_DIR/.venv"
 
 if [ ! -d "$VENV_DIR" ]; then
-    echo -e "${AMBER}⚙ Criando ambiente virtual isolado (.venv)...${NC}"
+    echo -e "${AMBER}[CONFIG] Criando ambiente virtual isolado (.venv)...${NC}"
     python3 -m venv "$VENV_DIR" --system-site-packages
 fi
 
@@ -58,9 +58,9 @@ if [ -f "$REQ_FILE" ]; then
 
     if [ "$CURRENT_HASH" != "$SAVED_HASH" ]; then
         if ! python3 -c "import numpy, PySide6" &>/dev/null; then
-            echo -e "${AMBER}📦 Atualizando dependências Python (requirements.txt)...${NC}"
+            echo -e "${AMBER}[DEP] Atualizando dependencias Python (requirements.txt)...${NC}"
             pip install --quiet --disable-pip-version-check -r "$REQ_FILE" || {
-                echo -e "${RED}Aviso: Falha ao atualizar algumas dependências pelo pip. Tentando prosseguir com pacotes do sistema...${NC}"
+                echo -e "${RED}Aviso: Falha ao atualizar algumas dependencias pelo pip. Tentando prosseguir com pacotes do sistema...${NC}"
             }
         fi
         echo "$CURRENT_HASH" > "$HASH_FILE"
@@ -68,7 +68,7 @@ if [ -f "$REQ_FILE" ]; then
 fi
 
 # 4. Execução da aplicação com contenção segura de concorrência
-echo -e "${EMERALD}✔ Ambiente validado. Iniciando interface gráfica com limitação de threads (2 cores)...${NC}"
+echo -e "${EMERALD}[OK] Ambiente validado. Iniciando interface grafica com limitacao de threads (2 cores)...${NC}"
 export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
 export OMP_NUM_THREADS=2
 export OPENBLAS_NUM_THREADS=2

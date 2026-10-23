@@ -98,7 +98,7 @@ class CompletionDialog(QDialog):
         header_row.setSpacing(14)
         header_row.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-        self.glyph_badge = QLabel("✓")
+        self.glyph_badge = QLabel("OK")
         self.glyph_badge.setObjectName("badgeSuccessGlyph")
         self.glyph_badge.setAlignment(Qt.AlignCenter)
         header_row.addWidget(self.glyph_badge)
@@ -139,7 +139,7 @@ class CompletionDialog(QDialog):
         button_row = QHBoxLayout()
         button_row.setSpacing(10)
 
-        self.btn_open_folder = QPushButton("📁 Abrir Diretório")
+        self.btn_open_folder = QPushButton("Abrir Diretório")
         self.btn_open_folder.setObjectName("btnOpenFolder")
         self.btn_open_folder.setProperty("class", "btnSecondary")
         self.btn_open_folder.setCursor(Qt.PointingHandCursor)
@@ -163,12 +163,12 @@ class CompletionDialog(QDialog):
         """Attempts to open directory in file manager; falls back to copying to clipboard."""
         success = open_containing_folder(self.output_file_path)
         if success:
-            self.btn_open_folder.setText("✓ Pasta Aberta")
+            self.btn_open_folder.setText("Pasta Aberta")
         else:
             clipboard = QApplication.clipboard()
             if clipboard and self.output_file_path:
                 clipboard.setText(self.output_file_path)
-            self.btn_open_folder.setText("✓ Caminho Copiado!")
+            self.btn_open_folder.setText("Caminho Copiado!")
 
     def keyPressEvent(self, event):
         """Keyboard ergonomics: closes immediately on Escape or Enter."""
