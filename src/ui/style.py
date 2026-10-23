@@ -383,6 +383,42 @@ QScrollBar::handle:horizontal {
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
     width: 0px;
 }
+
+/* Completion Modal */
+QDialog#completionDialog {
+    background-color: #181818;
+    border: 1px solid #333333;
+    border-radius: 8px;
+}
+
+#completionDialog QLabel#badgeSuccessGlyph {
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    border-radius: 18px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+#completionDialog QLabel#completionTitle {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+#completionDialog QLineEdit#outputBoxMonospace {
+    background-color: #0d0d0d;
+    color: #e5e5e5;
+    border: 1px solid #2e2e2e;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'DejaVu Sans Mono', monospace;
+    font-size: 12px;
+}
 """
 
 LIGHT_THEME_QSS = """
@@ -732,6 +768,42 @@ QScrollBar::handle:vertical:hover {
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
+}
+
+/* Completion Modal */
+QDialog#completionDialog {
+    background-color: #ffffff;
+    border: 1px solid #e4e4e7;
+    border-radius: 8px;
+}
+
+#completionDialog QLabel#badgeSuccessGlyph {
+    background-color: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    border-radius: 18px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+#completionDialog QLabel#completionTitle {
+    color: #18181b;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+#completionDialog QLineEdit#outputBoxMonospace {
+    background-color: #f4f4f5;
+    color: #18181b;
+    border: 1px solid #d4d4d8;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'DejaVu Sans Mono', monospace;
+    font-size: 12px;
 }
 """
 

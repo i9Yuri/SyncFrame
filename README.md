@@ -53,29 +53,61 @@ sudo pacman -S ffmpeg mkvtoolnix-cli mpv
 
 ---
 
-## 🚀 Inicialização Rápida
+## 🚀 Modos de Execução
 
-O projeto inclui um launcher de inicialização rápida executável por duplo clique ou terminal:
+O **SyncFrame** oferece dois métodos de execução no Linux:
+
+### 1. Executável Binário Standalone (Recomendado)
+A aplicação pode ser executada diretamente como um único arquivo executável ELF autônomo, sem requerer instalação de Python ou dependências virtuais adicionais:
+
+```bash
+# Execução direta via terminal ou duplo clique
+./dist/SyncFrame
+
+# Diagnóstico de ferramentas do sistema via CLI
+./dist/SyncFrame --cli-check
+
+# Exibir versão oficial
+./dist/SyncFrame --version
+```
+
+### 2. Modo de Desenvolvimento Local (`run.sh`)
+Para desenvolvimento e inspeção do código-fonte:
 
 ```bash
 # Permissão de execução (já configurada no repositório)
 chmod +x run.sh
 
-# Execução direta
+# Inicialização com bootstrap automático de virtualenv
 ./run.sh
 ```
 
-O script `run.sh` valida as dependências do sistema, configura ou reutiliza o ambiente virtual isolado (`.venv`), sincroniza dependências de `requirements.txt` silenciosamente e inicia a aplicação.
+---
 
-### Modos Adicionais
+## 📦 Compilação do Binário Único (`build_bin.sh`)
+
+Para compilar o binário único ELF autônomo com exclusão seletiva de footprints desnecessários:
 
 ```bash
-# Diagnóstico de ferramentas do sistema via CLI (sem GUI)
-./run.sh --cli-check
-
-# Exibir versão
-./run.sh --version
+# Executa o pipeline automatizado de empacotamento com PyInstaller
+chmod +x build_bin.sh
+./build_bin.sh
 ```
+
+O script limpa builds anteriores, compila o binário em `dist/SyncFrame` usando `syncframe.spec`, atribui permissões de execução e roda testes automatizados pré-voo.
+
+---
+
+## 🎛 Tabela de Compatibilidade de Mídias e Codecs
+
+| Componente | Formatos / Codecs Suportados | Método de Processamento |
+| :--- | :--- | :--- |
+| **Contêineres** | `.mkv`, `.mp4`, `.m4v`, `.mov` | Probing profundo não-destrutivo (`ffprobe`) |
+| **Vídeo** | AV1, HEVC (H.265), AVC (H.264), VP9 | **100% Passthrough Bit-a-Bit** (zero recompressão) |
+| **Áudio Alvo (Dublagem)** | AAC, AC3, E-AC3, MP3, Opus, DTS, FLAC | Demuxing direto de stream copy (`-c:a copy`) |
+| **Layouts de Canal** | Mono 1.0, Estéreo 2.0, Surround 5.1, Surround 7.1 | Preservação nativa de canais com auditoria visual |
+| **Sincronia Estática** | Qualquer offset em milissegundos ($\pm\text{ms}$) | Cabeçalho do contêiner MKV via `--sync` |
+| **Sincronia Dinâmica** | Desvios de framerate (23.976, 24.0, 25.0 fps) | Time-stretch FLAC sem alteração de tom via `atempo` |
 
 ---
 
@@ -83,55 +115,62 @@ O script `run.sh` valida as dependências do sistema, configura ou reutiliza o a
 
 ```
 SyncFrame/
-├── run.sh                          # Launcher Bash executável por duplo clique
-├── requirements.txt                # Dependências Python (NumPy, SciPy, PySide6)
+├── build_bin.sh                    # Pipeline de compilação em binário único ELF
+├── syncframe.spec                  # Especificação PyInstaller otimizada para Linux
+├── run.sh                          # Launcher Bash para desenvolvimento local
+├── requirements.txt                # Dependências científicas (NumPy, SciPy, PySide6)
 ├── src/
-│   ├── main.py                     # Ponto de entrada CLI/GUI
-│   ├── core/                       # Motor de processamento desacoplado
+│   ├── main.py                     # Ponto de entrada CLI/GUI com guardas de display
+│   ├── core/                       # Motores de processamento multimídia desacoplados
 │   │   ├── models.py               # Contratos de dados e schemas tipados
 │   │   ├── inspector.py            # Inspeção de streams via mkvmerge -J e ffprobe
-│   │   ├── extractor.py            # Extração mono 16kHz PCM com filtro passa-faixa 300-4000Hz
-│   │   ├── correlator.py           # FFT Cross-Correlation e estimador de deriva/framerate
+│   │   ├── extractor.py            # Extração mono PCM com passa-faixa e demux lossless
+│   │   ├── correlator.py           # FFT Cross-Correlation com normalização matemática de sinal
 │   │   ├── transformer.py          # Time-stretch lossless sem alteração de tom via atempo
 │   │   ├── remuxer.py              # Orquestrador mkvmerge com passthrough e tags de sync
-│   │   ├── temp_manager.py         # Gerenciamento de diretórios temporários e expurgo atômico
+│   │   ├── temp_manager.py         # Gerenciamento de diretórios temporários e expurgo
 │   │   └── disk_utils.py           # Validação pré-voo de capacidade em disco
 │   ├── ui/                         # Interface Gráfica desktop (PySide6)
-│   │   ├── app.py                  # Factory de instanciação do QApplication
-│   │   ├── main_window.py          # Janela principal responsiva com QScrollArea e tema alternável
+│   │   ├── app.py                  # Factory de instanciação do QApplication (v1.0.0)
+│   │   ├── main_window.py          # Janela principal responsiva com esteira de ação única
 │   │   ├── style.py                # Design system neutro monocromático (Dark/Light QSS)
-│   │   ├── components/             # Componentes modulares de UI
-│   │   │   ├── unified_drop_zone.py # Zona unificada de ingestão e Review Gate tabular inline
-│   │   │   ├── stream_selector_modal.py # Modal assistido de confirmação de faixas
-│   │   │   ├── correlation_view.py # Gráfico de correlação desenhado em QPainter
-│   │   │   ├── sync_controls.py    # Controles de micro-ajuste (±50ms) e métricas
-│   │   │   ├── preview_player.py   # Spot-check player nos marcadores 5%, 50%, 90%
-│   │   │   ├── log_drawer.py       # Gaveta retrátil de logs do terminal
-│   │   │   └── file_drop_card.py   # Card modular legado de drop
+│   │   ├── components/             # Componentes de interface modulares
+│   │   │   ├── unified_drop_zone.py # Zona central unificada e Review Gate tabular
+│   │   │   ├── completion_dialog.py # Modal de conclusão estilizado com zero-latency
+│   │   │   ├── audio_preserve_checkbox.py # Seletor de preservação de alto contraste
+│   │   │   ├── collapsible_section.py # Gaveta retrátil para ferramentas secundárias
+│   │   │   ├── correlation_view.py # Visualizador do pico de correlação acústica
+│   │   │   ├── sync_controls.py    # Controles de micro-ajuste e badges de métricas
+│   │   │   ├── preview_player.py   # Spot-check player labial (5%, 50%, 90%)
+│   │   │   └── log_drawer.py       # Gaveta de logs em tempo real
 │   │   └── workers/                # Threads de segundo plano (QThread)
-│   │       ├── analyze_worker.py   # Análise espectral assíncrona multi-janela
-│   │       └── remux_worker.py     # Multiplexação com suporte a cancelamento
+│   │       ├── unified_pipeline_worker.py # Orquestrador de ação única ininterrupta
+│   │       ├── analyze_worker.py   # Análise espectral assíncrona
+│   │       └── remux_worker.py     # Multiplexação com cancelamento gracioso
 │   └── utils/
-│       └── system_check.py         # Validador de utilitários do SO host
-└── tests/                          # Suíte de testes unitários automatizados
-    ├── test_models.py
-    ├── test_correlator.py
-    ├── test_inspector.py
-    ├── test_temp_manager.py
-    ├── test_stream_evaluator.py
-    ├── test_unified_drop_zone.py
+│       └── system_check.py         # Diagnóstico de integridade e logs de crash
+└── tests/                          # Suíte de 53 testes unitários automatizados
+    ├── test_completion_dialog.py
+    ├── test_ui_components.py
+    ├── test_system_diagnostics.py
+    ├── test_container_handling.py
     ├── test_ui_layout_responsiveness.py
-    └── test_container_handling.py
+    ├── test_unified_drop_zone.py
+    ├── test_stream_evaluator.py
+    ├── test_correlator.py
+    ├── test_models.py
+    ├── test_inspector.py
+    └── test_temp_manager.py
 ```
 
 ---
 
 ## 🧪 Suíte de Testes
 
-Para executar os testes unitários da esteira matemática e dos modelos:
+Para executar os 53 testes unitários da esteira matemática, interface e modelos:
 
 ```bash
-python3 -m unittest discover -s tests -p "test_*.py" -v
+QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
 ---

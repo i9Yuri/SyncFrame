@@ -18,7 +18,7 @@ def create_application() -> QApplication:
     app.setApplicationName("SyncFrame")
     app.setApplicationDisplayName("SyncFrame")
     app.setOrganizationName("i9Yuri")
-    app.setApplicationVersion("0.1.0")
+    app.setApplicationVersion("1.0.0")
 
     # Apply stylesheet
     app.setStyleSheet(DARK_THEME_QSS)

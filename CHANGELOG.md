@@ -7,6 +7,43 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.0] - 2026-10-22
+
+### Primeira Versão Estável (Release Oficial)
+- **Modal de Conclusão Estilizado com Custo Zero de Latência:**
+  - Substituição do `QMessageBox.information` nativo pelo componente `CompletionDialog` (`src/ui/components/completion_dialog.py`), integrado à estética neutra monocromática.
+  - Glifo discreto em verde utilitário, caixa de texto delimitada em tipografia monospace exibindo o caminho absoluto do arquivo MKV final.
+  - Botão secundário *"📁 Abrir Diretório"* com lançamento não-bloqueante do gerenciador de arquivos nativo do host (Dolphin, Nautilus, xdg-open) e fallback inteligente com cópia instantânea para a área de transferência (`QClipboard`).
+  - Botão primário *"OK / Fechar"* com acionamento padrão imediato via tecla **Enter** ou **Esc**.
+  - Montagem estática sem animações ou blur (latência imperceptível de 0ms).
+- **Distribuição em Binário Único Autônomo (Standalone Linux ELF):**
+  - Script automatizado de compilação `build_bin.sh` e especificação otimizada `syncframe.spec` para PyInstaller.
+  - Empacotamento em arquivo único ELF (`dist/SyncFrame`) compatível com Nobara Linux e distribuições x86_64 baseadas em glibc.
+  - Exclusão seletiva de módulos e bibliotecas não utilizadas do Qt (`QtWebEngine`, `QtQml`, `QtQuick`, `Qt3D`, `QtDesigner`, `tkinter`) para otimização de footprint e redução expressiva do tempo de inicialização.
+  - Consumo dinâmico não invasivo de `ffmpeg`, `ffprobe` e `mkvmerge` do `$PATH` do sistema operacional host.
+  - Blindagem de execução headless com mensagem instrutiva em `sys.stderr` caso `$DISPLAY` ou `$WAYLAND_DISPLAY` estejam ausentes.
+- **Ingestão Agnóstica de Contêineres:**
+  - Suporte completo a arquivos `.mkv`, `.mp4`, `.m4v` e `.mov`, com demuxing lossless em cópia direta (`-c:a copy`) para AAC, AC3, E-AC3, MP3, Opus, DTS e FLAC.
+  - Probing resiliente com tratamento de átomo `moov` tardio e contêineres malformados.
+- **Auto-Seleção Heurística Determinística:**
+  - Análise comparativa imediata por pontuação de fidelidade de vídeo (resolução, codec, bitrate) e detecção autônoma de faixas de dublagem em português (`por`, `pt-br`, `pob`).
+- **Auditoria Acústica no Review Gate:**
+  - Verificação determinística de canais (Mono 1.0, Estéreo 2.0, Surround 5.1, Surround 7.1) e alerta contextual preventivo quando a dublagem for estéreo e a fonte original for multicanal surround.
+- **Motor Acústico por Correlação FFT & Normalização de Sinal:**
+  - Cálculo de desalinhamento temporal por correlação cruzada FFT multi-janela (5%, 50%, 85%) com filtro passa-faixa (300Hz-4000Hz).
+  - Normalização estrita do contrato de sinal de offset: delay negativo no cabeçalho MKV (`--sync 0:-offset_ms`) e adiantamento no player (`--audio-delay=-offset_sec`) para dublagens atrasadas.
+  - Time-stretch lossless sem alteração de tom via filtro `atempo` exclusivamente quando diagnosticada deriva contínua de framerate ($23.976 \leftrightarrow 24.000 \leftrightarrow 25.000$ fps).
+- **Pipeline de Ação Única ("Jogou ➔ Confirmou ➔ Concluiu"):**
+  - Eliminação de botões concorrentes em favor do fluxo linear de aprovação assistida em 1 clique via `UnifiedPipelineWorker`.
+  - Botão contextual *"Cancelar Operação"* durante a execução.
+  - Gaveta retrátil `CollapsibleSection` (*"Ajustes Avançados e Inspeção Labial"*) encapsulando waveform, micro-ajustes manuais ($\pm 50\text{ ms}$, $\pm 250\text{ ms}$, slider) e miniplayer labial (`mpv`).
+- **Proteção e Estabilidade de Hardware:**
+  - Throttling compulsório de subprocessos (`-threads 2`) e limitação de variáveis de ambiente (`OMP_NUM_THREADS=2`, `OPENBLAS_NUM_THREADS=2`) blindando o host (Intel Xeon E5-2667 v2) contra desarmes de proteção térmica/elétrica (OCP).
+- **Suíte de Testes Automatizados:**
+  - Cobertura expandida para 53 testes unitários automatizados (100% aprovados).
+
+---
+
 ## [0.3.0] - 2026-10-22
 
 ### Adicionado

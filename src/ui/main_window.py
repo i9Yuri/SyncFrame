@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from .components.collapsible_section import CollapsibleSection
+from .components.completion_dialog import show_completion_modal
 from .components.correlation_view import CorrelationView
 from .components.log_drawer import LogDrawer
 from .components.preview_player import PreviewPlayer
@@ -454,7 +455,8 @@ class SyncFrameMainWindow(QWidget):
             self.progress_bar.setValue(100)
             self.lbl_progress_status.setText("Sincronização e remux finalizados com sucesso!")
             self.log_drawer.append_log(f"[SUCESSO] {msg}")
-            QMessageBox.information(self, "Sucesso", msg)
+            out_file = self.txt_output_path.text().strip()
+            show_completion_modal(self, out_file)
         else:
             self.lbl_progress_status.setText(msg)
             self.log_drawer.append_log(f"[INTERROMPIDO] {msg}")
