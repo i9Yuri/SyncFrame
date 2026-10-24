@@ -27,13 +27,16 @@ class UnifiedPipelineWorker(QThread):
     """
     # Standard contract signals
     analysis_started = Signal()
+    correlation_started = Signal()
     step_progress = Signal(str, float)  # (status_message, percentage_float)
     correlation_ready = Signal(dict)    # dict with offset_ms, confidence, pslr, curve_points
     correlation_completed = Signal(float, float, float, list)  # (offset_ms, confidence, drift_ratio, corr_curve)
+    correlation_finished = Signal(float, float, float, list)   # (offset_ms, confidence, drift_ratio, corr_curve)
     preview_ready = Signal(object)
     preview_segments_ready = Signal(list)  # (segment_paths_list)
     remux_progress = Signal(float)         # (percentage_float)
     remux_completed = Signal(str)          # (output_path)
+    remux_finished = Signal(str)           # (output_path)
     finished_success = Signal(str)         # output_path
     execution_failed = Signal(str)         # error_message
 
@@ -86,6 +89,7 @@ class UnifiedPipelineWorker(QThread):
                     self.progress.emit(25.0, msg)
                     self.log_message.emit(msg)
                 else:
+                    self.correlation_started.emit()
                     msg_ref = "Extraindo canal de áudio de referência (PCM 16kHz)..."
                     self.step_progress.emit(msg_ref, 10.0)
                     self.progress.emit(10.0, msg_ref)
@@ -148,6 +152,12 @@ class UnifiedPipelineWorker(QThread):
                         metrics.drift_ratio,
                         list(metrics.correlation_curve)
                     )
+                    self.correlation_finished.emit(
+                        metrics.static_offset_ms,
+                        metrics.confidence_score,
+                        metrics.drift_ratio,
+                        list(metrics.correlation_curve)
+                    )
                     self.metrics_ready.emit(metrics)
                     self.preview_ready.emit(corr_dict)
                     self.preview_segments_ready.emit([ref_wav, target_wav])
@@ -197,6 +207,7 @@ class UnifiedPipelineWorker(QThread):
                     self.progress.emit(100.0, msg_done)
                     self.remux_progress.emit(100.0)
                     self.remux_completed.emit(self.job.output_path)
+                    self.remux_finished.emit(self.job.output_path)
                     self.log_message.emit(f"Arquivo gerado: {self.job.output_path}")
                     self.finished_success.emit(self.job.output_path)
                     self.completed.emit(True, f"Arquivo sincronizado gerado com sucesso em:\n{self.job.output_path}")

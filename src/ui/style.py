@@ -30,12 +30,12 @@ def get_check_icon_path() -> str:
     return CHECK_GLYPH_PATH.replace("\\", "/")
 
 
-def get_switch_icon_path(is_on: bool, mode: Literal["dark", "light"] = "dark") -> str:
-    """Generates crisp One UI rounded toggle switch capsule assets."""
+def get_switch_icon_path(is_on: bool, mode: Literal["dark", "light"] = "dark", force_regen: bool = False) -> str:
+    """Generates crisp One UI rounded toggle switch capsule assets in neutral monochrome."""
     os.makedirs(ASSETS_DIR, exist_ok=True)
     filename = f"switch_{mode}_{'on' if is_on else 'off'}.png"
     filepath = os.path.join(ASSETS_DIR, filename)
-    if not os.path.isfile(filepath):
+    if force_regen or not os.path.isfile(filepath):
         try:
             from PySide6.QtGui import QImage, QPainter, QColor, QBrush
             from PySide6.QtCore import Qt, QRectF
@@ -46,16 +46,17 @@ def get_switch_icon_path(is_on: bool, mode: Literal["dark", "light"] = "dark") -
 
             # Capsule background
             if is_on:
-                bg_col = QColor("#5b9bff" if mode == "dark" else "#3e82f7")
+                bg_col = QColor("#ffffff" if mode == "dark" else "#16181d")
+                thumb_col = QColor("#1b1c20" if mode == "dark" else "#ffffff")
             else:
                 bg_col = QColor("#33343b" if mode == "dark" else "#e1e4ed")
+                thumb_col = QColor("#9a9eac" if mode == "dark" else "#ffffff")
 
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(bg_col))
             painter.drawRoundedRect(QRectF(0, 0, 46, 28), 14, 14)
 
             # Thumb circle
-            thumb_col = QColor("#ffffff")
             thumb_x = 22 if is_on else 4
             thumb_y = 4
             painter.setBrush(QBrush(thumb_col))
@@ -77,9 +78,9 @@ def get_theme_tokens(mode: Literal["dark", "light"] = "dark") -> Dict[str, str]:
             "bg_soft2": "#33343b",
             "text_primary": "#f2f3f7",
             "text_secondary": "#9a9eac",
-            "accent": "#5b9bff",
-            "accent_soft": "#1e3157",
-            "accent_text": "#06132b",
+            "accent": "#ffffff",
+            "accent_soft": "#33343b",
+            "accent_text": "#000000",
             "ok": "#2fb16b",
             "warn": "#e8963a",
             "border_subtle": "#2d2f36",
@@ -91,8 +92,8 @@ def get_theme_tokens(mode: Literal["dark", "light"] = "dark") -> Dict[str, str]:
         "bg_soft2": "#e1e4ed",
         "text_primary": "#16181d",
         "text_secondary": "#6a7080",
-        "accent": "#3e82f7",
-        "accent_soft": "#dce8ff",
+        "accent": "#16181d",
+        "accent_soft": "#dcdfe8",
         "accent_text": "#ffffff",
         "ok": "#2fb16b",
         "warn": "#e8963a",
@@ -101,8 +102,9 @@ def get_theme_tokens(mode: Literal["dark", "light"] = "dark") -> Dict[str, str]:
 
 
 # ==============================================================================
-# Dark Theme QSS (One UI 8.5: #000000 base, #1b1c20 cards, #5b9bff accent)
+# Dark Theme QSS (One UI 8.5: #000000 base, #1b1c20 cards, #ffffff accent)
 # Compatibility tokens: #0a0b0d, #111317, #eef0f2
+
 # ==============================================================================
 DARK_THEME_QSS = """
 /* Compatibility tokens: #0a0b0d, #111317, #eef0f2, border-radius: 999px */
@@ -229,8 +231,9 @@ QLabel.sectionIndex {
 /* One UI Tags and Pills */
 QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.statusPill, QLabel#chipFFT, QLabel#chipTrack {
     border-radius: 999px;
-    background-color: #1e3157;
-    color: #5b9bff;
+    background-color: #26272d;
+    color: #f2f3f7;
+    border: 1px solid #33343b;
     padding: 4px 14px;
     font-size: 12px;
     font-weight: 700;
@@ -265,8 +268,9 @@ QLabel.tagWarn, QLabel.badgeAmber {
 
 QLabel.badgeRecommended, QLabel#badgeRecommended {
     border-radius: 999px;
-    background-color: #1e3157;
-    color: #5b9bff;
+    background-color: #33343b;
+    color: #ffffff;
+    border: 1px solid #50535e;
     padding: 4px 14px;
     font-size: 12px;
     font-weight: 700;
@@ -295,8 +299,8 @@ QPushButton.btn:pressed {
 
 QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess {
     border-radius: 999px;
-    background-color: #5b9bff;
-    color: #06132b;
+    background-color: #ffffff;
+    color: #000000;
     padding: 12px 26px;
     font-weight: 700;
     font-size: 15px;
@@ -304,12 +308,12 @@ QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess {
 }
 
 QPushButton.btnPrimary:hover, QPushButton.btnSuccess:hover {
-    background-color: #70a9ff;
+    background-color: #e5e5e5;
     border-radius: 999px;
 }
 
 QPushButton.btnPrimary:pressed, QPushButton.btnSuccess:pressed {
-    background-color: #4a8ae6;
+    background-color: #cccccc;
     border-radius: 999px;
 }
 
@@ -389,7 +393,7 @@ QFrame.trackRow, QFrame.streamRowCard {
 }
 
 QFrame.trackRow[recommended="true"], QFrame.trackRowRec {
-    border: 2px solid #5b9bff;
+    border: 2px solid #50535e;
 }
 
 QLabel.trackIdBox, QLabel.streamIdTag {
@@ -406,8 +410,8 @@ QLabel.trackIdBox, QLabel.streamIdTag {
 }
 
 QLabel.trackIdBox[recommended="true"] {
-    background-color: #5b9bff;
-    color: #06132b;
+    background-color: #ffffff;
+    color: #000000;
 }
 
 QLabel.trackTitle {
@@ -432,8 +436,8 @@ QLabel.roleBadge {
 
 QLabel.streamActionChip {
     border-radius: 12px;
-    background-color: #1e3157;
-    color: #5b9bff;
+    background-color: #33343b;
+    color: #ffffff;
     padding: 4px 14px;
     font-size: 12px;
     font-weight: 700;
@@ -540,7 +544,7 @@ QProgressBar {
 }
 
 QProgressBar::chunk {
-    background-color: #5b9bff;
+    background-color: #ffffff;
     border-radius: 7px;
 }
 
@@ -548,6 +552,34 @@ QLabel.progPct {
     font-size: 14px;
     font-weight: 700;
     color: #f2f3f7;
+}
+
+/* Stepper Granularity Control */
+QFrame#stepperGroup {
+    background-color: #1b1c20;
+    border-radius: 999px;
+    border: 1px solid #33343b;
+}
+
+QFrame#stepperGroup QPushButton {
+    background-color: transparent;
+    color: #9a9eac;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+}
+
+QFrame#stepperGroup QPushButton:hover {
+    background-color: #26272d;
+    color: #f2f3f7;
+}
+
+QFrame#stepperGroup QPushButton[active="true"] {
+    background-color: #ffffff;
+    color: #000000;
+    font-weight: 700;
 }
 
 /* Offset Display Box (.off) */
@@ -575,7 +607,7 @@ QCheckBox.checkGlyph::indicator:checked {
 QFrame.sliderContainer, QFrame#frameSlider {
     background-color: #26272d;
     border-radius: 16px;
-    border: none;
+    border: 1px solid #33343b;
 }
 
 QSlider::groove:horizontal {
@@ -586,18 +618,18 @@ QSlider::groove:horizontal {
 
 QSlider::sub-page:horizontal {
     height: 6px;
-    background: #5b9bff;
+    background: #50535e;
     border-radius: 3px;
 }
 
 QSlider::handle:horizontal {
     background: #ffffff;
-    border: 3px solid #5b9bff;
-    width: 20px;
-    height: 20px;
-    margin-top: -7px;
-    margin-bottom: -7px;
-    border-radius: 10px;
+    border: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    margin-bottom: -6px;
+    border-radius: 9px;
 }
 
 /* Step Nudge Buttons (.steps) */
@@ -661,7 +693,7 @@ QProgressBar#playbackBar {
 }
 
 QProgressBar#playbackBar::chunk {
-    background-color: #5b9bff;
+    background-color: #ffffff;
     border-radius: 3px;
 }
 
@@ -688,8 +720,8 @@ QPushButton.markerBtn:hover {
 }
 
 QPushButton.markerBtn:checked, QPushButton.markerBtn.on, QPushButton.markerBtn[on="true"] {
-    background-color: #5b9bff;
-    color: #06132b;
+    background-color: #ffffff;
+    color: #000000;
     border-radius: 999px;
 }
 
@@ -753,7 +785,7 @@ QFrame#dropFrameEmpty {
 }
 
 QFrame#dropFrameEmpty[dragOver="true"] {
-    border: 2px dashed #5b9bff;
+    border: 2px dashed #ffffff;
     background-color: #26272d;
 }
 
@@ -765,7 +797,7 @@ QFrame#dropFrameSingle {
 """
 
 # ==============================================================================
-# Light Theme QSS (One UI 8.5: #f1f2f6 base, #ffffff cards, #3e82f7 accent)
+# Light Theme QSS (One UI 8.5: #f1f2f6 base, #ffffff cards, #16181d accent)
 # Compatibility tokens: #f2f3f1, #191c1a, #ffffff
 # ==============================================================================
 LIGHT_THEME_QSS = """
@@ -893,8 +925,9 @@ QLabel.sectionIndex {
 /* One UI Tags and Pills */
 QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.statusPill, QLabel#chipFFT, QLabel#chipTrack {
     border-radius: 999px;
-    background-color: #dce8ff;
-    color: #3e82f7;
+    background-color: #eceef4;
+    color: #16181d;
+    border: 1px solid #dcdfe8;
     padding: 4px 14px;
     font-size: 12px;
     font-weight: 700;
@@ -929,8 +962,9 @@ QLabel.tagWarn, QLabel.badgeAmber {
 
 QLabel.badgeRecommended, QLabel#badgeRecommended {
     border-radius: 999px;
-    background-color: #dce8ff;
-    color: #3e82f7;
+    background-color: #e1e4ed;
+    color: #16181d;
+    border: 1px solid #dcdfe8;
     padding: 4px 14px;
     font-size: 12px;
     font-weight: 700;
@@ -959,7 +993,7 @@ QPushButton.btn:pressed {
 
 QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess {
     border-radius: 999px;
-    background-color: #3e82f7;
+    background-color: #16181d;
     color: #ffffff;
     padding: 12px 26px;
     font-weight: 700;
@@ -968,12 +1002,12 @@ QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess {
 }
 
 QPushButton.btnPrimary:hover, QPushButton.btnSuccess:hover {
-    background-color: #5593f9;
+    background-color: #2b2e36;
     border-radius: 999px;
 }
 
 QPushButton.btnPrimary:pressed, QPushButton.btnSuccess:pressed {
-    background-color: #2c72e8;
+    background-color: #3f424c;
     border-radius: 999px;
 }
 
@@ -1029,9 +1063,9 @@ QLabel.fileMeta {
 
 /* Dubbing Container (.dub) */
 QFrame.dubBox, QFrame.arbitrationCard, QFrame#frameArbitration {
-    background-color: #dce8ff;
+    background-color: #eceef4;
     border-radius: 24px;
-    border: none;
+    border: 1px solid #dcdfe8;
 }
 
 QLabel.dubTitle {
@@ -1053,7 +1087,7 @@ QFrame.trackRow, QFrame.streamRowCard {
 }
 
 QFrame.trackRow[recommended="true"], QFrame.trackRowRec {
-    border: 2px solid #3e82f7;
+    border: 2px solid #16181d;
 }
 
 QLabel.trackIdBox, QLabel.streamIdTag {
@@ -1070,7 +1104,7 @@ QLabel.trackIdBox, QLabel.streamIdTag {
 }
 
 QLabel.trackIdBox[recommended="true"] {
-    background-color: #3e82f7;
+    background-color: #16181d;
     color: #ffffff;
 }
 
@@ -1096,8 +1130,8 @@ QLabel.roleBadge {
 
 QLabel.streamActionChip {
     border-radius: 12px;
-    background-color: #dce8ff;
-    color: #3e82f7;
+    background-color: #e1e4ed;
+    color: #16181d;
     padding: 4px 14px;
     font-size: 12px;
     font-weight: 700;
@@ -1204,7 +1238,7 @@ QProgressBar {
 }
 
 QProgressBar::chunk {
-    background-color: #3e82f7;
+    background-color: #16181d;
     border-radius: 7px;
 }
 
@@ -1212,6 +1246,34 @@ QLabel.progPct {
     font-size: 14px;
     font-weight: 700;
     color: #16181d;
+}
+
+/* Stepper Granularity Control */
+QFrame#stepperGroup {
+    background-color: #ffffff;
+    border-radius: 999px;
+    border: 1px solid #dcdfe8;
+}
+
+QFrame#stepperGroup QPushButton {
+    background-color: transparent;
+    color: #6a7080;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+}
+
+QFrame#stepperGroup QPushButton:hover {
+    background-color: #eceef4;
+    color: #16181d;
+}
+
+QFrame#stepperGroup QPushButton[active="true"] {
+    background-color: #16181d;
+    color: #ffffff;
+    font-weight: 700;
 }
 
 /* Offset Display Box (.off) */
@@ -1239,7 +1301,7 @@ QCheckBox.checkGlyph::indicator:checked {
 QFrame.sliderContainer, QFrame#frameSlider {
     background-color: #eceef4;
     border-radius: 16px;
-    border: none;
+    border: 1px solid #dcdfe8;
 }
 
 QSlider::groove:horizontal {
@@ -1250,18 +1312,18 @@ QSlider::groove:horizontal {
 
 QSlider::sub-page:horizontal {
     height: 6px;
-    background: #3e82f7;
+    background: #b8bcc9;
     border-radius: 3px;
 }
 
 QSlider::handle:horizontal {
     background: #ffffff;
-    border: 3px solid #3e82f7;
-    width: 20px;
-    height: 20px;
-    margin-top: -7px;
-    margin-bottom: -7px;
-    border-radius: 10px;
+    border: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    margin-bottom: -6px;
+    border-radius: 9px;
 }
 
 /* Step Nudge Buttons (.steps) */
@@ -1325,7 +1387,7 @@ QProgressBar#playbackBar {
 }
 
 QProgressBar#playbackBar::chunk {
-    background-color: #3e82f7;
+    background-color: #16181d;
     border-radius: 3px;
 }
 
@@ -1352,7 +1414,7 @@ QPushButton.markerBtn:hover {
 }
 
 QPushButton.markerBtn:checked, QPushButton.markerBtn.on, QPushButton.markerBtn[on="true"] {
-    background-color: #3e82f7;
+    background-color: #16181d;
     color: #ffffff;
     border-radius: 999px;
 }
@@ -1417,7 +1479,7 @@ QFrame#dropFrameEmpty {
 }
 
 QFrame#dropFrameEmpty[dragOver="true"] {
-    border: 2px dashed #3e82f7;
+    border: 2px dashed #16181d;
     background-color: #eceef4;
 }
 
@@ -1506,8 +1568,8 @@ def get_action_chip_style(action_type: str) -> str:
 def get_pill_button_style(is_primary: bool = False, mode: Literal["dark", "light"] = "dark") -> str:
     """Returns CSS/QSS styling string for pill-shaped buttons."""
     if is_primary:
-        bg = "#5b9bff" if mode == "dark" else "#3e82f7"
-        fg = "#06132b" if mode == "dark" else "#ffffff"
+        bg = "#ffffff" if mode == "dark" else "#16181d"
+        fg = "#000000" if mode == "dark" else "#ffffff"
         return f"border-radius: 22px; background-color: {bg}; color: {fg}; font-weight: 700; padding: 12px 26px; border: none;"
     bg = "#26272d" if mode == "dark" else "#eceef4"
     fg = "#f2f3f7" if mode == "dark" else "#16181d"
@@ -1517,10 +1579,10 @@ def get_pill_button_style(is_primary: bool = False, mode: Literal["dark", "light
 def get_compact_dropzone_style(is_dragover: bool = False, mode: Literal["dark", "light"] = "dark") -> str:
     """Returns CSS/QSS styling string for the compact unified dropzone."""
     if mode == "dark":
-        border_col = "#5b9bff" if is_dragover else "#33343b"
+        border_col = "#ffffff" if is_dragover else "#33343b"
         bg_col = "#26272d" if is_dragover else "#1b1c20"
     else:
-        border_col = "#3e82f7" if is_dragover else "#dcdfe8"
+        border_col = "#16181d" if is_dragover else "#dcdfe8"
         bg_col = "#eceef4" if is_dragover else "#ffffff"
     return f"border: 2px dashed {border_col}; border-radius: 24px; background-color: {bg_col};"
 

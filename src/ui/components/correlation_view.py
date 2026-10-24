@@ -22,6 +22,7 @@ class CorrelationView(QFrame):
         self.setObjectName("bentoCard")
         self.setProperty("class", "bentoCard")
         self.curve_points: List[float] = []
+        self._curve_data: List[float] = []
         self.peak_offset_ms: float = 0.0
         self.confidence: float = 0.0
         self.status_text: str = "Aguardando execução da correlação espectral"
@@ -33,6 +34,7 @@ class CorrelationView(QFrame):
 
     def set_data(self, points: List[float], offset_ms: float, confidence: float, status: str = ""):
         self.curve_points = points
+        self._curve_data = points
         self.peak_offset_ms = offset_ms
         self.confidence = confidence
         self.status_text = status or (f"Pico de Correlação: {offset_ms:+.1f} ms (Confiança: {confidence * 100:.1f}%)")

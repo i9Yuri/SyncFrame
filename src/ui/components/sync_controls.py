@@ -1,8 +1,8 @@
 """Offset fine-tuning controls and synchronization metrics panel for Workbench."""
 
-from typing import Optional
+from typing import Any, Callable, Dict, Literal, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFrame,
@@ -16,6 +16,91 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.models import SyncMetrics
+
+
+class SliderSensitivityController:
+    """Manages granularity and step sensitivity resolution for the temporal alignment slider."""
+
+    def __init__(self, slider: QSlider, on_changed: Optional[Callable[["SliderSensitivityController"], None]] = None):
+        self.mode: Literal["fine", "normal", "coarse"] = "normal"
+        self.step_ms: int = 10
+        self.scale_factor: float = 1.0
+        self.slider = slider
+        self.on_changed = on_changed
+        self._apply_mode()
+
+    def set_mode(self, mode: Literal["fine", "normal", "coarse"]) -> None:
+        self.mode = mode
+        if mode == "fine":
+            self.step_ms = 1
+            self.scale_factor = 0.25
+        elif mode == "normal":
+            self.step_ms = 10
+            self.scale_factor = 1.0
+        elif mode == "coarse":
+            self.step_ms = 50
+            self.scale_factor = 2.5
+        self._apply_mode()
+        if self.on_changed:
+            self.on_changed(self)
+
+    def _apply_mode(self) -> None:
+        if self.slider:
+            self.slider.setSingleStep(self.step_ms)
+            if hasattr(self.slider, "step_ms"):
+                self.slider.step_ms = self.step_ms
+            if hasattr(self.slider, "scale_factor"):
+                self.slider.scale_factor = self.scale_factor
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "step_ms": self.step_ms,
+            "scale_factor": self.scale_factor,
+        }
+
+    def __getitem__(self, item: str):
+        return getattr(self, item)
+
+
+class DampedSlider(QSlider):
+    """
+    Precision horizontal slider with amortized dragging physics:
+    - Filters raw cursor jumps via fractional scale factor
+    - Rounds steps deterministically to current sensitivity granularity (1ms / 10ms / 50ms)
+    - Pure white spherical thumb handle with zero visual artifacts
+    """
+    def __init__(self, orientation=Qt.Horizontal, parent=None):
+        super().__init__(orientation, parent)
+        self.step_ms: int = 10
+        self.scale_factor: float = 1.0
+        self._drag_start_pos: Optional[QPoint] = None
+        self._drag_start_val: Optional[int] = None
+
+    def mousePressEvent(self, ev):
+        if ev.button() == Qt.LeftButton:
+            self._drag_start_pos = ev.pos()
+            self._drag_start_val = self.value()
+        super().mousePressEvent(ev)
+
+    def mouseMoveEvent(self, ev):
+        if self._drag_start_pos is not None and (ev.buttons() & Qt.LeftButton):
+            dx = ev.pos().x() - self._drag_start_pos.x()
+            track_w = max(1, self.width() - 20)
+            val_range = self.maximum() - self.minimum()
+            fractional_delta = (dx / float(track_w)) * val_range * self.scale_factor
+            stepped_delta = round(fractional_delta / float(self.step_ms)) * self.step_ms
+            new_val = int(max(self.minimum(), min(self.maximum(), self._drag_start_val + stepped_delta)))
+            if new_val != self.value():
+                self.setValue(new_val)
+            ev.accept()
+        else:
+            super().mouseMoveEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        self._drag_start_pos = None
+        self._drag_start_val = None
+        super().mouseReleaseEvent(ev)
 
 
 class SyncControls(QFrame):
@@ -53,6 +138,34 @@ class SyncControls(QFrame):
         title.setProperty("class", "cardHeaderTitle")
         header_layout.addWidget(title)
         header_layout.addStretch()
+
+        # Precision Stepper: Pill segmented group (1 ms, 10 ms, 50 ms)
+        self.stepper_group = QFrame()
+        self.stepper_group.setObjectName("stepperGroup")
+        self.stepper_group.setProperty("class", "pillSoft")
+        sg_layout = QHBoxLayout(self.stepper_group)
+        sg_layout.setContentsMargins(4, 2, 4, 2)
+        sg_layout.setSpacing(4)
+
+        self.btn_sens_fine = QPushButton("1 ms")
+        self.btn_sens_fine.setProperty("class", "pill")
+        self.btn_sens_fine.setToolTip("Resolução Fina (passos de 1 ms)")
+        self.btn_sens_fine.clicked.connect(lambda: self.set_sensitivity_mode("fine"))
+        sg_layout.addWidget(self.btn_sens_fine)
+
+        self.btn_sens_normal = QPushButton("10 ms")
+        self.btn_sens_normal.setProperty("class", "pill")
+        self.btn_sens_normal.setToolTip("Resolução Normal (passos de 10 ms)")
+        self.btn_sens_normal.clicked.connect(lambda: self.set_sensitivity_mode("normal"))
+        sg_layout.addWidget(self.btn_sens_normal)
+
+        self.btn_sens_coarse = QPushButton("50 ms")
+        self.btn_sens_coarse.setProperty("class", "pill")
+        self.btn_sens_coarse.setToolTip("Resolução Ampla (passos de 50 ms)")
+        self.btn_sens_coarse.clicked.connect(lambda: self.set_sensitivity_mode("coarse"))
+        sg_layout.addWidget(self.btn_sens_coarse)
+
+        header_layout.addWidget(self.stepper_group)
 
         self.chip_track = QLabel("Faixa A02")
         self.chip_track.setObjectName("chipTrack")
@@ -94,10 +207,12 @@ class SyncControls(QFrame):
         slider_box.setContentsMargins(14, 10, 14, 10)
         slider_box.setSpacing(6)
 
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = DampedSlider(Qt.Horizontal)
         self.slider.setRange(-5000, 5000)
-        self.slider.setSingleStep(1)
+        self.slider.setSingleStep(10)
         self.slider.setPageStep(50)
+        self.sensitivity_controller = SliderSensitivityController(self.slider)
+        self.set_sensitivity_mode("normal")
         self.slider.valueChanged.connect(self._on_slider_changed)
         slider_box.addWidget(self.slider)
 
@@ -341,4 +456,20 @@ class SyncControls(QFrame):
     def set_manual_offset(self, offset_ms: float) -> None:
         """Explicitly sets the manual temporal alignment offset in milliseconds."""
         self.set_offset(offset_ms, is_calculated=False)
+
+    def set_sensitivity_mode(self, mode: Literal["fine", "normal", "coarse"]) -> None:
+        """Sets slider precision sensitivity mode and updates segmented control buttons."""
+        if hasattr(self, "sensitivity_controller"):
+            self.sensitivity_controller.set_mode(mode)
+        for btn, m in [
+            (getattr(self, "btn_sens_fine", None), "fine"),
+            (getattr(self, "btn_sens_normal", None), "normal"),
+            (getattr(self, "btn_sens_coarse", None), "coarse"),
+        ]:
+            if btn is not None:
+                is_active = (m == mode)
+                btn.setProperty("active", "true" if is_active else "false")
+                btn.style().unpolish(btn)
+                btn.style().polish(btn)
+
 

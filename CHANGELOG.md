@@ -48,6 +48,18 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Disponibilização do componente unificado `StreamReviewGate` (`src/ui/components/stream_review_gate.py`) e contrato de estado `StreamReviewState`.
 
 ### Adicionado
+- **Gerenciador de Layout do Espaço de Trabalho (WorkspaceLayoutManager):**
+  - Implementação de `WorkspaceLayoutManager` em `src/ui/workspace_layout.py` permitindo reorganização e redimensionamento persistente dos cards de trabalho via `QSettings`, com checagem de limites de coordenadas e restauração determinística para o layout padrão em caso de configurações corrompidas.
+  - Adição do botão "Modo Edição" / "Concluir Layout" no cabeçalho superior e integração com o grid principal.
+- **Controle de Sensibilidade e Amortecimento do Slider de Offset (DampedSlider & SliderSensitivityController):**
+  - Implementação de `SliderSensitivityController` e `DampedSlider` em `src/ui/components/sync_controls.py` com modos de resolução granular: `Fino` (1 ms / 0.25x), `Normal` (10 ms / 1.0x) e `Amplo` (50 ms / 2.5x).
+  - Segmented pill group (`btn_sens_fine`, `btn_sens_normal`, `btn_sens_coarse`) para comutação dinâmica de granularidade.
+- **Dock Flutuante de Telemetria com Animação Fluida (FloatingDockWidget):**
+  - Implementação de `FloatingDockWidget` em `src/ui/components/log_drawer.py` com expansão e recolhimento animados via `QPropertyAnimation` (140 ms, `QEasingCurve.InOutQuad`), indicador visual de pulso para novos eventos, contador dinâmico e botões de ação dedicados ("Limpar", "Expandir"/"Recolher").
+- **Grade Modular de Fundo com Cruzes Ortogonais:**
+  - Renderização geométrica em `paintEvent` da janela principal desenhando cruzes discretas (+) com espaçamento simétrico de 48px na paleta monocromática neutra (`#1f2329` em Dark e `#e2e5eb` em Light).
+- **Esteira Completa de Sincronização e Multiplexação Ponta a Ponta:**
+  - Implementação e validação do método público `execute_end_to_end_pipeline()`, disparando o pipeline assíncrono real de ponta a ponta com extração de amostras acústicas mono PCM via FFmpeg, correlação cruzada espectral FFT com detecção determinística de pico, injeção de atraso no contêiner MKV via `--sync` sem recodificação de vídeo (`mkvmerge`), e atualização visual dos marcadores de lip-sync no miniplayer (5%, 50%, 90%).
 - **Sistema Didático de Recomendação Acústica (Audiophile Badges):**
   - Implementação das funções `format_audiophile_recommendation_badge` e `format_audiophile_discard_notice` no módulo de inspeção (`src/core/inspector.py`).
   - Identificação e destaque intuitivo de faixas de estúdio: classificação `ÁUDIO DE MAIOR FIDELIDADE` para fluxos bit-perfect sem perdas (TrueHD, FLAC, DTS-HD MA) e `MELHOR OPÇÃO RECOMENDADA` para fluxos imersivos multicanais (Dolby Atmos, Surround 5.1/7.1 AC-3/E-AC-3/DTS).

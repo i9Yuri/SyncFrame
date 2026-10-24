@@ -127,6 +127,11 @@ class PreviewPlayer(QFrame):
         self.btn_p90.clicked.connect(lambda: self.play_marker(0.90))
         marker_row.addWidget(self.btn_p90)
 
+        # Aliases for backwards compatibility with tests and controller
+        self.btn_m5 = self.btn_p05
+        self.btn_m50 = self.btn_p50
+        self.btn_m90 = self.btn_p90
+
         layout.addLayout(marker_row)
 
     def set_media_sources(self, video_path: Optional[str], audio_path: Optional[str], duration_sec: float = 0.0, offset_ms: float = 0.0):
@@ -140,6 +145,12 @@ class PreviewPlayer(QFrame):
         else:
             self.status_label.setText("Pronto para reprodução sincronizada nos marcadores")
             self.set_markers_enabled(False)
+
+    def set_preview_ready(self, message: str = "") -> None:
+        """Sets preview status message and enables marker buttons."""
+        if message:
+            self.status_label.setText(message)
+        self.set_markers_enabled(True)
 
     def update_offset(self, offset_ms: float):
         self.current_offset_ms = offset_ms

@@ -5,6 +5,7 @@ import os
 from typing import Optional, List, Literal
 
 from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication,
     QBoxLayout,
@@ -27,12 +28,13 @@ from PySide6.QtWidgets import (
 from .components.collapsible_section import CollapsibleSection
 from .components.completion_dialog import show_completion_modal
 from .components.correlation_view import CorrelationView
-from .components.log_drawer import LogDrawer
+from .components.log_drawer import FloatingDockWidget, LogDrawer
 from .components.preview_player import PreviewPlayer
 from .components.sync_controls import SyncControls
 from .components.stream_selector_modal import StreamSelectorModal
 from .components.unified_drop_zone import UnifiedDropZone
 from .style import apply_workbench_theme, get_theme_stylesheet, apply_one_ui_monochrome_theme, get_theme_tokens
+from .workspace_layout import WorkspaceLayoutManager
 from .workers.analyze_worker import AnalyzeWorker
 from .workers.remux_worker import RemuxWorker
 from .workers.unified_pipeline_worker import UnifiedPipelineWorker
@@ -133,7 +135,7 @@ class SyncFrameMainWindow(QWidget):
 
         tb_layout.addStretch()
 
-        # Right actions: Local workspace pill with green dot, theme switcher pill, version pill
+        # Right actions: Local workspace pill with green dot, Edit mode button, theme switcher pill, version pill
         self.pill_workspace = QFrame()
         self.pill_workspace.setProperty("class", "pill")
         pw_layout = QHBoxLayout(self.pill_workspace)
@@ -147,6 +149,13 @@ class SyncFrameMainWindow(QWidget):
         pw_layout.addWidget(self.chip_workspace)
         tb_layout.addWidget(self.pill_workspace)
 
+        self.btn_edit_mode = QPushButton("Modo Edição")
+        self.btn_edit_mode.setObjectName("btnEditMode")
+        self.btn_edit_mode.setProperty("class", "pill")
+        self.btn_edit_mode.setToolTip("Personalizar e organizar cards no espaço de trabalho")
+        self.btn_edit_mode.clicked.connect(self.toggle_workspace_edit_mode)
+        tb_layout.addWidget(self.btn_edit_mode)
+
         self.btn_theme = QPushButton("Modo Claro")
         self.btn_theme.setObjectName("btnTheme")
         self.btn_theme.setProperty("class", "pill")
@@ -154,9 +163,10 @@ class SyncFrameMainWindow(QWidget):
         self.btn_theme.clicked.connect(self.toggle_theme_mode)
         tb_layout.addWidget(self.btn_theme)
 
-        badge_v = QLabel("v1.2.0")
-        badge_v.setProperty("class", "pillSoft")
-        tb_layout.addWidget(badge_v)
+        self.badge_v = QLabel("v1.2.0")
+        self.badge_v.setObjectName("badgeVersion")
+        self.badge_v.setProperty("class", "pillSoft")
+        tb_layout.addWidget(self.badge_v)
 
         root_layout.addWidget(self.topbar)
 
@@ -275,9 +285,10 @@ class SyncFrameMainWindow(QWidget):
         col_right.setSpacing(12)
 
         # Card 03: Acoustic Audit (FFT & Drift Diagnosis)
-        card_acoustic = QFrame()
-        card_acoustic.setProperty("class", "panelCard")
-        ca_layout = QVBoxLayout(card_acoustic)
+        self.card_acoustic = QFrame()
+        self.card_acoustic.setObjectName("cardAcoustic")
+        self.card_acoustic.setProperty("class", "panelCard")
+        ca_layout = QVBoxLayout(self.card_acoustic)
         ca_layout.setContentsMargins(18, 16, 18, 16)
         ca_layout.setSpacing(10)
 
@@ -297,7 +308,7 @@ class SyncFrameMainWindow(QWidget):
         self.correlation_view = CorrelationView()
         ca_layout.addWidget(self.correlation_view)
 
-        col_right.addWidget(card_acoustic)
+        col_right.addWidget(self.card_acoustic)
 
         # Card 03A: Temporal Alignment (Micro-ajuste & métricas)
         self.sync_controls = SyncControls()
@@ -326,9 +337,24 @@ class SyncFrameMainWindow(QWidget):
         dock_bar.setContentsMargins(24, 0, 24, 14)
         dock_bar.setAlignment(Qt.AlignCenter)
 
-        self.log_drawer = LogDrawer()
+        self.log_drawer = FloatingDockWidget()
+        self.floating_dock = self.log_drawer
         dock_bar.addWidget(self.log_drawer)
         root_layout.addWidget(self.dock_container)
+
+        # Register manageable cards in WorkspaceLayoutManager
+        self.widgets_map = {
+            "drop_zone": self.drop_zone,
+            "card_remux_exec": self.card_remux_exec,
+            "card_acoustic": self.card_acoustic,
+            "sync_controls": self.sync_controls,
+            "preview_player": self.preview_player,
+        }
+        self.layout_manager = WorkspaceLayoutManager(
+            widgets_map=self.widgets_map
+        )
+
+        self._update_topbar_pill_sizes()
 
         # Set default dark theme on app and window
         app = QApplication.instance()
@@ -416,6 +442,60 @@ class SyncFrameMainWindow(QWidget):
                 self.body_layout.setDirection(QBoxLayout.LeftToRight)
         if hasattr(self, "scroll_area"):
             self.scroll_area.updateGeometry()
+        self._update_topbar_pill_sizes()
+
+    def _update_topbar_pill_sizes(self) -> None:
+        """Dynamically sizes topbar pill tags and buttons based on QFontMetrics + 14px lateral padding."""
+        pills = [
+            getattr(self, "btn_theme", None),
+            getattr(self, "btn_edit_mode", None),
+            getattr(self, "badge_v", None),
+        ]
+        for pill in pills:
+            if pill and hasattr(pill, "text") and pill.text():
+                fm = pill.fontMetrics()
+                # 14px left padding + 14px right padding = 28px
+                pill.setFixedWidth(fm.horizontalAdvance(pill.text()) + 28)
+
+    def paintEvent(self, event):
+        """Draws orthogonal modular grid (48px spacing) with symmetric crosses (+)."""
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, False)
+        cross_color = QColor("#1f2329") if getattr(self, "current_theme", "dark") == "dark" else QColor("#e2e5eb")
+        pen = QPen(cross_color, 1)
+        painter.setPen(pen)
+
+        step = 48
+        arm = 4
+        w = self.width()
+        h = self.height()
+
+        for x in range(step, w, step):
+            for y in range(step, h, step):
+                painter.drawLine(x - arm, y, x + arm, y)
+                painter.drawLine(x, y - arm, x, y + arm)
+        painter.end()
+
+    def toggle_workspace_edit_mode(self) -> None:
+        """Toggles workspace customization edit mode and persists layout on completion."""
+        new_mode = not self.layout_manager.is_edit_mode
+        self.layout_manager.toggle_edit_mode(new_mode)
+        if new_mode:
+            self.btn_edit_mode.setText("Concluir Layout")
+            self.log_drawer.append_log("Modo de personalização de layout ativado. Ajuste os cartões.")
+        else:
+            self.btn_edit_mode.setText("Modo Edição")
+            self.layout_manager.save_layout(self.widgets_map)
+            self.log_drawer.append_log("Layout do espaço de trabalho salvo com sucesso.")
+        self._update_topbar_pill_sizes()
+
+    def execute_end_to_end_pipeline(self) -> None:
+        """
+        Public programmatic interface to execute the full end-to-end sync and remux pipeline.
+        Contract: MainWindow.execute_end_to_end_pipeline() -> None
+        """
+        self.on_run_clicked()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -680,14 +760,21 @@ class SyncFrameMainWindow(QWidget):
     def wire_pipeline_signals(self, worker: PipelineWorker) -> None:
         """Explicitly connects all telemetry and progress signals from the worker to GUI components."""
         worker.started.connect(self._on_worker_started)
-        worker.analysis_started.connect(self._on_analysis_started)
+        if hasattr(worker, "analysis_started"):
+            worker.analysis_started.connect(self._on_analysis_started)
+        if hasattr(worker, "correlation_started"):
+            worker.correlation_started.connect(self._on_analysis_started)
         worker.step_progress.connect(self._on_step_progress)
         worker.correlation_ready.connect(self._on_correlation_ready)
         worker.correlation_completed.connect(self._on_correlation_completed)
+        if hasattr(worker, "correlation_finished"):
+            worker.correlation_finished.connect(self._on_correlation_completed)
         worker.preview_segments_ready.connect(self._on_preview_segments_ready)
         worker.preview_ready.connect(self._on_preview_ready)
         worker.remux_progress.connect(self._on_remux_progress)
         worker.remux_completed.connect(self._on_remux_completed)
+        if hasattr(worker, "remux_finished"):
+            worker.remux_finished.connect(self._on_remux_completed)
         worker.finished_success.connect(self._on_finished_success)
         worker.execution_failed.connect(self._on_execution_failed)
 
@@ -827,3 +914,8 @@ class SyncFrameMainWindow(QWidget):
         if self.remux_worker and self.remux_worker.isRunning():
             self.remux_worker.cancel()
         self.btn_cancel.setEnabled(False)
+
+
+# Backwards compatibility alias
+MainWindow = SyncFrameMainWindow
+
