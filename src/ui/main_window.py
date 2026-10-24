@@ -71,6 +71,7 @@ class SyncFrameMainWindow(QWidget):
         self.selected_target_audio_id: int = 0
 
         self.latest_metrics: Optional[SyncMetrics] = None
+        self.active_pipeline_worker: Optional[UnifiedPipelineWorker] = None
         self.pipeline_worker: Optional[UnifiedPipelineWorker] = None
         self.active_worker: Optional[UnifiedPipelineWorker] = None
         self.current_worker: Optional[UnifiedPipelineWorker] = None
@@ -134,40 +135,7 @@ class SyncFrameMainWindow(QWidget):
         self.lbl_crumb.setVisible(False)
 
         tb_layout.addStretch()
-
-        # Right actions: Local workspace pill with green dot, Edit mode button, theme switcher pill, version pill
-        self.pill_workspace = QFrame()
-        self.pill_workspace.setProperty("class", "pill")
-        pw_layout = QHBoxLayout(self.pill_workspace)
-        pw_layout.setContentsMargins(14, 6, 14, 6)
-        pw_layout.setSpacing(8)
-        dot_ws = QLabel()
-        dot_ws.setProperty("class", "greenDot")
-        pw_layout.addWidget(dot_ws)
-        self.chip_workspace = QLabel("Espaço de trabalho local")
-        self.chip_workspace.setStyleSheet("font-weight: 600; font-size: 13px; border: none; background: transparent;")
-        pw_layout.addWidget(self.chip_workspace)
-        tb_layout.addWidget(self.pill_workspace)
-
-        self.btn_edit_mode = QPushButton("Modo Edição")
-        self.btn_edit_mode.setObjectName("btnEditMode")
-        self.btn_edit_mode.setProperty("class", "pill")
-        self.btn_edit_mode.setToolTip("Personalizar e organizar cards no espaço de trabalho")
-        self.btn_edit_mode.clicked.connect(self.toggle_workspace_edit_mode)
-        tb_layout.addWidget(self.btn_edit_mode)
-
-        self.btn_theme = QPushButton("Modo Claro")
-        self.btn_theme.setObjectName("btnTheme")
-        self.btn_theme.setProperty("class", "pill")
-        self.btn_theme.setToolTip("Alternar entre Dark e Light Mode")
-        self.btn_theme.clicked.connect(self.toggle_theme_mode)
-        tb_layout.addWidget(self.btn_theme)
-
-        self.badge_v = QLabel("v1.2.0")
-        self.badge_v.setObjectName("badgeVersion")
-        self.badge_v.setProperty("class", "pillSoft")
-        tb_layout.addWidget(self.badge_v)
-
+        self.setup_topbar_actions()
         root_layout.addWidget(self.topbar)
 
         # Passive progress / stepper references retained for backwards compatibility
@@ -423,6 +391,73 @@ class SyncFrameMainWindow(QWidget):
         self.sync_controls.set_manual_offset(offset_ms)
         self.preview_player.update_offset(offset_ms)
 
+    def setup_topbar_actions(self) -> None:
+        """
+        Constructs and configures topbar pill actions deterministically:
+        - Espaço de trabalho local (pill with green dot)
+        - Modo Claro / Modo Escuro (theme switcher pill)
+        - v1.2.0 (version pill)
+        - Fully expunges inoperant Edit Mode and rogue '+' crosses
+        - Standardizes compact height to 34px with 8px horizontal gap
+        - Auto-fits pill widths via QFontMetrics + 28px symmetric padding
+        """
+        tb_layout = self.topbar.layout() if hasattr(self, "topbar") and self.topbar else None
+        if tb_layout is None:
+            return
+
+        tb_layout.setSpacing(8)
+
+        # 1. Local workspace pill
+        if not hasattr(self, "pill_workspace") or self.pill_workspace is None:
+            self.pill_workspace = QFrame()
+            pw_layout = QHBoxLayout(self.pill_workspace)
+            pw_layout.setContentsMargins(14, 0, 14, 0)
+            pw_layout.setSpacing(8)
+            dot_ws = QLabel()
+            dot_ws.setProperty("class", "greenDot")
+            pw_layout.addWidget(dot_ws)
+            self.chip_workspace = QLabel("Espaço de trabalho local")
+            self.chip_workspace.setStyleSheet("font-weight: 600; font-size: 13px; border: none; background: transparent;")
+            pw_layout.addWidget(self.chip_workspace)
+            tb_layout.addWidget(self.pill_workspace)
+
+        self.pill_workspace.setObjectName("pillWorkspace")
+        self.pill_workspace.setProperty("class", "pill")
+        self.pill_workspace.setFixedHeight(34)
+
+        # 2. Backward-compatible edit mode button: strictly expunged from visible topbar
+        if not hasattr(self, "btn_edit_mode") or self.btn_edit_mode is None:
+            self.btn_edit_mode = QPushButton("Modo Edição")
+            self.btn_edit_mode.setObjectName("btnEditMode")
+            self.btn_edit_mode.setProperty("class", "pill")
+            self.btn_edit_mode.clicked.connect(self.toggle_workspace_edit_mode)
+
+        self.btn_edit_mode.setVisible(False)
+        tb_layout.removeWidget(self.btn_edit_mode)
+
+        # 3. Theme toggle button
+        if not hasattr(self, "btn_theme") or self.btn_theme is None:
+            self.btn_theme = QPushButton("Modo Claro")
+            self.btn_theme.setToolTip("Alternar entre Dark e Light Mode")
+            self.btn_theme.clicked.connect(self.toggle_theme_mode)
+            tb_layout.addWidget(self.btn_theme)
+
+        self.btn_theme.setObjectName("btnTheme")
+        self.btn_theme.setProperty("class", "pill")
+        self.btn_theme.setFixedHeight(34)
+        self.btn_theme.setCursor(Qt.PointingHandCursor)
+
+        # 4. Version badge
+        if not hasattr(self, "badge_v") or self.badge_v is None:
+            self.badge_v = QLabel("v1.2.0")
+            tb_layout.addWidget(self.badge_v)
+
+        self.badge_v.setObjectName("badgeVersion")
+        self.badge_v.setProperty("class", "pillSoft")
+        self.badge_v.setFixedHeight(34)
+
+        self._update_topbar_pill_sizes()
+
     def toggle_theme_mode(self) -> None:
         """Toggles between strictly monochrome neutral dark and neutral light workbench theme."""
         new_mode: Literal["dark", "light"] = "light" if self.current_theme == "dark" else "dark"
@@ -445,20 +480,30 @@ class SyncFrameMainWindow(QWidget):
         self._update_topbar_pill_sizes()
 
     def _update_topbar_pill_sizes(self) -> None:
-        """Dynamically sizes topbar pill tags and buttons based on QFontMetrics + 14px lateral padding."""
-        pills = [
-            getattr(self, "btn_theme", None),
-            getattr(self, "btn_edit_mode", None),
-            getattr(self, "badge_v", None),
-        ]
-        for pill in pills:
-            if pill and hasattr(pill, "text") and pill.text():
-                fm = pill.fontMetrics()
-                # 14px left padding + 14px right padding = 28px
-                pill.setFixedWidth(fm.horizontalAdvance(pill.text()) + 28)
+        """Dynamically sizes topbar pill tags and buttons based on QFontMetrics + 28px lateral padding."""
+        if hasattr(self, "pill_workspace") and hasattr(self, "chip_workspace") and self.pill_workspace:
+            fm_ws = self.chip_workspace.fontMetrics()
+            text_w = fm_ws.horizontalAdvance(self.chip_workspace.text())
+            self.pill_workspace.setFixedWidth(text_w + 44)
+            self.pill_workspace.setFixedHeight(34)
+
+        if hasattr(self, "btn_theme") and self.btn_theme and self.btn_theme.text():
+            fm_theme = self.btn_theme.fontMetrics()
+            self.btn_theme.setFixedWidth(fm_theme.horizontalAdvance(self.btn_theme.text()) + 28)
+            self.btn_theme.setFixedHeight(34)
+
+        if hasattr(self, "badge_v") and self.badge_v and self.badge_v.text():
+            fm_v = self.badge_v.fontMetrics()
+            self.badge_v.setFixedWidth(fm_v.horizontalAdvance(self.badge_v.text()) + 28)
+            self.badge_v.setFixedHeight(34)
+
+        if hasattr(self, "btn_edit_mode") and self.btn_edit_mode and self.btn_edit_mode.text():
+            fm_edit = self.btn_edit_mode.fontMetrics()
+            self.btn_edit_mode.setFixedWidth(fm_edit.horizontalAdvance(self.btn_edit_mode.text()) + 28)
+            self.btn_edit_mode.setFixedHeight(34)
 
     def paintEvent(self, event):
-        """Draws orthogonal modular grid (48px spacing) with symmetric crosses (+)."""
+        """Draws orthogonal modular grid (48px spacing) with symmetric crosses (+), strictly below topbar."""
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, False)
@@ -471,8 +516,11 @@ class SyncFrameMainWindow(QWidget):
         w = self.width()
         h = self.height()
 
+        topbar_h = self.topbar.geometry().bottom() if hasattr(self, "topbar") and self.topbar else 70
+        start_y = ((max(topbar_h, 60) + step) // step) * step
+
         for x in range(step, w, step):
-            for y in range(step, h, step):
+            for y in range(start_y, h, step):
                 painter.drawLine(x - arm, y, x + arm, y)
                 painter.drawLine(x, y - arm, x, y + arm)
         painter.end()
@@ -750,12 +798,17 @@ class SyncFrameMainWindow(QWidget):
             manual_offset_override=self.manual_offset_override,
             parent=self
         )
+        self.active_pipeline_worker = worker
         self.pipeline_worker = worker
         self.active_worker = worker
         self.current_worker = worker
 
         self.wire_pipeline_signals(worker)
         worker.start()
+
+    def start_sync_pipeline(self) -> None:
+        """Public deterministic method to launch the end-to-end sync and remux pipeline."""
+        self.on_run_clicked()
 
     def wire_pipeline_signals(self, worker: PipelineWorker) -> None:
         """Explicitly connects all telemetry and progress signals from the worker to GUI components."""
@@ -788,8 +841,8 @@ class SyncFrameMainWindow(QWidget):
         self.lbl_progress_status.setText("Calculando correlação espectral...")
 
     def start_analysis(self):
-        """Backwards-compatible alias for on_run_clicked."""
-        self.on_run_clicked()
+        """Backwards-compatible alias for start_sync_pipeline."""
+        self.start_sync_pipeline()
 
     def _restore_action_button(self):
         """Restores the primary action button and normal mouse cursor."""

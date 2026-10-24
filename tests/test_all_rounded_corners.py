@@ -11,6 +11,8 @@ from src.ui.style import (
     get_theme_stylesheet,
     StyleEngine,
     apply_universal_rounded_tokens,
+    CustomStyleEngine,
+    enforce_universal_pill_radius,
     get_clean_badge_style,
     get_role_badge_style,
     get_action_chip_style,
@@ -21,6 +23,8 @@ from src.ui.style import (
 from src.ui.components.completion_dialog import CompletionDialog
 from src.ui.components.correlation_view import CorrelationView
 from src.ui.components.stream_selector_modal import StreamSelectorModal
+from src.ui.components.sync_controls import SensitivitySelectorWidget, SyncControls
+from src.ui.main_window import SyncFrameMainWindow
 from src.ui.workspace_layout import WorkspaceLayoutManager
 from src.core.models import AutoMatchVerdict, StreamCandidate, StreamMetadata
 
@@ -156,6 +160,63 @@ class TestAllRoundedCorners(unittest.TestCase):
 
         self.assertTrue(len(StyleEngine.apply_universal_rounded_tokens("dark")) > 1000)
         self.assertTrue(len(apply_universal_rounded_tokens("light")) > 1000)
+
+    def test_custom_style_engine_contract(self):
+        """Verifies CustomStyleEngine.enforce_universal_pill_radius contract."""
+        dark_qss = CustomStyleEngine.enforce_universal_pill_radius("dark")
+        light_qss = enforce_universal_pill_radius("light")
+        self.assertIn("border-radius: 999px;", dark_qss)
+        self.assertIn("border-radius: 999px;", light_qss)
+        self.assertIn("QFrame#sensitivitySelector", dark_qss)
+        self.assertIn("QFrame#sensitivitySelector", light_qss)
+
+    def test_sensitivity_selector_widget_contract(self):
+        """Verifies SensitivitySelectorWidget functionality and step switching contract."""
+        widget = SensitivitySelectorWidget()
+        steps_recorded = []
+        widget.step_changed.connect(steps_recorded.append)
+
+        self.assertEqual(widget.current_step, 10)
+        widget.set_sensitivity_step(1)
+        self.assertEqual(widget.current_step, 1)
+        self.assertEqual(steps_recorded, [1])
+
+        widget.set_sensitivity_step(50)
+        self.assertEqual(widget.current_step, 50)
+        self.assertEqual(steps_recorded, [1, 50])
+
+        # Test SyncControls integration
+        sc = SyncControls()
+        self.assertTrue(hasattr(sc, "sensitivity_selector"))
+        self.assertTrue(hasattr(sc, "btn_reset"))
+        self.assertEqual(sc.btn_reset.property("class"), "pill")
+        self.assertEqual(sc.btn_reset.objectName(), "btnResetOffset")
+
+    def test_main_window_topbar_actions_and_pipeline_contract(self):
+        """Verifies MainWindow topbar setup, edit mode removal, pill auto-sizing and start_sync_pipeline."""
+        win = SyncFrameMainWindow()
+        self.assertTrue(hasattr(win, "setup_topbar_actions"))
+        self.assertTrue(callable(win.setup_topbar_actions))
+        self.assertTrue(hasattr(win, "start_sync_pipeline"))
+        self.assertTrue(callable(win.start_sync_pipeline))
+        self.assertTrue(hasattr(win, "active_pipeline_worker"))
+
+        # Setup topbar actions
+        win.setup_topbar_actions()
+
+        # Inoperant edit mode button must be hidden from topbar
+        self.assertFalse(win.btn_edit_mode.isVisible())
+
+        # Topbar pills must have fixed 34px height
+        self.assertEqual(win.pill_workspace.height(), 34)
+        self.assertEqual(win.btn_theme.height(), 34)
+        self.assertEqual(win.badge_v.height(), 34)
+
+        # Pill workspace must be wider than text alone due to green dot and padding
+        fm_ws = win.chip_workspace.fontMetrics()
+        min_expected = fm_ws.horizontalAdvance(win.chip_workspace.text()) + 28
+        self.assertGreaterEqual(win.pill_workspace.width(), min_expected)
+        win.close()
 
 
 if __name__ == "__main__":

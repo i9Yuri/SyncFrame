@@ -968,6 +968,18 @@ class UnifiedDropZone(QFrame):
         if not chosen_ref and self.current_verdict:
             chosen_ref = self.current_verdict.reference_audio
 
+        # Fallback: if verdict was not ready but files are loaded, evaluate them
+        if (not chosen_video or not chosen_target) and len(self.loaded_files) >= 2:
+            try:
+                from ...core.inspector import evaluate_media_streams
+                verdict = evaluate_media_streams(self.loaded_files[0], self.loaded_files[1])
+                self.set_verdict(verdict)
+                chosen_video = self.combo_video.currentData() or verdict.recommended_video
+                chosen_target = self.combo_target_audio.currentData() or verdict.recommended_target_audio
+                chosen_ref = self.combo_ref_audio.currentData() or verdict.reference_audio
+            except Exception as err:
+                logger.error("Failed to auto-evaluate media streams on confirmation: %s", err)
+
         if chosen_video and chosen_target:
             self.confirmation_confirmed.emit(chosen_video, chosen_target, chosen_ref, keep_orig)
 

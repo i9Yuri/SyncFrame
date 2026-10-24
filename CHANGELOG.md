@@ -15,9 +15,24 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Recorte geométrico arredondado contínuo via `QPainterPath` (`clip_path.addRoundedRect(0, 0, w, h, 28, 28)`) no `CorrelationView.paintEvent`, prevenindo vazamento de linhas de grade e curvas espectrais fora dos cantos arredondados do cartão.
   - Padronização geométrica e cromática do modal de seleção de trilhas (`StreamSelectorModal`) com cantos de 28px no diálogo, 24px nos cards internos, pílulas ovais nos controles e paleta monocromática neutra (`badgeNeutral`).
   - Implementação da classe `StyleEngine` com método utilitário estático `apply_universal_rounded_tokens(theme_mode)` e exportação de helpers modulares para geração determinística de estilos curvos.
-- **Resolução da Inércia de Execução do Botão Primário ("Sincronizar e Concluir"):**
-  - Correção de chamada com divergência de assinatura na verificação pré-voo de armazenamento (`check_disk_space`), fornecendo os três caminhos obrigatórios (`destination_path`, `video_source_path`, `audio_source_path`) e prevenindo o lançamento de exceção não tratada no despachador de eventos do Qt.
-  - Implementação formal dos contratos de execução da janela principal: `MainWindow.on_run_clicked()` com auditoria pré-voo e ancoragem determinística da thread trabalhadora (`self.current_worker = worker`), `MainWindow.wire_pipeline_signals()` conectando todos os sinais de telemetria, progresso e conclusão, e `StreamReviewGate.reset_to_recommended()` para restauração dos seletores.
+- **Depuração e Higienização da Topbar e Expurgo de Elementos Inoperantes:**
+  - Padronização determinística dos botões e pills do cabeçalho via `MainWindow.setup_topbar_actions()`: altura uniforme e compacta de 34px, geometria em pílula contínua (`border-radius: 999px;`), dimensionamento dinâmico via `QFontMetrics` acrescido de padding lateral simétrico (`padding: 0 14px;`) e espaçamento horizontal de 8px.
+  - Eliminação total de truncamento de texto nos botões superiores, garantindo a exibição integral de "Modo Claro", "Modo Escuro" e "Espaço de trabalho local".
+  - Expurgo sumário do botão inoperante "Modo Edição" da Topbar visível, consolidando o layout estático proporcional e sem elementos residuais.
+  - Confinamento estrito do grid técnico de cruzes ortogonais (+) do `paintEvent` à área útil de conteúdo abaixo da Topbar (`start_y >= topbar_bottom + 24px`), impedindo que cruzamentos decorativos vazem ou sobreponham elementos de navegação do cabeçalho.
+- **Refatoração do Seletor de Sensibilidade e Botões em Pílula Orgânica:**
+  - Implementação do componente `SensitivitySelectorWidget` (`src/ui/components/sync_controls.py`) com container segmentado em pílula (`border-radius: 999px; background-color: #26272d` em Dark e `#eceef4` em Light), botões internos ovais de 26px de altura e destaque da opção ativa em alto contraste.
+  - Disponibilização do contrato `SensitivitySelectorWidget.set_sensitivity_step(step_ms: int)` e sinal `step_changed`.
+  - Padronização do botão "Resetar" (`#btnResetOffset`) como pílula contínua (`border-radius: 999px;`) com padding simétrico.
+  - Estilização de botões desativados (`:disabled`) em `src/ui/style.py` com `border-radius: 999px;` explícito, eliminando quinas cinzas retangulares em `#btnStopPreview` e outros controles.
+  - Refinamento do slider temporal com `QSlider { background: transparent; border: none; }` para erradicar qualquer borda intermediária quadrada.
+- **Ativação e Ancoragem da Esteira Assíncrona ("Sincronizar e Concluir"):**
+  - Implementação da interface pública `MainWindow.start_sync_pipeline()` com despacho determinístico da esteira.
+  - Ancoragem persistente mandatória da instância da thread trabalhadora em `self.active_pipeline_worker = worker`, prevenindo coleta prematura pelo garbage collector do Python.
+  - Fortalecimento de `UnifiedDropZone._on_confirm_clicked()` com inspeção automática de contingência sobre fontes ingeridas, prevenindo retornos silenciosos inertes.
+  - Validação ponta a ponta com as mídias reais de Os Vingadores (`test_live_avengers_pipeline.py`) confirmando extração PCM mono 16kHz via FFmpeg, correlação FFT com pico em -829 ms, atualização espectral no card 03, movimentação do slider e ativação dos marcadores de lip-sync (5%, 50%, 90%).
+- **Contrato `CustomStyleEngine`:**
+  - Implementação da classe `CustomStyleEngine` em `src/ui/style.py` com o método estático `enforce_universal_pill_radius(theme_mode: Literal["dark", "light"] = "dark") -> str` e função de conveniência modular.
 - **Contorno Recortado na Área de Drop (Dropzone Corner Clipping):**
   - Isolamento estrito da borda pontilhada no `#dropFrameEmpty` e neutralização do contorno recortado no container raiz (`UnifiedDropZone`), eliminando o vazamento de borda interna sob a linha tracejada com cantos arredondados (`border-radius: 24px`).
   - Configuração de fundo transparente em `QStackedWidget` nas folhas de estilo de ambos os temas para evitar artefatos de herança de estilo sobre os componentes filhos.

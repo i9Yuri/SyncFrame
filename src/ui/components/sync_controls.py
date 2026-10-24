@@ -103,6 +103,52 @@ class DampedSlider(QSlider):
         super().mouseReleaseEvent(ev)
 
 
+class SensitivitySelectorWidget(QFrame):
+    """
+    Segmented pill container providing ergonomic resolution switching
+    (1 ms, 10 ms, 50 ms) with 100% continuous rounded pill geometry.
+    Contract: SensitivitySelectorWidget.set_sensitivity_step(step_ms: int) -> None
+    """
+    step_changed = Signal(int)
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setObjectName("sensitivitySelector")
+        self.setProperty("class", "pillSoft")
+        self.current_step: int = 10
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(4)
+
+        self.btn_1ms = QPushButton("1 ms")
+        self.btn_10ms = QPushButton("10 ms")
+        self.btn_50ms = QPushButton("50 ms")
+
+        for btn, step in [(self.btn_1ms, 1), (self.btn_10ms, 10), (self.btn_50ms, 50)]:
+            btn.setProperty("class", "pillSegmentBtn")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda _, s=step: self.set_sensitivity_step(s))
+            layout.addWidget(btn)
+
+        self._refresh_buttons()
+
+    def set_sensitivity_step(self, step_ms: int) -> None:
+        """Sets active sensitivity step and updates visual pill highlight."""
+        if step_ms not in (1, 10, 50):
+            step_ms = 10
+        self.current_step = step_ms
+        self._refresh_buttons()
+        self.step_changed.emit(step_ms)
+
+    def _refresh_buttons(self) -> None:
+        for btn, step in [(self.btn_1ms, 1), (self.btn_10ms, 10), (self.btn_50ms, 50)]:
+            is_active = (step == self.current_step)
+            btn.setProperty("active", "true" if is_active else "false")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+
 class SyncControls(QFrame):
     """
     Panel providing manual offset adjustments (large monospace display, slider, nudge buttons)
@@ -140,32 +186,13 @@ class SyncControls(QFrame):
         header_layout.addStretch()
 
         # Precision Stepper: Pill segmented group (1 ms, 10 ms, 50 ms)
-        self.stepper_group = QFrame()
-        self.stepper_group.setObjectName("stepperGroup")
-        self.stepper_group.setProperty("class", "pillSoft")
-        sg_layout = QHBoxLayout(self.stepper_group)
-        sg_layout.setContentsMargins(4, 2, 4, 2)
-        sg_layout.setSpacing(4)
-
-        self.btn_sens_fine = QPushButton("1 ms")
-        self.btn_sens_fine.setProperty("class", "pill")
-        self.btn_sens_fine.setToolTip("Resolução Fina (passos de 1 ms)")
-        self.btn_sens_fine.clicked.connect(lambda: self.set_sensitivity_mode("fine"))
-        sg_layout.addWidget(self.btn_sens_fine)
-
-        self.btn_sens_normal = QPushButton("10 ms")
-        self.btn_sens_normal.setProperty("class", "pill")
-        self.btn_sens_normal.setToolTip("Resolução Normal (passos de 10 ms)")
-        self.btn_sens_normal.clicked.connect(lambda: self.set_sensitivity_mode("normal"))
-        sg_layout.addWidget(self.btn_sens_normal)
-
-        self.btn_sens_coarse = QPushButton("50 ms")
-        self.btn_sens_coarse.setProperty("class", "pill")
-        self.btn_sens_coarse.setToolTip("Resolução Ampla (passos de 50 ms)")
-        self.btn_sens_coarse.clicked.connect(lambda: self.set_sensitivity_mode("coarse"))
-        sg_layout.addWidget(self.btn_sens_coarse)
-
-        header_layout.addWidget(self.stepper_group)
+        self.sensitivity_selector = SensitivitySelectorWidget(self)
+        self.stepper_group = self.sensitivity_selector
+        self.btn_sens_fine = self.sensitivity_selector.btn_1ms
+        self.btn_sens_normal = self.sensitivity_selector.btn_10ms
+        self.btn_sens_coarse = self.sensitivity_selector.btn_50ms
+        self.sensitivity_selector.step_changed.connect(self._on_sensitivity_step_changed)
+        header_layout.addWidget(self.sensitivity_selector)
 
         self.chip_track = QLabel("Faixa A02")
         self.chip_track.setObjectName("chipTrack")
@@ -194,7 +221,9 @@ class SyncControls(QFrame):
         disp_box.addStretch()
 
         self.btn_reset = QPushButton("Resetar")
-        self.btn_reset.setProperty("class", "btn")
+        self.btn_reset.setObjectName("btnResetOffset")
+        self.btn_reset.setProperty("class", "pill")
+        self.btn_reset.setCursor(Qt.PointingHandCursor)
         self.btn_reset.clicked.connect(self.reset_to_calculated)
         disp_box.addWidget(self.btn_reset, alignment=Qt.AlignVCenter)
         layout.addWidget(offset_callout_frame)
@@ -457,10 +486,19 @@ class SyncControls(QFrame):
         """Explicitly sets the manual temporal alignment offset in milliseconds."""
         self.set_offset(offset_ms, is_calculated=False)
 
-    def set_sensitivity_mode(self, mode: Literal["fine", "normal", "coarse"]) -> None:
-        """Sets slider precision sensitivity mode and updates segmented control buttons."""
+    def _on_sensitivity_step_changed(self, step_ms: int) -> None:
+        """Handles step changes originating from SensitivitySelectorWidget."""
+        mode = "fine" if step_ms == 1 else ("coarse" if step_ms == 50 else "normal")
         if hasattr(self, "sensitivity_controller"):
             self.sensitivity_controller.set_mode(mode)
+
+    def set_sensitivity_mode(self, mode: Literal["fine", "normal", "coarse"]) -> None:
+        """Sets slider precision sensitivity mode and updates segmented control buttons."""
+        step_ms = 1 if mode == "fine" else (50 if mode == "coarse" else 10)
+        if hasattr(self, "sensitivity_controller"):
+            self.sensitivity_controller.set_mode(mode)
+        if hasattr(self, "sensitivity_selector"):
+            self.sensitivity_selector.set_sensitivity_step(step_ms)
         for btn, m in [
             (getattr(self, "btn_sens_fine", None), "fine"),
             (getattr(self, "btn_sens_normal", None), "normal"),
