@@ -142,6 +142,97 @@ class TestUIIngestionAndThemes(unittest.TestCase):
         self.assertEqual(title_lbl.property("class"), "logTitle")
         self.assertEqual(title_lbl.styleSheet(), "")
 
+    def test_elide_filename_middle_truncation(self):
+        """Verifies middle elision preserves stem prefix, suffix, and extension while keeping length constrained."""
+        from src.ui.components.unified_drop_zone import elide_filename
+
+        short_name = "sample.mkv"
+        self.assertEqual(elide_filename(short_name, max_chars=36), short_name)
+
+        long_name = "The.Avengers.Endgame.2019.2160p.UHD.Remux.HEVC.DTS-HD.MA.7.1-DTOne.mkv"
+        elided = elide_filename(long_name, max_chars=36)
+        self.assertLessEqual(len(elided), 36)
+        self.assertIn("...", elided)
+        self.assertTrue(elided.endswith(".mkv"))
+        self.assertTrue(elided.startswith("The."))
+
+    def test_configure_stream_row_contract(self):
+        """Verifies configure_stream_row builds a two-level card conforming to the layout contract."""
+        from PySide6.QtWidgets import QComboBox
+        drop_zone = self.window.drop_zone
+
+        # Test 4-argument call (without combo: uses description label)
+        row_desc = drop_zone.configure_stream_row(
+            track_id="A03 / Secundário",
+            role_badge="Opcional",
+            description="Codec AAC 2.0 • 192 kbps",
+            action_chip="Copy",
+            combo=None
+        )
+        self.assertEqual(row_desc.lbl_id.text(), "A03 / Secundário")
+        self.assertEqual(row_desc.badge.text(), "Opcional")
+        self.assertEqual(row_desc.chip.text(), "Copy")
+        self.assertEqual(row_desc.lbl_desc.text(), "Codec AAC 2.0 • 192 kbps")
+        self.assertGreaterEqual(row_desc.chip.minimumWidth(), 64)
+
+        # Test 5-argument call with QComboBox (embedded in lower line)
+        combo = QComboBox()
+        row_combo = drop_zone.configure_stream_row(
+            track_id="V01 / Vídeo",
+            role_badge="Melhor Imagem",
+            description="",
+            action_chip="Copy",
+            combo=combo
+        )
+        self.assertEqual(row_combo.lbl_id.text(), "V01 / Vídeo")
+        self.assertEqual(row_combo.badge.text(), "Melhor Imagem")
+        self.assertEqual(row_combo.chip.text(), "Copy")
+        self.assertIs(row_combo.combo, combo)
+        self.assertGreaterEqual(row_combo.chip.minimumWidth(), 64)
+
+    def test_role_badge_dynamic_autofit_no_truncation(self):
+        """Verifies update_role_badge computes dynamic width preventing clipping of long labels."""
+        drop_zone = self.window.drop_zone
+        badge = drop_zone.badge_v_status
+
+        test_labels = [
+            "Melhor Imagem",
+            "Português Oficial",
+            "Referência Fixa",
+            "Ajuste Manual"
+        ]
+        for label in test_labels:
+            drop_zone.update_role_badge(badge, label)
+            self.assertEqual(badge.text(), label)
+            expected_min = max(badge.fontMetrics().horizontalAdvance(label) + 24, 88)
+            self.assertGreaterEqual(badge.minimumWidth(), expected_min)
+
+    def test_autonomous_left_column_blocks(self):
+        """Verifies the left column is decomposed into 3 autonomous visual containers."""
+        drop_zone = self.window.drop_zone
+        self.assertTrue(hasattr(drop_zone, "block_sources"))
+        self.assertTrue(hasattr(drop_zone, "frame_arbitration"))
+        self.assertTrue(hasattr(drop_zone, "block_review"))
+
+        self.assertEqual(drop_zone.block_sources.property("class"), "subCard")
+        self.assertEqual(drop_zone.frame_arbitration.property("class"), "arbitrationCard")
+        self.assertEqual(drop_zone.block_review.property("class"), "subCard")
+
+    def test_role_badge_and_action_chip_styles(self):
+        """Verifies get_role_badge_style and get_action_chip_style produce valid non-empty QSS."""
+        drop_zone = self.window.drop_zone
+
+        badge_style_img = drop_zone.get_role_badge_style("Melhor Imagem")
+        badge_style_pt = drop_zone.get_role_badge_style("Português")
+        self.assertIn("border-radius", badge_style_img)
+        self.assertIn("border-radius", badge_style_pt)
+
+        chip_style_copy = drop_zone.get_action_chip_style("Copy")
+        chip_style_align = drop_zone.get_action_chip_style("Align")
+        self.assertIn("min-width", chip_style_copy)
+        self.assertIn("min-width", chip_style_align)
+
 
 if __name__ == "__main__":
     unittest.main()
+

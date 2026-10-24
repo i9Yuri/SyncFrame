@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
     QWidget
@@ -22,7 +23,45 @@ from PySide6.QtWidgets import (
 from ...core.disk_utils import format_bytes
 from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label, MediaSourceInfo
 from ...core.inspector import PORTUGUESE_TAGS, PORTUGUESE_KEYWORDS
+from ..style import get_role_badge_style, get_action_chip_style
 from .audio_preserve_checkbox import AudioPreserveCheckbox
+
+
+def elide_filename(filename: str, max_chars: int = 36) -> str:
+    """
+    Applies middle elision to a filename (e.g. 'The.Avengers...1-DTOne.mkv'),
+    preserving the stem prefix, '...', and stem suffix with file extension.
+    """
+    if not filename or len(filename) <= max_chars:
+        return filename
+
+    stem, ext = os.path.splitext(filename)
+    if len(ext) >= max_chars - 5:
+        return filename[: max(0, max_chars - 3)] + "..."
+
+    available = max_chars - len(ext) - 3  # 3 for '...'
+    if available < 6:
+        return filename[: max(0, max_chars - 3)] + "..."
+
+    left = (available + 1) // 2
+    right = available // 2
+    return f"{stem[:left]}...{stem[-right:]}{ext}"
+
+
+def format_stream_item_text(cand: StreamCandidate, max_filename_len: int = 36) -> str:
+    """Formats technical specifications with middle elision on the filename for compact workbench readability."""
+    basename = elide_filename(os.path.basename(cand.file_path), max_chars=max_filename_len)
+    fmt = cand.stream.container_format.upper() if cand.stream.container_format else "MKV"
+    if cand.stream.track_type == "video":
+        res = f"{cand.stream.width}x{cand.stream.height}" if cand.stream.width and cand.stream.height else "Vídeo"
+        fps_str = f" @ {cand.stream.fps:.3f}fps" if cand.stream.fps > 0 else ""
+        return f"[{res}{fps_str}] {cand.stream.codec.upper()} [{fmt}] — {basename} (Trilha #{cand.stream.id})"
+    else:
+        lang = cand.stream.language.upper() if cand.stream.language else "UND"
+        layout_tag = format_channel_layout_label(cand.stream.channels, cand.stream.channel_layout) if cand.stream.channels else ""
+        title = f" ({cand.stream.title})" if cand.stream.title else ""
+        specs = " • ".join(filter(None, [cand.stream.codec.upper(), layout_tag]))
+        return f"[{lang}] {specs}{title} [{fmt}] — {basename} (Trilha #{cand.stream.id})"
 
 
 class UnifiedDropZone(QFrame):
@@ -138,7 +177,17 @@ class UnifiedDropZone(QFrame):
         self.page_confirm = QWidget()
         confirm_layout = QVBoxLayout(self.page_confirm)
         confirm_layout.setContentsMargins(0, 0, 0, 0)
-        confirm_layout.setSpacing(12)
+        confirm_layout.setSpacing(14)
+
+        # ----------------------------------------------------------------------
+        # Container A: Ingested Sources Block (Pair Cards)
+        # ----------------------------------------------------------------------
+        self.block_sources = QFrame()
+        self.block_sources.setObjectName("blockSourcesIngested")
+        self.block_sources.setProperty("class", "subCard")
+        bs_layout = QVBoxLayout(self.block_sources)
+        bs_layout.setContentsMargins(14, 12, 14, 12)
+        bs_layout.setSpacing(10)
 
         # Header with Card 01 Tag and Change button
         conf_header = QHBoxLayout()
@@ -161,7 +210,7 @@ class UnifiedDropZone(QFrame):
         btn_change_files.setProperty("class", "btnSecondary")
         btn_change_files.clicked.connect(self.reset)
         conf_header.addWidget(btn_change_files)
-        confirm_layout.addLayout(conf_header)
+        bs_layout.addLayout(conf_header)
 
         # Paired Horizontal File Cards
         pair_row = QHBoxLayout()
@@ -219,12 +268,12 @@ class UnifiedDropZone(QFrame):
         cf_a_layout.addWidget(self.lbl_a_meta)
         pair_row.addWidget(self.card_file_a, 1)
 
-        confirm_layout.addLayout(pair_row)
+        bs_layout.addLayout(pair_row)
 
         # Files summary strip (preserved for test compatibility)
         self.lbl_files_summary = QLabel("")
         self.lbl_files_summary.setVisible(False)
-        confirm_layout.addWidget(self.lbl_files_summary)
+        bs_layout.addWidget(self.lbl_files_summary)
 
         # Ambiguity Banner
         self.frame_ambiguity = QFrame()
@@ -235,18 +284,30 @@ class UnifiedDropZone(QFrame):
         self.lbl_ambiguity.setProperty("class", "diagnosisBanner")
         amb_layout.addWidget(self.lbl_ambiguity)
         self.frame_ambiguity.setVisible(False)
-        confirm_layout.addWidget(self.frame_ambiguity)
+        bs_layout.addWidget(self.frame_ambiguity)
 
-        # Stream Arbitration Decision Banner (Replacement of inferior PT dub)
+        confirm_layout.addWidget(self.block_sources)
+
+        # ----------------------------------------------------------------------
+        # Container B: Diagnostic & Duplicate Dubbing Arbitration Block
+        # ----------------------------------------------------------------------
         self.frame_arbitration = QFrame()
-        self.frame_arbitration.setProperty("class", "subCard")
+        self.frame_arbitration.setObjectName("frameArbitration")
+        self.frame_arbitration.setProperty("class", "arbitrationCard")
         arb_layout = QVBoxLayout(self.frame_arbitration)
-        arb_layout.setContentsMargins(12, 10, 12, 10)
-        arb_layout.setSpacing(6)
+        arb_layout.setContentsMargins(14, 12, 14, 12)
+        arb_layout.setSpacing(8)
 
+        arb_head = QHBoxLayout()
+        arb_head.setSpacing(8)
+        lbl_arb_icon = QLabel("●")
+        lbl_arb_icon.setProperty("class", "sectionIndex")
+        arb_head.addWidget(lbl_arb_icon)
         self.lbl_arbitration_title = QLabel("ARBITRAGEM DE DUBLAGEM DUPLICADA")
         self.lbl_arbitration_title.setProperty("class", "eyebrowText")
-        arb_layout.addWidget(self.lbl_arbitration_title)
+        arb_head.addWidget(self.lbl_arbitration_title)
+        arb_head.addStretch()
+        arb_layout.addLayout(arb_head)
 
         self.lbl_arbitration = QLabel("")
         self.lbl_arbitration.setProperty("class", "diagnosisBanner")
@@ -260,14 +321,18 @@ class UnifiedDropZone(QFrame):
         self.frame_arbitration.setVisible(False)
         confirm_layout.addWidget(self.frame_arbitration)
 
-        # Card 02: Stream Review Gate (Tabela de Auditoria)
-        review_frame = QFrame()
-        review_frame.setProperty("class", "subCard")
-        rf_layout = QVBoxLayout(review_frame)
-        rf_layout.setContentsMargins(12, 12, 12, 12)
-        rf_layout.setSpacing(10)
+        # ----------------------------------------------------------------------
+        # Container C: Stream Review Gate (Mapping, Channels Audit, Action)
+        # ----------------------------------------------------------------------
+        self.block_review = QFrame()
+        self.block_review.setObjectName("blockReviewGate")
+        self.block_review.setProperty("class", "subCard")
+        br_layout = QVBoxLayout(self.block_review)
+        br_layout.setContentsMargins(14, 12, 14, 12)
+        br_layout.setSpacing(12)
 
         rf_head = QHBoxLayout()
+        rf_head.setSpacing(8)
         idx_c02 = QLabel("02")
         idx_c02.setProperty("class", "sectionIndex")
         rf_head.addWidget(idx_c02)
@@ -278,79 +343,45 @@ class UnifiedDropZone(QFrame):
         lbl_no_rec = QLabel("SEM REENCODIFICACAO DE VIDEO")
         lbl_no_rec.setProperty("class", "eyebrowText")
         rf_head.addWidget(lbl_no_rec)
-        rf_layout.addLayout(rf_head)
+        br_layout.addLayout(rf_head)
 
-        # Table Grid for Selections
-        table_grid = QGridLayout()
-        table_grid.setSpacing(8)
-
-        # Row 1: Primary Video
-        lbl_v_tag = QLabel("V01 / Vídeo:")
-        lbl_v_tag.setProperty("class", "subText")
-        table_grid.addWidget(lbl_v_tag, 0, 0)
-
-        self.badge_v_status = QLabel("Melhor Imagem")
-        self.badge_v_status.setProperty("class", "badgeGreen")
-        self.badge_v_status.setMinimumWidth(80)
-        table_grid.addWidget(self.badge_v_status, 0, 1)
-
+        # Comboboxes instantiated
         self.combo_video = QComboBox()
         self.combo_video.currentIndexChanged.connect(self._update_audio_audit)
-        table_grid.addWidget(self.combo_video, 0, 2)
-
-        chip_v_act = QLabel("Copy")
-        chip_v_act.setProperty("class", "systemChip")
-        chip_v_act.setMinimumWidth(44)
-        table_grid.addWidget(chip_v_act, 0, 3)
-
-        # Row 2: Target Dubbed Audio
-        lbl_a_tag = QLabel("A02 / Alvo (PT):")
-        lbl_a_tag.setProperty("class", "subText")
-        table_grid.addWidget(lbl_a_tag, 1, 0)
-
-        self.badge_a_status = QLabel("Português")
-        self.badge_a_status.setProperty("class", "badgeSignal")
-        self.badge_a_status.setMinimumWidth(80)
-        table_grid.addWidget(self.badge_a_status, 1, 1)
 
         self.combo_target_audio = QComboBox()
         self.combo_target_audio.currentIndexChanged.connect(self._update_audio_audit)
-        table_grid.addWidget(self.combo_target_audio, 1, 2)
-
-        chip_a_act = QLabel("Align")
-        chip_a_act.setProperty("class", "badgeSignal")
-        chip_a_act.setMinimumWidth(44)
-        table_grid.addWidget(chip_a_act, 1, 3)
-
-        # Row 3: Reference Audio
-        lbl_ref_tag = QLabel("A01 / Ref. (ENG):")
-        lbl_ref_tag.setProperty("class", "subText")
-        table_grid.addWidget(lbl_ref_tag, 2, 0)
-
-        self.badge_ref_status = QLabel("Referência FFT")
-        self.badge_ref_status.setProperty("class", "badgeNeutral")
-        self.badge_ref_status.setMinimumWidth(80)
-        table_grid.addWidget(self.badge_ref_status, 2, 1)
 
         self.combo_ref_audio = QComboBox()
         self.combo_ref_audio.currentIndexChanged.connect(self._update_audio_audit)
-        table_grid.addWidget(self.combo_ref_audio, 2, 2)
 
-        chip_ref_act = QLabel("Copy")
-        chip_ref_act.setProperty("class", "systemChip")
-        chip_ref_act.setMinimumWidth(44)
-        table_grid.addWidget(chip_ref_act, 2, 3)
+        # Structured Two-Level Stream Rows via configure_stream_row contract
+        self.row_video = self.configure_stream_row(
+            "V01 / Vídeo", "Melhor Imagem", "", "Copy", self.combo_video
+        )
+        self.badge_v_status = self.row_video.badge
+        self.chip_v_act = self.row_video.chip
+        br_layout.addWidget(self.row_video)
 
-        rf_layout.addLayout(table_grid)
-        confirm_layout.addWidget(review_frame)
+        self.row_target = self.configure_stream_row(
+            "A02 / Alvo (PT)", "Português Oficial", "", "Align", self.combo_target_audio
+        )
+        self.badge_a_status = self.row_target.badge
+        self.chip_a_act = self.row_target.chip
+        br_layout.addWidget(self.row_target)
 
-        # ======================================================================
+        self.row_ref = self.configure_stream_row(
+            "A01 / Ref. (ENG)", "Referência Fixa", "", "Copy", self.combo_ref_audio
+        )
+        self.badge_ref_status = self.row_ref.badge
+        self.chip_ref_act = self.row_ref.chip
+        br_layout.addWidget(self.row_ref)
+
         # Acoustic Audit Card & Channel Configuration Badges
-        # ======================================================================
         self.frame_audio_audit = QFrame()
         self.frame_audio_audit.setProperty("class", "subCard")
         audit_layout = QHBoxLayout(self.frame_audio_audit)
-        audit_layout.setContentsMargins(10, 8, 10, 8)
+        audit_layout.setContentsMargins(12, 8, 12, 8)
         audit_layout.setSpacing(10)
 
         lbl_audit_title = QLabel("Auditoria de Canais:")
@@ -370,7 +401,7 @@ class UnifiedDropZone(QFrame):
         audit_layout.addWidget(self.lbl_audit_specs)
 
         audit_layout.addStretch()
-        confirm_layout.addWidget(self.frame_audio_audit)
+        br_layout.addWidget(self.frame_audio_audit)
 
         # Contextual Channel Difference Alert
         self.frame_channel_alert = QFrame()
@@ -381,34 +412,40 @@ class UnifiedDropZone(QFrame):
         self.lbl_channel_alert.setProperty("class", "diagnosisBanner")
         alert_layout.addWidget(self.lbl_channel_alert)
         self.frame_channel_alert.setVisible(False)
-        confirm_layout.addWidget(self.frame_channel_alert)
+        br_layout.addWidget(self.frame_channel_alert)
 
-        # High-Contrast Dynamic Checkbox for Composition
-        check_row = QHBoxLayout()
-        check_row.setSpacing(16)
+        # Cohesive Options Row: Audio preservation + PAL pitch restore + Re-encode codec
+        options_row = QHBoxLayout()
+        options_row.setSpacing(14)
 
         self.check_keep_original = AudioPreserveCheckbox(self.page_confirm, language_name="inglês")
-        check_row.addWidget(self.check_keep_original)
+        options_row.addWidget(self.check_keep_original)
 
-        self.check_pal_pitch = QCheckBox("Restauração Tonal PAL (25fps -> 24fps)")
-        self.check_pal_pitch.setToolTip("Aplica desaceleração natural com correção de tom (asetrate+aresample soxr) para dublagens originadas de masters PAL (25 fps).")
-        check_row.addWidget(self.check_pal_pitch)
+        self.check_pal_pitch = QCheckBox("Restauração PAL (25fps -> 24fps)")
+        self.check_pal_pitch.setToolTip(
+            "Aplica desaceleração natural com correção de tom (asetrate+aresample soxr) para dublagens originadas de masters PAL (25 fps)."
+        )
+        options_row.addWidget(self.check_pal_pitch)
+
+        options_row.addStretch()
 
         lbl_codec = QLabel("Codec Re-encode:")
         lbl_codec.setProperty("class", "subText")
-        check_row.addWidget(lbl_codec)
+        options_row.addWidget(lbl_codec)
 
         self.combo_audio_codec = QComboBox()
         self.combo_audio_codec.addItem("FLAC (Lossless)", "flac")
         self.combo_audio_codec.addItem("Opus (160k/450k)", "opus")
         self.combo_audio_codec.addItem("E-AC3 / AC3 (640k)", "eac3")
         self.combo_audio_codec.addItem("AAC (256k)", "aac")
-        self.combo_audio_codec.setToolTip("Codec de saída caso time-stretch contínuo ou restauração PAL seja obrigatório.")
-        check_row.addWidget(self.combo_audio_codec)
+        self.combo_audio_codec.setToolTip(
+            "Codec de saída caso time-stretch contínuo ou restauração PAL seja obrigatório."
+        )
+        options_row.addWidget(self.combo_audio_codec)
 
-        confirm_layout.addLayout(check_row)
+        br_layout.addLayout(options_row)
 
-        # Primary Action Row: Single button ("Sincronizar e Concluir")
+        # Primary Action Row: Single button ("Sincronizar e Concluir") anchored cleanly
         action_row = QHBoxLayout()
         action_row.setSpacing(12)
 
@@ -422,7 +459,9 @@ class UnifiedDropZone(QFrame):
         action_row.addWidget(self.lbl_confirm_hint)
         action_row.addStretch()
 
-        confirm_layout.addLayout(action_row)
+        br_layout.addLayout(action_row)
+
+        confirm_layout.addWidget(self.block_review)
 
         self.stack.addWidget(self.page_confirm)
         root_layout.addWidget(self.stack)
@@ -583,40 +622,53 @@ class UnifiedDropZone(QFrame):
         # Video combo
         self.combo_video.blockSignals(True)
         self.combo_video.clear()
-        self.combo_video.addItem(verdict.recommended_video.summary_title(), userData=verdict.recommended_video)
+        v_cand = verdict.recommended_video
+        self.combo_video.addItem(format_stream_item_text(v_cand), userData=v_cand)
+        self.combo_video.setItemData(0, v_cand.summary_title(), Qt.ToolTipRole)
         for alt in verdict.alternative_videos:
-            self.combo_video.addItem(alt.summary_title(), userData=alt)
+            idx = self.combo_video.count()
+            self.combo_video.addItem(format_stream_item_text(alt), userData=alt)
+            self.combo_video.setItemData(idx, alt.summary_title(), Qt.ToolTipRole)
         self.combo_video.blockSignals(False)
+
+        self.update_role_badge(self.badge_v_status, "Melhor Imagem")
 
         # Target audio combo
         self.combo_target_audio.blockSignals(True)
         self.combo_target_audio.clear()
         if verdict.recommended_target_audio:
+            tgt_cand = verdict.recommended_target_audio
             self.combo_target_audio.addItem(
-                verdict.recommended_target_audio.summary_title(),
-                userData=verdict.recommended_target_audio
+                format_stream_item_text(tgt_cand),
+                userData=tgt_cand
             )
+            self.combo_target_audio.setItemData(0, tgt_cand.summary_title(), Qt.ToolTipRole)
         for alt in verdict.alternative_audios:
-            self.combo_target_audio.addItem(alt.summary_title(), userData=alt)
+            idx = self.combo_target_audio.count()
+            self.combo_target_audio.addItem(format_stream_item_text(alt), userData=alt)
+            self.combo_target_audio.setItemData(idx, alt.summary_title(), Qt.ToolTipRole)
         self.combo_target_audio.blockSignals(False)
 
         if verdict.is_ambiguous:
-            self.badge_a_status.setText("Ajuste Manual")
-            self.badge_a_status.setProperty("class", "badgeAmber")
+            self.update_role_badge(self.badge_a_status, "Ajuste Manual", is_amber=True)
         else:
-            self.badge_a_status.setText("Português OK")
-            self.badge_a_status.setProperty("class", "badgeSignal")
-        self.badge_a_status.setStyle(self.badge_a_status.style())
+            self.update_role_badge(self.badge_a_status, "Português Oficial")
 
         # Reference audio combo
         self.combo_ref_audio.blockSignals(True)
         self.combo_ref_audio.clear()
         if verdict.reference_audio:
-            self.combo_ref_audio.addItem(verdict.reference_audio.summary_title(), userData=verdict.reference_audio)
+            ref_cand = verdict.reference_audio
+            self.combo_ref_audio.addItem(format_stream_item_text(ref_cand), userData=ref_cand)
+            self.combo_ref_audio.setItemData(0, ref_cand.summary_title(), Qt.ToolTipRole)
         for alt in verdict.alternative_audios:
             if alt != verdict.reference_audio:
-                self.combo_ref_audio.addItem(alt.summary_title(), userData=alt)
+                idx = self.combo_ref_audio.count()
+                self.combo_ref_audio.addItem(format_stream_item_text(alt), userData=alt)
+                self.combo_ref_audio.setItemData(idx, alt.summary_title(), Qt.ToolTipRole)
         self.combo_ref_audio.blockSignals(False)
+
+        self.update_role_badge(self.badge_ref_status, "Referência Fixa")
 
         if verdict.reference_audio and verdict.reference_audio.stream.language:
             lang = verdict.reference_audio.stream.language.lower()
@@ -721,9 +773,118 @@ class UnifiedDropZone(QFrame):
             return []
         return list(self.current_verdict.arbitration_result.discarded_audio_ids)
 
+    def configure_stream_row(
+        self,
+        track_id: str,
+        role_badge: str,
+        description: str,
+        action_chip: str,
+        combo: Optional[QComboBox] = None
+    ) -> QWidget:
+        """
+        Configures a structured two-level stream row:
+        - Upper line: Monospace identifier, dynamic auto-fit role badge, and comfortable action chip.
+        - Lower line: Detailed technical specification or combobox stream selector.
+        """
+        row_frame = QFrame()
+        row_frame.setProperty("class", "streamRowCard")
+        rf_layout = QVBoxLayout(row_frame)
+        rf_layout.setContentsMargins(10, 8, 10, 8)
+        rf_layout.setSpacing(6)
+
+        # Upper line
+        top_line = QHBoxLayout()
+        top_line.setSpacing(8)
+        top_line.setContentsMargins(0, 0, 0, 0)
+
+        lbl_id = QLabel(track_id)
+        lbl_id.setProperty("class", "streamIdTag")
+        top_line.addWidget(lbl_id)
+
+        badge = QLabel(role_badge)
+        badge.setProperty("class", "roleBadge")
+        badge.setStyleSheet(self.get_role_badge_style(role_badge))
+        badge.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        fm = badge.fontMetrics()
+        badge_w = fm.horizontalAdvance(role_badge) + 24
+        badge.setMinimumWidth(max(badge_w, 88))
+        badge.setAlignment(Qt.AlignCenter)
+        top_line.addWidget(badge)
+
+        top_line.addStretch()
+
+        chip = QLabel(action_chip)
+        chip.setProperty("class", "streamActionChip")
+        chip.setStyleSheet(self.get_action_chip_style(action_chip))
+        chip.setMinimumWidth(68)
+        chip.setAlignment(Qt.AlignCenter)
+        top_line.addWidget(chip)
+
+        rf_layout.addLayout(top_line)
+
+        # Lower line
+        if combo is not None:
+            combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            combo.setProperty("class", "streamCombo")
+            rf_layout.addWidget(combo)
+            row_frame.combo = combo
+        else:
+            lbl_desc = QLabel(description)
+            lbl_desc.setProperty("class", "streamDesc")
+            lbl_desc.setWordWrap(True)
+            rf_layout.addWidget(lbl_desc)
+            row_frame.lbl_desc = lbl_desc
+
+        row_frame.lbl_id = lbl_id
+        row_frame.badge = badge
+        row_frame.chip = chip
+        return row_frame
+
+    def update_role_badge(self, badge: QLabel, text: str, is_amber: bool = False) -> None:
+        """Sets role badge text and recalculates dynamic auto-fit width to prevent truncation."""
+        badge.setText(text)
+        badge.setProperty("class", "badgeAmber" if is_amber else "roleBadge")
+        badge.setStyleSheet(self.get_role_badge_style(text))
+        badge.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        fm = badge.fontMetrics()
+        w = fm.horizontalAdvance(text) + 24
+        badge.setMinimumWidth(max(w, 88))
+        badge.setAlignment(Qt.AlignCenter)
+        st = badge.style()
+        if st:
+            st.unpolish(badge)
+            st.polish(badge)
+        badge.update()
+
+    def get_role_badge_style(self, role_type: str) -> str:
+        """Returns CSS/QSS styling string for stream role classification badges."""
+        return get_role_badge_style(role_type)
+
+    def get_action_chip_style(self, action_type: str) -> str:
+        """Returns CSS/QSS styling string for stream action/state chips (Copy, Align)."""
+        return get_action_chip_style(action_type)
+
     def reset(self):
         """Resets the drop zone to initial standby state."""
         self.loaded_files = []
         self.current_verdict = None
+        self.lbl_v_filename.setText("video_ref.mkv")
+        self.lbl_v_meta.setText("0.0 GB  •  00:00:00")
+        self.lbl_a_filename.setText("audio_dub.mp4")
+        self.lbl_a_meta.setText("0.0 MB  •  00:00:00")
+        self.combo_video.clear()
+        self.combo_target_audio.clear()
+        self.combo_ref_audio.clear()
+        self.update_role_badge(self.badge_v_status, "Melhor Imagem")
+        self.update_role_badge(self.badge_a_status, "Português Oficial")
+        self.update_role_badge(self.badge_ref_status, "Referência Fixa")
+        self.chip_v_act.setText("Copy")
+        self.chip_a_act.setText("Align")
+        self.chip_ref_act.setText("Copy")
+        self.frame_ambiguity.setVisible(False)
+        self.frame_arbitration.setVisible(False)
+        self.frame_audio_audit.setVisible(False)
+        self.frame_channel_alert.setVisible(False)
         self.stack.setCurrentIndex(0)
         self.reset_requested.emit()
+

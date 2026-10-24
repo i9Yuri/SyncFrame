@@ -247,6 +247,72 @@ QLabel.badgeAmber {
     font-weight: 700;
 }
 
+/* Stream Review Gate: Two-Level Structured Stream Rows */
+QFrame.streamRowCard {
+    background-color: #14171c;
+    border: 1px solid #23272e;
+    border-radius: 6px;
+}
+
+QLabel.streamIdTag {
+    background-color: transparent;
+    color: #eef0f2;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    border: none;
+}
+
+QLabel.roleBadge {
+    background-color: #181b20;
+    color: #eef0f2;
+    border: 1px solid #282d34;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+QLabel.streamActionChip {
+    background-color: #181b20;
+    color: #eef0f2;
+    border: 1px solid #282d34;
+    border-radius: 5px;
+    padding: 3px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    min-width: 64px;
+}
+
+QComboBox.streamCombo {
+    background-color: #0e1013;
+    color: #eef0f2;
+    border: 1px solid #282d34;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    min-height: 24px;
+}
+
+QLabel.streamDesc {
+    background-color: transparent;
+    color: #9da7b3;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    border: none;
+}
+
+/* Stream Arbitration Diagnostic Block */
+QFrame.arbitrationCard, QFrame#frameArbitration {
+    background-color: #14171c;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+}
+
 /* Buttons */
 QPushButton {
     border-radius: 6px;
@@ -776,6 +842,72 @@ QLabel.badgeAmber {
     font-weight: 700;
 }
 
+/* Stream Review Gate: Two-Level Structured Stream Rows */
+QFrame.streamRowCard {
+    background-color: #f7f9f6;
+    border: 1px solid #e2e6df;
+    border-radius: 6px;
+}
+
+QLabel.streamIdTag {
+    background-color: transparent;
+    color: #191c1a;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    border: none;
+}
+
+QLabel.roleBadge {
+    background-color: #ffffff;
+    color: #191c1a;
+    border: 1px solid #d9ddd7;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+QLabel.streamActionChip {
+    background-color: #ffffff;
+    color: #191c1a;
+    border: 1px solid #d9ddd7;
+    border-radius: 5px;
+    padding: 3px 12px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    min-width: 64px;
+}
+
+QComboBox.streamCombo {
+    background-color: #ffffff;
+    color: #191c1a;
+    border: 1px solid #d9ddd7;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    min-height: 24px;
+}
+
+QLabel.streamDesc {
+    background-color: transparent;
+    color: #424943;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 11px;
+    border: none;
+}
+
+/* Stream Arbitration Diagnostic Block */
+QFrame.arbitrationCard, QFrame#frameArbitration {
+    background-color: #ffffff;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+}
+
 /* Buttons */
 QPushButton {
     border-radius: 6px;
@@ -1243,3 +1375,26 @@ def get_topbar_brand_style() -> str:
             font-weight: 600;
         }
     """
+
+
+def get_role_badge_style(role_type: str) -> str:
+    """Returns CSS/QSS styling string for stream role classification badges."""
+    rt = role_type.lower()
+    if "melhor" in rt or "imagem" in rt or "video" in rt:
+        return "border-radius: 4px; padding: 2px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;"
+    elif "portugu" in rt or "alvo" in rt or "target" in rt or "manual" in rt:
+        return "border-radius: 4px; padding: 2px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;"
+    else:
+        return "border-radius: 4px; padding: 2px 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;"
+
+
+def get_action_chip_style(action_type: str) -> str:
+    """Returns CSS/QSS styling string for stream action/state chips (Copy, Align)."""
+    at = action_type.lower()
+    if "copy" in at:
+        return "border-radius: 5px; padding: 3px 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; min-width: 64px;"
+    elif "align" in at:
+        return "border-radius: 5px; padding: 3px 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; min-width: 64px;"
+    else:
+        return "border-radius: 5px; padding: 3px 12px; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; min-width: 64px;"
+

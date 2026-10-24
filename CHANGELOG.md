@@ -5,6 +5,26 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 O formato segue as diretrizes do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.3] - 2026-10-24
+
+### Corrigido
+- **Erradicação Definitiva do Truncamento de Badges e Chips no Stream Review Gate:**
+  - Substituição dos layouts horizontais monolíticos comprimidos por cartões estruturados em dois níveis (`streamRowCard`), eliminando o estrangulamento espacial entre seletores e rótulos na coluna esquerda.
+  - Linha superior com respiração visual ampla para identificador monoespacado (`streamIdTag`), badge de classificação com auto-fit dinâmico (`roleBadge`) e chip de ação/estado alinhado à direita (`streamActionChip` com largura mínima >= 64px), extinguindo cortes visuais em "Melhor Imagem", "Português Oficial", "Referência Fixa", "Copy" e "Align".
+  - Linha inferior dedicada com menu suspenso expansivo (`streamCombo`) ou descrição técnica (`streamDesc`) ocupando toda a largura horizontal do cartão.
+  - Implementação da função `update_role_badge` com cálculo dinâmico de largura via `QFontMetrics` e folga proporcional (`minWidth >= 88px`), garantindo acomodação integral do texto mesmo com variações tipográficas do sistema.
+  - Disponibilização dos métodos utilitários `get_role_badge_style` e `get_action_chip_style` em `src/ui/style.py`.
+
+### Refatorado
+- **Decomposição Modular e Desobstrução da Coluna Esquerda:**
+  - Reestruturação da coluna de trabalho em 3 blocos visuais autônomos com separação simétrica (12px–16px): Bloco de Fontes Ingeridas (`block_sources`), Bloco de Diagnóstico e Arbitragem de Dublagem (`frame_arbitration`) e Bloco de Stream Review Gate (`block_review`).
+  - Implementação do contrato formal de instanciação `configure_stream_row(track_id, role_badge, description, action_chip, combo=None) -> QWidget`.
+  - Implementação do algoritmo de elisão central de nomes de arquivo `elide_filename` (ex.: `The.Avengers...1-DTOne.mkv`), preservando prefixo, sufixo do tronco e extensão original para garantir legibilidade técnica sem desbordamento horizontal nos menus e mantendo o caminho integral disponível via tooltip (`Qt.ToolTipRole`).
+
+### Adicionado
+- **Cobertura de Testes de Layout e Anti-Truncamento:**
+  - Adição de testes unitários em `tests/test_ui_ingestion_and_themes.py` validando os contratos de `configure_stream_row`, middle elision de `elide_filename`, largura dinâmica anti-truncamento de `update_role_badge`, estilizações de badges/chips e existência dos 3 recipientes autônomos (elevando a suíte para 77 testes 100% aprovados).
+
 ---
 
 ## [1.1.2] - 2026-10-23
