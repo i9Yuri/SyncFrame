@@ -85,9 +85,13 @@ class SyncControls(QFrame):
         disp_box.addWidget(self.btn_reset, alignment=Qt.AlignVCenter)
         layout.addWidget(offset_callout_frame)
 
-        # Interactive Slider with range labels
-        slider_box = QVBoxLayout()
-        slider_box.setSpacing(4)
+        # Interactive Slider with range labels wrapped in harmonized container
+        self.frame_slider = QFrame()
+        self.frame_slider.setObjectName("frameSlider")
+        self.frame_slider.setProperty("class", "sliderContainer")
+        slider_box = QVBoxLayout(self.frame_slider)
+        slider_box.setContentsMargins(12, 10, 12, 10)
+        slider_box.setSpacing(6)
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(-5000, 5000)
@@ -109,7 +113,7 @@ class SyncControls(QFrame):
         lbl_row.addStretch()
         lbl_row.addWidget(lbl_right)
         slider_box.addLayout(lbl_row)
-        layout.addLayout(slider_box)
+        layout.addWidget(self.frame_slider)
 
         # Precision Nudge Grid (±1, ±10, ±50, ±250 ms)
         nudge_layout = QHBoxLayout()

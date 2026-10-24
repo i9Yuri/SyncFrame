@@ -232,6 +232,13 @@ class RemuxJob:
     audio_codec: str = "flac"  # "flac", "opus", "eac3", "aac"
     run_post_audit: bool = True
     discarded_audio_ids: List[int] = field(default_factory=list)
+    target_audio_track_id: Optional[int] = None
+
+    def __post_init__(self):
+        if self.target_audio_track_id is not None:
+            self.target_track_id = self.target_audio_track_id
+        else:
+            self.target_audio_track_id = self.target_track_id
 
 
 @dataclass

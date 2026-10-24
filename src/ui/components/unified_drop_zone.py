@@ -22,7 +22,12 @@ from PySide6.QtWidgets import (
 
 from ...core.disk_utils import format_bytes
 from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label, MediaSourceInfo
-from ...core.inspector import PORTUGUESE_TAGS, PORTUGUESE_KEYWORDS
+from ...core.inspector import (
+    PORTUGUESE_TAGS,
+    PORTUGUESE_KEYWORDS,
+    format_audiophile_recommendation_badge,
+    format_audiophile_discard_notice
+)
 from ..style import get_role_badge_style, get_action_chip_style
 from .audio_preserve_checkbox import AudioPreserveCheckbox
 
@@ -438,7 +443,11 @@ class UnifiedDropZone(QFrame):
         br_layout.addWidget(self.frame_channel_alert)
 
         # Cohesive Options Row: Audio preservation + PAL pitch restore + Re-encode codec
-        options_row = QHBoxLayout()
+        self.frame_options = QFrame()
+        self.frame_options.setObjectName("frameOptions")
+        self.frame_options.setProperty("class", "optionsContainer")
+        options_row = QHBoxLayout(self.frame_options)
+        options_row.setContentsMargins(12, 8, 12, 8)
         options_row.setSpacing(14)
 
         self.check_keep_original = AudioPreserveCheckbox(self.page_confirm, language_name="inglês")
@@ -466,7 +475,7 @@ class UnifiedDropZone(QFrame):
         )
         options_row.addWidget(self.combo_audio_codec)
 
-        br_layout.addLayout(options_row)
+        br_layout.addWidget(self.frame_options)
 
         # Primary Action Row: Single button ("Sincronizar e Concluir") anchored cleanly
         action_row = QHBoxLayout()
@@ -631,13 +640,19 @@ class UnifiedDropZone(QFrame):
         else:
             self.frame_ambiguity.setVisible(False)
 
-        # Stream arbitration decision
-        if verdict.arbitration_result and (verdict.arbitration_result.is_replacement or "já possui fidelidade técnica superior" in verdict.arbitration_result.reason):
+        # Stream arbitration decision & audiophile recommendation
+        if verdict.arbitration_result and (verdict.arbitration_result.is_replacement or "já possui fidelidade técnica superior" in verdict.arbitration_result.reason or "ÁUDIO DE MAIOR FIDELIDADE" in verdict.arbitration_result.reason):
             self.lbl_arbitration.setText(verdict.arbitration_result.reason)
             self.check_revert_arbitration.blockSignals(True)
             self.check_revert_arbitration.setChecked(False)
             self.check_revert_arbitration.setVisible(verdict.arbitration_result.is_replacement)
             self.check_revert_arbitration.blockSignals(False)
+            self.frame_arbitration.setVisible(True)
+        elif verdict.recommended_target_audio and verdict.alternative_audios:
+            rec_badge, rec_reason = format_audiophile_recommendation_badge(verdict.recommended_target_audio.stream)
+            discard_note = f"\n{format_audiophile_discard_notice(verdict.alternative_audios[0].stream)}"
+            self.lbl_arbitration.setText(f"[{rec_badge}] {rec_reason}{discard_note}")
+            self.check_revert_arbitration.setVisible(False)
             self.frame_arbitration.setVisible(True)
         else:
             self.frame_arbitration.setVisible(False)
@@ -679,10 +694,17 @@ class UnifiedDropZone(QFrame):
             self.combo_target_audio.setCurrentIndex(target_idx)
         self.combo_target_audio.blockSignals(False)
 
-        if verdict.is_ambiguous:
-            self.update_role_badge(self.badge_a_status, "Ajuste Manual", is_amber=True)
+        if verdict.recommended_target_audio:
+            rec_badge, _ = format_audiophile_recommendation_badge(verdict.recommended_target_audio.stream)
+            if verdict.is_ambiguous:
+                self.update_role_badge(self.badge_a_status, "Ajuste Manual", is_amber=True)
+            else:
+                self.update_role_badge(self.badge_a_status, rec_badge)
         else:
-            self.update_role_badge(self.badge_a_status, "Português Oficial")
+            if verdict.is_ambiguous:
+                self.update_role_badge(self.badge_a_status, "Ajuste Manual", is_amber=True)
+            else:
+                self.update_role_badge(self.badge_a_status, "Português Oficial")
 
         # Reference audio combo
         self.combo_ref_audio.blockSignals(True)
@@ -744,7 +766,8 @@ class UnifiedDropZone(QFrame):
         self.btn_confirm.setEnabled(True)
         self.frame_channel_alert.setVisible(False)
         if self.current_verdict and self.current_verdict.recommended_target_audio and target_cand == self.current_verdict.recommended_target_audio:
-            self.update_role_badge(self.badge_a_status, "Ajuste Manual" if self.current_verdict.is_ambiguous else "Recomendado")
+            rec_badge, _ = format_audiophile_recommendation_badge(self.current_verdict.recommended_target_audio.stream)
+            self.update_role_badge(self.badge_a_status, "Ajuste Manual" if self.current_verdict.is_ambiguous else rec_badge)
         else:
             self.update_role_badge(self.badge_a_status, "Seleção Manual")
         self._update_audio_audit()

@@ -979,6 +979,66 @@ def evaluate_audio_quality(stream: StreamMetadata) -> AudioQualityScore:
     )
 
 
+def format_audiophile_recommendation_badge(stream: StreamMetadata) -> Tuple[str, str]:
+    """
+    Translates raw technical audio specifications (channels, codecs, sample rate, bitrate)
+    into an unequivocal, lay-user-friendly recommendation badge and didactic justification.
+    Returns:
+        (badge_text, didactic_explanation)
+    """
+    codec = (stream.codec or "").lower()
+    channels = stream.channels or 2
+    layout = stream.spatial_label or format_channel_layout_label(channels, stream.channel_layout)
+    kbps = int(round(stream.bitrate / 1000.0)) if stream.bitrate and stream.bitrate > 0 else 0
+    kbps_str = f" {kbps} kbps" if kbps > 0 else ""
+
+    if any(k in codec for k in ("truehd", "flac")) or (codec == "dts" and "lossless" in (stream.title or "").lower()):
+        badge = "ÁUDIO DE MAIOR FIDELIDADE"
+        didactic = (
+            f"Fidelidade Máxima (Lossless): {layout} ({codec.upper()}{kbps_str}) — "
+            "Fluxo de estúdio sem perdas (bit-perfect) com preservação total de harmônicos e dinâmica sonora."
+        )
+    elif stream.is_immersive or "atmos" in (stream.spatial_label or "").lower() or "joc" in codec:
+        badge = "MELHOR OPÇÃO RECOMENDADA"
+        didactic = (
+            f"Recomendado: {layout} ({codec.upper()}{kbps_str}) — "
+            "Áudio espacial imersivo com objetos sonoros tridimensionais e máxima faixa dinâmica, "
+            "ideal para sistemas home theater e soundbars modernas."
+        )
+    elif channels >= 6 and any(k in codec for k in ("ac3", "eac3", "dts", "truehd", "flac")):
+        badge = "MELHOR OPÇÃO RECOMENDADA"
+        codec_name = "Dolby Audio (AC-3)" if "ac3" in codec else codec.upper()
+        didactic = (
+            f"Recomendado: 5.1 {codec_name}{kbps_str} — "
+            f"Faixa de cinema com {channels} canais autênticos e faixa dinâmica superior, "
+            "ideal para sistemas home theater e soundbars multicanais."
+        )
+    elif channels >= 6 and "aac" in codec:
+        badge = "ÁUDIO MULTICANAL COMPRIMIDO"
+        didactic = (
+            f"Faixa 5.1 AAC{kbps_str} — Transcodificação comprimida para streaming web; "
+            "pode apresentar menor faixa dinâmica se comparada a transmissões nativas de cinema."
+        )
+    elif channels == 2:
+        badge = "ÁUDIO ESTÉREO OFICIAL"
+        didactic = f"Estéreo 2.0 ({codec.upper()}{kbps_str}) — Faixa balanceada para fones de ouvido e alto-falantes convencionais."
+    else:
+        badge = "ÁUDIO DE MAIOR FIDELIDADE" if channels > 2 else "ÁUDIO PADRÃO"
+        didactic = f"{layout} ({codec.upper()}{kbps_str}) — Faixa de áudio convencional."
+
+    return badge, didactic
+
+
+def format_audiophile_discard_notice(stream: StreamMetadata) -> str:
+    """Formats educational explanation of why a competing inferior or transcoded track was superseded."""
+    codec = (stream.codec or "").lower()
+    channels = stream.channels or 2
+    layout = stream.spatial_label or format_channel_layout_label(channels, stream.channel_layout)
+    kbps = int(round(stream.bitrate / 1000.0)) if stream.bitrate and stream.bitrate > 0 else 0
+    kbps_str = f" ({kbps} kbps)" if kbps > 0 else ""
+    return f"Descartada: Faixa {layout} {codec.upper()}{kbps_str} — Transcodificação comprimida com menor fidelidade sonora."
+
+
 def _describe_audio_stream(stream: StreamMetadata) -> str:
     """Helper formatting technical summary of audio stream (e.g. '5.1 AC-3 384 kbps')."""
     layout = stream.spatial_label or format_channel_layout_label(stream.channels, stream.channel_layout)
@@ -1077,10 +1137,12 @@ def arbitrate_duplicate_language_streams(
     if best_ext_score.total_score > best_base_score.total_score:
         # External is strictly superior -> replacement and discard base PT track(s)
         discard_ids = [s.id for s in base_pt]
+        rec_badge, rec_didactic = format_audiophile_recommendation_badge(best_ext)
+        discard_notice = format_audiophile_discard_notice(best_base)
         if "ac3" in (best_ext.codec or "").lower() and "aac" in (best_base.codec or "").lower():
-            reason_txt = f"Dublagem Externa Selecionada: {ext_desc} (Substituindo faixa local: {base_desc} que será descartada; faixa externa selecionada por apresentar áudio multicanal de broadcast autêntico)"
+            reason_txt = f"{rec_didactic}\n{discard_notice} (Substituindo faixa local: {base_desc} que será descartada; faixa externa selecionada por apresentar áudio multicanal de broadcast autêntico)"
         else:
-            reason_txt = f"Dublagem Externa Selecionada: {ext_desc} (Substituindo faixa local: {base_desc} que será descartada)"
+            reason_txt = f"{rec_didactic}\n{discard_notice} (Substituindo faixa local: {base_desc} que será descartada)"
         return StreamArbitrationResult(
             selected_target_audio=best_ext,
             discarded_audio_ids=discard_ids,

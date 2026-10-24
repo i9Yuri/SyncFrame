@@ -569,28 +569,79 @@ class SyncFrameMainWindow(QWidget):
             discarded_audio_ids=discarded_ids
         )
 
+        self.job = job
+
+        if hasattr(self, "drop_zone") and hasattr(self.drop_zone, "btn_confirm"):
+            self.drop_zone.btn_confirm.setEnabled(False)
+            self.drop_zone.btn_confirm.setText("Processando sincronização...")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
         self.btn_cancel.setEnabled(True)
         self.lbl_progress_status.setText("Iniciando esteira unificada de processamento...")
         self.progress_bar.setValue(5)
         self.log_drawer.append_log("Disparando UnifiedPipelineWorker...")
+        self.correlation_view.set_status("Extraindo amostras acústicas e calculando FFT...")
 
         self.pipeline_worker = UnifiedPipelineWorker(
             job,
             manual_offset_override=self.manual_offset_override,
             parent=self
         )
+        self.pipeline_worker.analysis_started.connect(self._on_analysis_started)
+        self.pipeline_worker.step_progress.connect(self._on_step_progress)
+        self.pipeline_worker.correlation_ready.connect(self._on_correlation_ready)
+        self.pipeline_worker.correlation_completed.connect(self._on_correlation_completed)
+        self.pipeline_worker.preview_ready.connect(self._on_preview_ready)
+        self.pipeline_worker.finished_success.connect(self._on_finished_success)
+        self.pipeline_worker.execution_failed.connect(self._on_execution_failed)
+
         self.pipeline_worker.progress.connect(self._on_worker_progress)
         self.pipeline_worker.log_message.connect(self.log_drawer.append_log)
         self.pipeline_worker.metrics_ready.connect(self._on_metrics_ready)
         self.pipeline_worker.completed.connect(self._on_pipeline_completed)
         self.pipeline_worker.start()
 
+    def _restore_action_button(self):
+        """Restores the primary action button and normal mouse cursor."""
+        while QApplication.overrideCursor() is not None:
+            QApplication.restoreOverrideCursor()
+        if hasattr(self, "drop_zone") and hasattr(self.drop_zone, "btn_confirm"):
+            self.drop_zone.btn_confirm.setEnabled(True)
+            self.drop_zone.btn_confirm.setText("Sincronizar e Concluir")
+
+    def _on_analysis_started(self):
+        self.correlation_view.set_status("Extraindo amostras acústicas e calculando FFT...")
+        self.lbl_progress_status.setText("Extraindo amostras acústicas e calculando FFT...")
+
+    def _on_step_progress(self, msg: str, pct: float):
+        self.progress_bar.setValue(int(pct))
+        self.lbl_progress_status.setText(msg)
+
+    def _on_correlation_ready(self, telemetry: dict):
+        offset = telemetry.get("offset_ms", 0.0)
+        self.log_drawer.append_log(f"Telemetria espectral pronta: offset={offset:+.1f} ms")
+
+    def _on_correlation_completed(self, offset_ms: float, confidence: float, drift: float, curve: list):
+        self.correlation_view.set_data(curve, offset_ms, confidence)
+        self.preview_player.update_offset(offset_ms)
+        self.preview_player.set_preview_ready(f"Offset acústico determinado: {offset_ms:+.1f} ms")
+
+    def _on_preview_ready(self, preview_data: object):
+        self.preview_player.set_markers_enabled(True)
+
+    def _on_finished_success(self, output_path: str):
+        self.log_drawer.append_log(f"Esteira unificada finalizada com sucesso: {output_path}")
+
+    def _on_execution_failed(self, error_msg: str):
+        self._restore_action_button()
+        self.log_drawer.append_log(f"Falha na esteira: {error_msg}")
+
     def _on_manual_offset_changed(self, offset_ms: float):
         self.manual_offset_override = offset_ms
         self.preview_player.update_offset(offset_ms)
 
     def _on_worker_progress(self, pct: int, status_str: str):
-        self.progress_bar.setValue(pct)
+        self.progress_bar.setValue(int(pct))
         self.lbl_progress_status.setText(status_str)
 
     def _on_metrics_ready(self, metrics: SyncMetrics):
@@ -598,12 +649,13 @@ class SyncFrameMainWindow(QWidget):
         self.sync_controls.set_metrics(metrics)
         self.preview_player.update_offset(metrics.static_offset_ms)
         self.correlation_view.set_data(
-            metrics.correlation_points,
+            metrics.correlation_curve,
             metrics.static_offset_ms,
             metrics.confidence_score
         )
 
     def _on_pipeline_completed(self, success: bool, msg: str):
+        self._restore_action_button()
         self.btn_cancel.setEnabled(False)
         self.progress_bar.setValue(100 if success else 0)
         self.lbl_progress_status.setText(msg)
@@ -617,6 +669,7 @@ class SyncFrameMainWindow(QWidget):
             QMessageBox.critical(self, "Erro no Remux", msg)
 
     def cancel_active_operation(self):
+        self._restore_action_button()
         if self.pipeline_worker and self.pipeline_worker.isRunning():
             self.lbl_progress_status.setText("Cancelando esteira...")
             self.pipeline_worker.cancel()

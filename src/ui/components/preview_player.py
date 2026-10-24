@@ -126,6 +126,15 @@ class PreviewPlayer(QFrame):
         self.status_label.setFont(font)
         self.status_label.setText(text)
 
+    def set_markers_enabled(self, enabled: bool):
+        self.btn_p05.setEnabled(enabled)
+        self.btn_p50.setEnabled(enabled)
+        self.btn_p90.setEnabled(enabled)
+
+    def set_preview_ready(self, message: str = "Pronto para reprodução sincronizada nos marcadores"):
+        self._set_status(message, color="#ffffff", bold=True)
+        self.set_markers_enabled(True)
+
     def set_media_sources(
         self,
         video_path: Optional[str],
@@ -139,9 +148,10 @@ class PreviewPlayer(QFrame):
         self.current_offset_ms = offset_ms
 
         if self.video_path and self.audio_path:
-            self._set_status("Pronto para reprodução sincronizada nos marcadores", color="#ffffff", bold=True)
+            self.set_preview_ready()
         else:
             self._set_status("Aguardando carregamento de fontes para inspeção", color="#a8a8a8")
+            self.set_markers_enabled(False)
 
     def update_offset(self, offset_ms: float):
         self.current_offset_ms = offset_ms

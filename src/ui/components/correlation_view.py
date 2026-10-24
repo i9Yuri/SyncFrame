@@ -38,6 +38,10 @@ class CorrelationView(QFrame):
         self.status_text = status or (f"Pico de Correlação: {offset_ms:+.1f} ms (Confiança: {confidence * 100:.1f}%)")
         self.update()
 
+    def set_status(self, text: str):
+        self.status_text = text
+        self.update()
+
     def clear(self):
         self.curve_points = []
         self.peak_offset_ms = 0.0

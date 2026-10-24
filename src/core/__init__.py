@@ -19,7 +19,9 @@ from .inspector import (
     evaluate_media_streams,
     evaluate_audio_quality,
     arbitrate_duplicate_language_streams,
-    get_codec_tier
+    get_codec_tier,
+    format_audiophile_recommendation_badge,
+    format_audiophile_discard_notice
 )
 from .extractor import extract_reference_channel
 from .correlator import compute_acoustic_correlation
@@ -46,6 +48,8 @@ __all__ = [
     "evaluate_audio_quality",
     "arbitrate_duplicate_language_streams",
     "get_codec_tier",
+    "format_audiophile_recommendation_badge",
+    "format_audiophile_discard_notice",
     "extract_reference_channel",
     "compute_acoustic_correlation",
     "apply_temporal_transform",

@@ -1,6 +1,31 @@
-"""Precision Bench / Media Alignment Workbench strictly monochrome design system for SyncFrame."""
-
+import os
 from typing import Literal
+
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+CHECK_GLYPH_PATH = os.path.join(ASSETS_DIR, "check_glyph.png")
+
+
+def get_check_icon_path() -> str:
+    """Returns the absolute file path to the checkmark glyph icon, generating it if needed."""
+    os.makedirs(ASSETS_DIR, exist_ok=True)
+    if not os.path.isfile(CHECK_GLYPH_PATH):
+        try:
+            from PySide6.QtGui import QImage, QPainter, QColor, QPen
+            from PySide6.QtCore import Qt, QPoint
+            img = QImage(18, 18, QImage.Format_ARGB32)
+            img.fill(Qt.transparent)
+            painter = QPainter(img)
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            pen = QPen(QColor(16, 185, 129), 2.4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            painter.setPen(pen)
+            painter.drawLine(QPoint(3, 9), QPoint(7, 13))
+            painter.drawLine(QPoint(7, 13), QPoint(14, 5))
+            painter.end()
+            img.save(CHECK_GLYPH_PATH)
+        except Exception:
+            pass
+    return CHECK_GLYPH_PATH.replace("\\", "/")
+
 
 # ==============================================================================
 # Dark Theme QSS (Neutral Monochrome Dark: #0a0b0d base, #111317 panels, #eef0f2 text, #282d34 borders)
@@ -161,6 +186,20 @@ QFrame.viewportScreen {
     border-radius: 8px;
 }
 
+QFrame.optionsContainer, QFrame#frameOptions {
+    background-color: #15181d;
+    border: 1px solid #282d34;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+QFrame.sliderContainer, QFrame#frameSlider {
+    background-color: #15181d;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
 /* Monospace Numbers & Metrics */
 QLabel.monoValue {
     background-color: transparent;
@@ -246,6 +285,17 @@ QLabel.badgeSignal {
     padding: 2px 7px;
     font-size: 10px;
     font-weight: 700;
+}
+
+QLabel.badgeRecommended, QLabel#badgeRecommended {
+    background-color: #181b20;
+    color: #eef0f2;
+    border: 1px solid #eef0f2;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 QLabel.badgeGreen {
@@ -527,26 +577,33 @@ QProgressBar::chunk {
 
 /* Checkboxes */
 QCheckBox {
+    background-color: transparent;
+    border: none;
     color: #7e8792;
     font-size: 11px;
     spacing: 8px;
 }
 
+QCheckBox:hover {
+    color: #eef0f2;
+}
+
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border: 1px solid #282d34;
     border-radius: 4px;
     background-color: #111317;
 }
 
 QCheckBox::indicator:hover {
-    border-color: #eef0f2;
+    border-color: #7e8792;
 }
 
 QCheckBox::indicator:checked {
-    background-color: #eef0f2;
-    border-color: #eef0f2;
+    background-color: #14171c;
+    border: 1px solid #7e8792;
+    image: url("__CHECK_GLYPH_PATH__");
 }
 
 /* Retractable Collapsible Section Toggle */
@@ -777,6 +834,20 @@ QFrame.viewportScreen {
     border-radius: 8px;
 }
 
+QFrame.optionsContainer, QFrame#frameOptions {
+    background-color: #f1f3ef;
+    border: 1px solid #d9ddd7;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+QFrame.sliderContainer, QFrame#frameSlider {
+    background-color: #f1f3ef;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
 /* Monospace Numbers & Metrics */
 QLabel.monoValue {
     background-color: transparent;
@@ -862,6 +933,17 @@ QLabel.badgeSignal {
     padding: 2px 7px;
     font-size: 10px;
     font-weight: 700;
+}
+
+QLabel.badgeRecommended, QLabel#badgeRecommended {
+    background-color: #e8ebe6;
+    color: #191c1a;
+    border: 1px solid #191c1a;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 QLabel.badgeGreen {
@@ -1145,14 +1227,20 @@ QProgressBar::chunk {
 
 /* Checkboxes */
 QCheckBox {
+    background-color: transparent;
+    border: none;
     color: #424943;
     font-size: 11px;
     spacing: 8px;
 }
 
+QCheckBox:hover {
+    color: #191c1a;
+}
+
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     border: 1px solid #d9ddd7;
     border-radius: 4px;
     background-color: #ffffff;
@@ -1163,8 +1251,9 @@ QCheckBox::indicator:hover {
 }
 
 QCheckBox::indicator:checked {
-    background-color: #191c1a;
-    border-color: #191c1a;
+    background-color: #ffffff;
+    border: 1px solid #191c1a;
+    image: url("__CHECK_GLYPH_PATH__");
 }
 
 /* Retractable Collapsible Section Toggle */
@@ -1235,6 +1324,9 @@ QDialog {
     border: 1px solid #d9ddd7;
 }
 """
+
+DARK_THEME_QSS = DARK_THEME_QSS.replace("__CHECK_GLYPH_PATH__", get_check_icon_path())
+LIGHT_THEME_QSS = LIGHT_THEME_QSS.replace("__CHECK_GLYPH_PATH__", get_check_icon_path())
 
 
 def get_theme_stylesheet(mode: Literal["dark", "light"] = "dark") -> str:
@@ -1422,7 +1514,9 @@ def get_topbar_brand_style() -> str:
 def get_role_badge_style(role_type: str) -> str:
     """Returns CSS/QSS styling string for stream role classification badges."""
     rt = role_type.lower()
-    if "melhor" in rt or "imagem" in rt or "video" in rt:
+    if "recomenda" in rt or "fidelidade" in rt or "audiophile" in rt:
+        return "background-color: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;"
+    elif "melhor" in rt or "imagem" in rt or "video" in rt:
         return "border-radius: 4px; padding: 2px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;"
     elif "portugu" in rt or "alvo" in rt or "target" in rt or "manual" in rt:
         return "border-radius: 4px; padding: 2px 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;"

@@ -5,6 +5,36 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 O formato segue as diretrizes do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.2.0] - 2026-10-24
+
+### Corrigido
+- **Disparo e Encadeamento Assíncrono do Botão "Sincronizar e Concluir":**
+  - Resolução definitiva da inércia visual na esteira unificada de alinhamento acústico e multiplexação.
+  - Correção de exceção fatal de assinatura (`TypeError`) no construtor de `UnifiedPipelineWorker` com suporte a `parent: Optional[object] = None`.
+  - Compatibilização de campos no modelo `RemuxJob`, sincronizando bidirecionalmente `target_track_id` e `target_audio_track_id` para prevenir falhas de inicialização em chamadas da interface.
+  - Correção de atributo inconsistente `metrics.correlation_points` substituído pelo vetor matemático real `metrics.correlation_curve`.
+  - Implementação e amarração do contrato completo de sinais assíncronos: `analysis_started`, `step_progress`, `correlation_ready`, `correlation_completed`, `preview_ready`, `finished_success`, `execution_failed` e `log_message`.
+  - Máquina de estados de acionamento do botão primário: desativação temporária (`setEnabled(False)`), atualização de rótulo para "Processando sincronização...", ativação de cursor de espera (`Qt.WaitCursor`) e restauração atômica (`_restore_action_button()`) ao concluir ou cancelar a operação.
+  - Emissão dinâmica de status e telemetria gráfica no visualizador de correlação espectral FFT e no player de spot check.
+
+### Adicionado
+- **Sistema Didático de Recomendação Acústica (Audiophile Badges):**
+  - Implementação das funções `format_audiophile_recommendation_badge` e `format_audiophile_discard_notice` no módulo de inspeção (`src/core/inspector.py`).
+  - Identificação e destaque intuitivo de faixas de estúdio: classificação `ÁUDIO DE MAIOR FIDELIDADE` para fluxos bit-perfect sem perdas (TrueHD, FLAC, DTS-HD MA) e `MELHOR OPÇÃO RECOMENDADA` para fluxos imersivos multicanais (Dolby Atmos, Surround 5.1/7.1 AC-3/E-AC-3/DTS).
+  - Justificativa educativa contextual no card de arbitragem explicando em linguagem acessível o motivo da priorização de faixas de alta fidelidade e alertando contra perdas de dinâmica em faixas comprimidas.
+- **Cobertura de Testes de Sinais e Controles:**
+  - Criação da suíte `tests/test_pipeline_signals.py` com 10 testes dedicados validando contratos de sinais, cancelamento resiliente, formatação de badges audiófilos e classes CSS de contêineres arredondados (elevando a suíte do projeto para 94 testes 100% aprovados).
+
+### Refatorado
+- **Estética dos Seletores de Opção (Checkboxes com Visto Verde Nítido):**
+  - Substituição de caixas sólidas monocromáticas ambíguas por indicadores com cantos arredondados contendo um glifo de visto/check verde esmeralda nítido (`check_glyph.png`, vetor anti-aliased renderizado dinamicamente via `QPainter` com stroke de 2.4px).
+  - Conformidade estrita com o design system monocromático nos temas Dark e Light, integrando o glifo visual através do seletor `QCheckBox::indicator:checked`.
+- **Erradicação de Placas Retangulares Duras em Contêineres de Opções e Deslizante:**
+  - Envelopamento da linha de opções do Review Gate no contêiner estilizado `optionsContainer` (`#frameOptions`, `border-radius: 6px`, borda cirúrgica de 1px).
+  - Envelopamento do controle deslizante e rótulos de amplitude temporal no contêiner estilizado `sliderContainer` (`#frameSlider`, `border-radius: 8px`, borda cirúrgica de 1px).
+
+---
+
 ## [1.1.3] - 2026-10-24
 
 ### Corrigido
