@@ -7,6 +7,26 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.1.2] - 2026-10-23
+
+### Corrigido
+- **Restauração da Transição de Estado na Ingestão de Arquivos:**
+  - Resolução definitiva do desacoplamento onde o arrasto de arquivos ou seleção via diálogo nativo registrava telemetria mas mantinha a interface estática no estado vazio (Página 0).
+  - Implementação do contrato formal `handle_files_ingested(file_paths: List[str]) -> None` no `UnifiedDropZone` e na `MainWindow`, gerenciando a transição determinística: 1 arquivo direciona para aguardo do segundo na Página 1, e 2 arquivos acionam a inspeção técnica de streams e o avanço para o Review Gate (Página 2).
+  - Implementação do método `update_sources_view(media_sources: List[MediaSourceInfo]) -> None` renderizando metadados estruturados de forma robusta e defensiva nos cartões emparelhados de mídia.
+  - Correção de resiliência em `evaluate_media_streams` para aceitar tanto caminhos em string quanto listas pré-inspecionadas de metadados, eliminando exceções não tratadas durante o auto-matching.
+- **Erradicação de Regressões de Contraste e Quebra de Herança no Modo Claro:**
+  - Expulso qualquer estilo inline residual que impunha fundos escuros estáticos (`#141414`, `#1c1c1c`) durante eventos de arrasto (`dragEnterEvent`/`dragLeaveEvent`), substituídos por propriedades dinâmicas do Qt (`dragOver`) integradas ao motor QSS.
+  - Removido estilo inline escuro no título da gaveta de registros de eventos (`LogDrawer`), garantindo legibilidade perfeita com tipografia `#191c1a` sobre superfícies neutras `#f1f3ef` no modo claro.
+  - Implementação do método `apply_application_theme(theme_mode: Literal['dark', 'light']) -> None` executando repolimento atômico e recursivo de estilos em todos os nós filhos (`unpolish`/`polish`), eliminando vazamentos de especificidade CSS e colisões preto-no-preto ou branco-no-branco.
+  - Fidelidade estrita à paleta 100% monocromática neutra sem cores saturadas (Dark: `#0a0b0d` / `#111317` / `#eef0f2`; Light: `#f2f3f1` / `#ffffff` / `#191c1a`).
+
+### Adicionado
+- **Suíte de Testes Automatizados de Ingestão e Temas:**
+  - Criação de `tests/test_ui_ingestion_and_themes.py` cobrindo transições de estado (Página 0 -> 1 -> 2), validação de contratos de `MediaSourceInfo`, comutação atômica de temas e contraste de elementos de interface (totalizando 72 testes aprovados).
+
+---
+
 ## [1.1.1] - 2026-10-23
 
 ### Adicionado

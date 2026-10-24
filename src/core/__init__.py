@@ -8,7 +8,8 @@ from .models import (
     StreamCandidate,
     AutoMatchVerdict,
     AudioQualityScore,
-    StreamArbitrationResult
+    StreamArbitrationResult,
+    MediaSourceInfo
 )
 from .inspector import (
     inspect_media,
@@ -36,6 +37,7 @@ __all__ = [
     "AutoMatchVerdict",
     "AudioQualityScore",
     "StreamArbitrationResult",
+    "MediaSourceInfo",
     "inspect_media",
     "get_inspection_result",
     "rank_video_streams",

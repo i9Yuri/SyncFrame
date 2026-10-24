@@ -145,7 +145,7 @@ class SyncControls(QFrame):
         # Separator Line
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("background-color: #282d34; height: 1px; border: none;")
+        sep.setProperty("class", "dividerLine")
         layout.addWidget(sep)
 
         # Metrics Display Grid
@@ -182,16 +182,14 @@ class SyncControls(QFrame):
 
         # Discontinuity Warning Banner (Cuts/Step Discontinuities)
         self.frame_discont = QFrame()
-        self.frame_discont.setStyleSheet(
-            "background-color: rgba(231, 161, 155, 0.12); border: 1px solid rgba(231, 161, 155, 0.4); border-radius: 6px; padding: 6px 10px;"
-        )
+        self.frame_discont.setProperty("class", "subCard")
         fd_layout = QVBoxLayout(self.frame_discont)
-        fd_layout.setContentsMargins(0, 0, 0, 0)
+        fd_layout.setContentsMargins(10, 8, 10, 8)
         self.lbl_discont_title = QLabel("AVISO: DESCONTINUIDADE EM DEGRAU (CORTE/LOGO)")
-        self.lbl_discont_title.setStyleSheet("background: transparent; color: #e7a19b; font-size: 10px; font-weight: 700; border: none;")
+        self.lbl_discont_title.setProperty("class", "eyebrowText")
         fd_layout.addWidget(self.lbl_discont_title)
         self.lbl_discont_msg = QLabel("")
-        self.lbl_discont_msg.setStyleSheet("background: transparent; color: #eef0f2; font-size: 11px; border: none;")
+        self.lbl_discont_msg.setProperty("class", "subText")
         self.lbl_discont_msg.setWordWrap(True)
         fd_layout.addWidget(self.lbl_discont_msg)
         self.frame_discont.setVisible(False)

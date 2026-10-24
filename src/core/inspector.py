@@ -802,19 +802,35 @@ def arbitrate_duplicate_language_streams(
         )
 
 
-def evaluate_media_streams(file_a: str, file_b: str) -> AutoMatchVerdict:
+def evaluate_media_streams(file_a: Any, file_b: Any) -> AutoMatchVerdict:
     """
     Executes immediate comparative heuristic evaluation of two media files (MKV, MP4, M4V, MOV),
     producing an AutoMatchVerdict with recommended streams, alternatives, and duplicate language arbitration.
+    Supports either file paths (str) or pre-inspected stream lists (List[StreamMetadata]).
     """
-    streams_a = inspect_media(file_a)
-    streams_b = inspect_media(file_b)
+    if isinstance(file_a, str):
+        streams_a = inspect_media(file_a)
+        path_a = file_a
+    elif isinstance(file_a, list):
+        streams_a = file_a
+        path_a = getattr(streams_a[0], "file_path", "file_a") if streams_a else "file_a"
+    else:
+        raise TypeError(f"file_a must be str or list of StreamMetadata, got {type(file_a)}")
+
+    if isinstance(file_b, str):
+        streams_b = inspect_media(file_b)
+        path_b = file_b
+    elif isinstance(file_b, list):
+        streams_b = file_b
+        path_b = getattr(streams_b[0], "file_path", "file_b") if streams_b else "file_b"
+    else:
+        raise TypeError(f"file_b must be str or list of StreamMetadata, got {type(file_b)}")
 
     all_streams_with_files: List[Tuple[str, StreamMetadata]] = []
     for s in streams_a:
-        all_streams_with_files.append((file_a, s))
+        all_streams_with_files.append((path_a, s))
     for s in streams_b:
-        all_streams_with_files.append((file_b, s))
+        all_streams_with_files.append((path_b, s))
 
     ranked_videos = rank_video_streams(all_streams_with_files)
     if not ranked_videos:

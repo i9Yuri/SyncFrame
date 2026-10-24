@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Optional
+from typing import Optional, List, Literal
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
@@ -37,7 +37,7 @@ from .workers.remux_worker import RemuxWorker
 from .workers.unified_pipeline_worker import UnifiedPipelineWorker
 from ..core.disk_utils import check_disk_space, format_bytes
 from ..core.inspector import inspect_media, evaluate_media_streams
-from ..core.models import RemuxJob, SyncMetrics, AutoMatchVerdict, StreamCandidate, format_channel_layout_label
+from ..core.models import RemuxJob, SyncMetrics, AutoMatchVerdict, StreamCandidate, format_channel_layout_label, MediaSourceInfo
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +123,9 @@ class SyncFrameMainWindow(QWidget):
 
         # Subtle vertical separator
         crumb_sep = QFrame()
+        crumb_sep.setObjectName("crumbSep")
         crumb_sep.setFrameShape(QFrame.VLine)
-        crumb_sep.setStyleSheet("background-color: #282d34; width: 1px; border: none; max-height: 24px;")
+        crumb_sep.setProperty("class", "verticalDivider")
         brand_box.addWidget(crumb_sep)
 
         self.lbl_crumb = QLabel("Workspace / <strong>Session 01</strong>")
@@ -335,17 +336,16 @@ class SyncFrameMainWindow(QWidget):
                 b.setProperty("done", "false")
             b.setStyle(b.style())
 
-    def toggle_theme_mode(self) -> None:
-        """Toggles between strictly monochrome neutral dark and neutral light workbench theme."""
-        if self.current_theme == "dark":
-            self.current_theme = "light"
+    def apply_application_theme(self, theme_mode: Literal["dark", "light"]) -> None:
+        """Applies the application theme atomically across the window and all child widgets."""
+        self.current_theme = theme_mode
+        if self.current_theme == "light":
             self.btn_theme.setText("Modo Escuro")
         else:
-            self.current_theme = "dark"
             self.btn_theme.setText("Modo Claro")
 
-        app = QApplication.instance()
         theme_qss = get_theme_stylesheet(self.current_theme)
+        app = QApplication.instance()
         if app:
             app.setStyleSheet(theme_qss)
         self.setStyleSheet(theme_qss)
@@ -354,9 +354,23 @@ class SyncFrameMainWindow(QWidget):
         if hasattr(self, "correlation_view") and hasattr(self.correlation_view, "set_theme_mode"):
             self.correlation_view.set_theme_mode(self.current_theme)
 
-        self.style().unpolish(self)
-        self.style().polish(self)
+        # Recursively unpolish and polish all child widgets to refresh CSS properties
+        for child in self.findChildren(QWidget):
+            st = child.style()
+            if st:
+                st.unpolish(child)
+                st.polish(child)
+
+        st = self.style()
+        if st:
+            st.unpolish(self)
+            st.polish(self)
         self.update()
+
+    def toggle_theme_mode(self) -> None:
+        """Toggles between strictly monochrome neutral dark and neutral light workbench theme."""
+        new_mode: Literal["dark", "light"] = "light" if self.current_theme == "dark" else "dark"
+        self.apply_application_theme(new_mode)
 
     def _toggle_theme(self):
         """Backwards-compatible alias for toggle_theme_mode."""
@@ -376,17 +390,70 @@ class SyncFrameMainWindow(QWidget):
         urls = event.mimeData().urls()
         valid = [u.toLocalFile() for u in urls if os.path.isfile(u.toLocalFile())]
         if valid:
-            self.drop_zone.ingest_files(valid)
+            self.handle_files_ingested(valid)
+
+    def handle_files_ingested(self, file_paths: List[str]) -> None:
+        """Validates incoming files and delegates ingestion to the unified drop zone."""
+        if not file_paths:
+            return
+        self.drop_zone.handle_files_ingested(file_paths)
+
+    def update_sources_view(self, media_sources: List[MediaSourceInfo]) -> None:
+        """Updates the media source cards and drop zone view with structured source information."""
+        self.drop_zone.update_sources_view(media_sources)
 
     def _on_files_ready(self, file_a: str, file_b: str):
         self.log_drawer.append_log(f"Fontes recebidas: {os.path.basename(file_a)}, {os.path.basename(file_b)}")
         self._set_stepper_active(1)
 
-        # Inspect both files
-        insp_a = inspect_media(file_a)
-        insp_b = inspect_media(file_b)
+        try:
+            verdict = evaluate_media_streams(file_a, file_b)
+        except Exception as exc:
+            logger.error("Falha ao avaliar streams de mídia: %s", exc, exc_info=True)
+            self.log_drawer.append_log(f"Erro na inspeção: {exc}")
+            QMessageBox.warning(self, "Falha na Inspeção", f"Não foi possível inspecionar os arquivos selecionados:\n{exc}")
+            self.drop_zone.reset()
+            return
 
-        verdict = evaluate_media_streams(insp_a, insp_b)
+        file_v = verdict.recommended_video.file_path
+        file_a_path = verdict.recommended_target_audio.file_path if verdict.recommended_target_audio else ""
+
+        sz_v = format_bytes(os.path.getsize(file_v)) if os.path.isfile(file_v) else "0 B"
+        sz_a = format_bytes(os.path.getsize(file_a_path)) if file_a_path and os.path.isfile(file_a_path) else "0 B"
+
+        ext_v = os.path.splitext(file_v)[1].replace(".", "").upper()
+        ext_a = os.path.splitext(file_a_path)[1].replace(".", "").upper() if file_a_path else ""
+
+        v_summary = f"{sz_v}  •  {verdict.recommended_video.stream.fps:.3f} fps" if verdict.recommended_video.stream.fps > 0 else sz_v
+
+        media_sources = [
+            MediaSourceInfo(
+                file_path=file_v,
+                file_size_formatted=sz_v,
+                extension=ext_v,
+                role_label="REFERENCIA DE VIDEO",
+                summary=v_summary,
+                is_video_source=True
+            )
+        ]
+
+        if file_a_path and verdict.recommended_target_audio:
+            a_stream = verdict.recommended_target_audio.stream
+            sr = a_stream.sample_rate or 48000
+            layout_lbl = format_channel_layout_label(a_stream.channels, a_stream.channel_layout) if a_stream.channels else ""
+            a_summary = f"{sz_a}  •  {layout_lbl} • {sr} Hz" if layout_lbl else f"{sz_a}  •  {sr} Hz"
+            media_sources.append(
+                MediaSourceInfo(
+                    file_path=file_a_path,
+                    file_size_formatted=sz_a,
+                    extension=ext_a,
+                    role_label="AUDIO DUBLADO",
+                    summary=a_summary,
+                    is_video_source=False
+                )
+            )
+
+        self.update_sources_view(media_sources)
         self.drop_zone.set_verdict(verdict)
 
         default_out = os.path.join(
@@ -394,6 +461,10 @@ class SyncFrameMainWindow(QWidget):
             f"{os.path.splitext(os.path.basename(verdict.recommended_video.file_path))[0]}.SYNCED.mkv"
         )
         self.txt_output_path.setText(default_out)
+        self.log_drawer.append_log(
+            f"Auto-matching concluído: Vídeo={os.path.basename(verdict.recommended_video.file_path)}, "
+            f"Áudio={os.path.basename(verdict.recommended_target_audio.file_path)}"
+        )
 
     def _on_confirmation_confirmed(
         self,

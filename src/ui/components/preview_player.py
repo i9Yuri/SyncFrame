@@ -84,7 +84,6 @@ class PreviewPlayer(QFrame):
         overlay_row = QHBoxLayout()
         lbl_screen_tag = QLabel("VISOR DE SINAL")
         lbl_screen_tag.setProperty("class", "eyebrowText")
-        lbl_screen_tag.setStyleSheet("background: transparent; color: #7e8792; font-size: 10px; font-weight: 600; letter-spacing: 1px; border: none;")
         overlay_row.addWidget(lbl_screen_tag)
         overlay_row.addStretch()
         self.lbl_timecode = QLabel("00:00:00.000")
@@ -95,7 +94,7 @@ class PreviewPlayer(QFrame):
 
         ms_layout.addStretch()
         self.status_label = QLabel("Aguardando carregamento de fontes para inspeção")
-        self.status_label.setStyleSheet("background: transparent; color: #a8a8a8; font-size: 11px; border: none;")
+        self.status_label.setProperty("class", "subText")
         ms_layout.addWidget(self.status_label)
         mid_row.addWidget(self.monitor_screen, 1)
 
@@ -121,12 +120,11 @@ class PreviewPlayer(QFrame):
         mid_row.addLayout(marker_stack)
         layout.addLayout(mid_row)
 
-    def _set_status(self, text: str, color: str = "#a8a8a8", bold: bool = False):
-        weight = "700" if bold else "400"
+    def _set_status(self, text: str, color: Optional[str] = None, bold: bool = False):
+        font = self.status_label.font()
+        font.setBold(bold)
+        self.status_label.setFont(font)
         self.status_label.setText(text)
-        self.status_label.setStyleSheet(
-            f"background: transparent; color: {color}; font-size: 11px; font-weight: {weight}; border: none;"
-        )
 
     def set_media_sources(
         self,

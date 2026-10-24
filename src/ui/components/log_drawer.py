@@ -25,7 +25,7 @@ class LogDrawer(QFrame):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setObjectName("bentoCard")
+        self.setObjectName("eventLogDrawer")
         self.setProperty("class", "bentoCard")
         self.is_expanded: bool = False
         self.event_count: int = 0
@@ -41,7 +41,7 @@ class LogDrawer(QFrame):
         header.setSpacing(10)
 
         self.title_lbl = QLabel("Event log")
-        self.title_lbl.setStyleSheet("background: transparent; color: #eef0f2; font-weight: 700; font-size: 12px; border: none;")
+        self.title_lbl.setProperty("class", "logTitle")
         header.addWidget(self.title_lbl)
 
         self.badge_count = QLabel("00 EVENTS")

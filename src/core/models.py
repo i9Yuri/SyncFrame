@@ -262,3 +262,15 @@ class AutoMatchVerdict:
     ambiguity_reason: str = ""
     arbitration_result: Optional[StreamArbitrationResult] = None
 
+
+@dataclass
+class MediaSourceInfo:
+    """Represents high-level presentation information for an ingested media file."""
+    file_path: str
+    file_size_formatted: str = ""
+    extension: str = ""
+    role_label: str = ""
+    summary: str = ""
+    is_video_source: bool = False
+
+

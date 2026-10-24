@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.disk_utils import format_bytes
-from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label
+from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label, MediaSourceInfo
 from ...core.inspector import PORTUGUESE_TAGS, PORTUGUESE_KEYWORDS
 from .audio_preserve_checkbox import AudioPreserveCheckbox
 
@@ -433,53 +433,50 @@ class UnifiedDropZone(QFrame):
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-            self.page_empty.setStyleSheet("""
-                QFrame#dropFrameEmpty {
-                    border: 2px dashed #ffffff;
-                    border-radius: 11px;
-                    background-color: #1c1c1c;
-                }
-            """)
+            self.page_empty.setProperty("dragOver", True)
+            self.page_empty.style().unpolish(self.page_empty)
+            self.page_empty.style().polish(self.page_empty)
 
     def dragLeaveEvent(self, event):
-        self.page_empty.setStyleSheet("""
-            QFrame#dropFrameEmpty {
-                border: 1px dashed #383838;
-                border-radius: 11px;
-                background-color: #141414;
-            }
-        """)
+        self.page_empty.setProperty("dragOver", False)
+        self.page_empty.style().unpolish(self.page_empty)
+        self.page_empty.style().polish(self.page_empty)
 
     def dropEvent(self, event: QDropEvent):
         urls = event.mimeData().urls()
         files = [u.toLocalFile() for u in urls if os.path.isfile(u.toLocalFile())]
         self.dragLeaveEvent(None)
         if files:
-            self.ingest_files(files)
+            self.handle_files_ingested(files)
 
     def _open_file_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
             self,
             "Selecionar Arquivos (Vídeo + Áudio)",
             "",
-            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos (*.*)"
+            "Vídeos (*.mkv *.mp4 *.m4v *.mov)"
         )
         if files:
-            self.ingest_files(files)
+            self.handle_files_ingested(files)
 
     def _open_single_file_dialog(self):
-        f, _ = QFileDialog.getOpenFileName(
+        files, _ = QFileDialog.getOpenFileNames(
             self,
             "Selecionar Segundo Arquivo de Mídia",
             "",
-            "Arquivos de Mídia (*.mkv *.mp4 *.m4v *.mov);;Todos (*.*)"
+            "Vídeos (*.mkv *.mp4 *.m4v *.mov)"
         )
-        if f:
-            self.ingest_files([f])
+        if files:
+            self.handle_files_ingested(files)
 
-    def ingest_files(self, file_paths: List[str]):
+    def handle_files_ingested(self, file_paths: List[str]) -> None:
+        """
+        Validates incoming files, updates drop zone state machine:
+        - 1 file: displays single file slot on page 1 awaiting second file.
+        - 2 files: emits files_ready signal for inspection and review gate progression.
+        """
         supported_exts = (".mkv", ".mp4", ".m4v", ".mov")
-        valid_files = [f for f in file_paths if f.lower().endswith(supported_exts)]
+        valid_files = [f for f in file_paths if f.lower().endswith(supported_exts) and not os.path.isdir(f)]
 
         if not valid_files:
             return
@@ -490,13 +487,35 @@ class UnifiedDropZone(QFrame):
 
         if len(self.loaded_files) == 1:
             self.lbl_single_filename.setText(os.path.basename(self.loaded_files[0]))
+            self.badge_waiting.setText("1 / 2 fontes carregadas — Aguardando segundo arquivo")
             self.stack.setCurrentIndex(1)
         elif len(self.loaded_files) >= 2:
             self.files_ready.emit(self.loaded_files[0], self.loaded_files[1])
 
+    def ingest_files(self, file_paths: List[str]) -> None:
+        """Backwards-compatible alias for handle_files_ingested."""
+        self.handle_files_ingested(file_paths)
+
+    def update_sources_view(self, media_sources: List[MediaSourceInfo]) -> None:
+        """Renders paired media source cards and transitions visual state to the Review Gate (Page 2)."""
+        if not media_sources:
+            return
+
+        for src in media_sources:
+            if src.is_video_source or (src == media_sources[0] and not any(s.is_video_source for s in media_sources)):
+                self.lbl_v_filename.setText(os.path.basename(src.file_path))
+                self.lbl_v_meta.setText(src.summary)
+                self.badge_v_fmt.setText(src.extension or os.path.splitext(src.file_path)[1].replace(".", "").upper())
+            else:
+                self.lbl_a_filename.setText(os.path.basename(src.file_path))
+                self.lbl_a_meta.setText(src.summary)
+                self.badge_a_fmt.setText(src.extension or os.path.splitext(src.file_path)[1].replace(".", "").upper())
+
+        self.chip_sources_count.setText(f"{len(media_sources)} / 2 SOURCES")
+        self.stack.setCurrentIndex(2)
+
     def set_verdict(self, verdict: AutoMatchVerdict):
         self.current_verdict = verdict
-        self.stack.setCurrentIndex(2)
 
         file_v = verdict.recommended_video.file_path
         file_a = verdict.recommended_target_audio.file_path if verdict.recommended_target_audio else ""
@@ -507,15 +526,36 @@ class UnifiedDropZone(QFrame):
         ext_v = os.path.splitext(file_v)[1].replace(".", "").upper()
         ext_a = os.path.splitext(file_a)[1].replace(".", "").upper() if file_a else ""
 
-        self.lbl_v_filename.setText(os.path.basename(file_v))
-        self.lbl_v_meta.setText(f"{sz_v}  •  {verdict.recommended_video.stream.fps:.3f} fps")
-        self.badge_v_fmt.setText(ext_v)
+        v_summary = f"{sz_v}  •  {verdict.recommended_video.stream.fps:.3f} fps" if verdict.recommended_video.stream.fps > 0 else sz_v
 
-        if file_a:
-            self.lbl_a_filename.setText(os.path.basename(file_a))
-            sr = verdict.recommended_target_audio.stream.sample_rate or 48000
-            self.lbl_a_meta.setText(f"{sz_a}  •  {sr} Hz")
-            self.badge_a_fmt.setText(ext_a)
+        sources = [
+            MediaSourceInfo(
+                file_path=file_v,
+                file_size_formatted=sz_v,
+                extension=ext_v,
+                role_label="REFERENCIA DE VIDEO",
+                summary=v_summary,
+                is_video_source=True
+            )
+        ]
+
+        if file_a and verdict.recommended_target_audio:
+            a_stream = verdict.recommended_target_audio.stream
+            sr = a_stream.sample_rate or 48000
+            layout_lbl = format_channel_layout_label(a_stream.channels, a_stream.channel_layout) if a_stream.channels else ""
+            a_summary = f"{sz_a}  •  {layout_lbl} • {sr} Hz" if layout_lbl else f"{sz_a}  •  {sr} Hz"
+            sources.append(
+                MediaSourceInfo(
+                    file_path=file_a,
+                    file_size_formatted=sz_a,
+                    extension=ext_a,
+                    role_label="AUDIO DUBLADO",
+                    summary=a_summary,
+                    is_video_source=False
+                )
+            )
+
+        self.update_sources_view(sources)
 
         self.lbl_files_summary.setText(
             f"Fonte Vídeo: {os.path.basename(file_v)} ({sz_v}) [{ext_v}]  |  "
