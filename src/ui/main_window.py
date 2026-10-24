@@ -7,6 +7,7 @@ from typing import Optional, List, Literal
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtWidgets import (
     QApplication,
+    QBoxLayout,
     QCheckBox,
     QDialog,
     QFileDialog,
@@ -31,7 +32,7 @@ from .components.preview_player import PreviewPlayer
 from .components.sync_controls import SyncControls
 from .components.stream_selector_modal import StreamSelectorModal
 from .components.unified_drop_zone import UnifiedDropZone
-from .style import apply_workbench_theme, get_theme_stylesheet
+from .style import apply_workbench_theme, get_theme_stylesheet, apply_one_ui_monochrome_theme, get_theme_tokens
 from .workers.analyze_worker import AnalyzeWorker
 from .workers.remux_worker import RemuxWorker
 from .workers.unified_pipeline_worker import UnifiedPipelineWorker
@@ -172,9 +173,9 @@ class SyncFrameMainWindow(QWidget):
 
         body_container = QWidget()
         body_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        body_layout = QHBoxLayout(body_container)
-        body_layout.setSpacing(14)
-        body_layout.setContentsMargins(18, 6, 18, 14)
+        self.body_layout = QHBoxLayout(body_container)
+        self.body_layout.setSpacing(14)
+        self.body_layout.setContentsMargins(18, 6, 18, 14)
 
         # ----------------------------------------------------------------------
         # LEFT COLUMN (Stack 1: Operational & Decision Gate)
@@ -258,7 +259,7 @@ class SyncFrameMainWindow(QWidget):
         cre_layout.addLayout(prog_box)
 
         col_left.addWidget(self.card_remux_exec)
-        body_layout.addLayout(col_left, 6)
+        self.body_layout.addLayout(col_left, 6)
 
         # ----------------------------------------------------------------------
         # RIGHT COLUMN (Stack 2: Acoustic Audit & Instrumentation)
@@ -307,22 +308,28 @@ class SyncFrameMainWindow(QWidget):
         self.advanced_drawer.setVisible(False)  # Hidden since widgets are now organized in 2-column workbench
         col_right.addWidget(self.advanced_drawer)
 
-        body_layout.addLayout(col_right, 5)
+        self.body_layout.addLayout(col_right, 5)
 
         self.scroll_area.setWidget(body_container)
         root_layout.addWidget(self.scroll_area, 1)
 
         # ======================================================================
-        # 4. Fixed Base Event Log Drawer
+        # 4. Floating Bottom Dock Container
         # ======================================================================
+        self.dock_container = QWidget()
+        dock_bar = QHBoxLayout(self.dock_container)
+        dock_bar.setContentsMargins(24, 0, 24, 14)
+        dock_bar.setAlignment(Qt.AlignCenter)
+
         self.log_drawer = LogDrawer()
-        root_layout.addWidget(self.log_drawer)
+        dock_bar.addWidget(self.log_drawer)
+        root_layout.addWidget(self.dock_container)
 
         # Set default dark theme on app and window
         app = QApplication.instance()
         if app:
-            apply_workbench_theme(app, "dark")
-        apply_workbench_theme(self, "dark")
+            apply_one_ui_monochrome_theme(app, "dark")
+        apply_one_ui_monochrome_theme(self, "dark")
 
     def _set_stepper_active(self, step_idx: int):
         btns = [self.btn_step_01, self.btn_step_02, self.btn_step_03, self.btn_step_04]
@@ -349,7 +356,7 @@ class SyncFrameMainWindow(QWidget):
         theme_qss = get_theme_stylesheet(self.current_theme)
         app = QApplication.instance()
         if app:
-            app.setStyleSheet(theme_qss)
+            apply_one_ui_monochrome_theme(app, self.current_theme)
         self.setStyleSheet(theme_qss)
 
         # Notify subcomponents
@@ -381,6 +388,11 @@ class SyncFrameMainWindow(QWidget):
     def resizeEvent(self, event):
         """Ensures responsive adaptation and geometry recalculation on window resize."""
         super().resizeEvent(event)
+        if hasattr(self, "body_layout") and self.body_layout is not None:
+            if event.size().width() < 960:
+                self.body_layout.setDirection(QBoxLayout.TopToBottom)
+            else:
+                self.body_layout.setDirection(QBoxLayout.LeftToRight)
         if hasattr(self, "scroll_area"):
             self.scroll_area.updateGeometry()
 

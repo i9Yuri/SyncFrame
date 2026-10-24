@@ -5,7 +5,7 @@ import sys
 import unittest
 from unittest.mock import patch, MagicMock
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QBoxLayout
 
 from src.core.models import (
     StreamMetadata,
@@ -14,7 +14,7 @@ from src.core.models import (
     MediaSourceInfo
 )
 from src.ui.main_window import SyncFrameMainWindow
-from src.ui.style import get_theme_stylesheet
+from src.ui.style import get_theme_stylesheet, get_theme_tokens, apply_one_ui_monochrome_theme
 
 app = QApplication.instance()
 if not app:
@@ -232,7 +232,49 @@ class TestUIIngestionAndThemes(unittest.TestCase):
         self.assertIn("min-width", chip_style_copy)
         self.assertIn("min-width", chip_style_align)
 
+    def test_one_ui_monochrome_tokens(self):
+        """Verifies get_theme_tokens returns exact required monochrome color palette tokens."""
+        dark_tokens = get_theme_tokens("dark")
+        self.assertEqual(dark_tokens["bg_base"], "#000000")
+        self.assertEqual(dark_tokens["bg_card"], "#1b1c20")
+        self.assertEqual(dark_tokens["text_primary"], "#f2f3f7")
+        self.assertEqual(dark_tokens["border_subtle"], "#2d2f36")
+
+        light_tokens = get_theme_tokens("light")
+        self.assertEqual(light_tokens["bg_base"], "#f1f2f6")
+        self.assertEqual(light_tokens["bg_card"], "#ffffff")
+        self.assertEqual(light_tokens["text_primary"], "#16181d")
+        self.assertEqual(light_tokens["border_subtle"], "#dcdfe8")
+
+    def test_responsive_column_collapse(self):
+        """Verifies responsive layout collapses to TopToBottom below 960px and LeftToRight at >=960px."""
+        from PySide6.QtGui import QResizeEvent
+        from PySide6.QtCore import QSize
+
+        # Resize to 800px width (< 960px)
+        self.window.resize(800, 600)
+        self.window.resizeEvent(QResizeEvent(QSize(800, 600), self.window.size()))
+        self.assertEqual(self.window.body_layout.direction(), QBoxLayout.TopToBottom)
+
+        # Resize to 1280px width (>= 960px)
+        self.window.resize(1280, 800)
+        self.window.resizeEvent(QResizeEvent(QSize(1280, 800), self.window.size()))
+        self.assertEqual(self.window.body_layout.direction(), QBoxLayout.LeftToRight)
+
+    def test_floating_dock_and_pill_geometry(self):
+        """Verifies floating bottom dock container presence and pill badge styling."""
+        self.assertTrue(hasattr(self.window, "dock_container"))
+        self.assertEqual(self.window.log_drawer.property("class"), "floatingDock")
+        self.assertEqual(self.window.log_drawer.objectName(), "floatingDock")
+
+        # Verify QSS contains 28px card radius and 999px pill radii
+        dark_qss = get_theme_stylesheet("dark")
+        self.assertIn("border-radius: 28px", dark_qss)
+        self.assertIn("border-radius: 34px", dark_qss)
+        self.assertIn("border-radius: 999px", dark_qss)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

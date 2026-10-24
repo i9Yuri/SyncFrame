@@ -25,7 +25,13 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Cobertura de Testes de Sinais e Controles:**
   - Criação da suíte `tests/test_pipeline_signals.py` com 10 testes dedicados validando contratos de sinais, cancelamento resiliente, formatação de badges audiófilos e classes CSS de contêineres arredondados (elevando a suíte do projeto para 94 testes 100% aprovados).
 
-### Refatorado
+- **Refatoração Estrutural de Apresentação com One UI e Ergonomia de Superfícies Contínuas:**
+  - Transposição completa da geometria visual da interface para o paradigma de superfícies contínuas e cantos arredondados generosos (border-radius de 28px nos painéis/cartões principais `panelCard` e `bentoCard`, 22px em subcartões `subCard`, `fileCardWorkbench`, `streamRowCard`, `arbitrationCard`, `offsetCallout`, `metricCallout`, `viewportScreen`).
+  - Formato de pílula contínua oval (border-radius de 999px) aplicado universalmente a todos os botões (`QPushButton`), caixas de seleção suspensa (`QComboBox`), campos de texto (`QLineEdit`), barras de progresso (`QProgressBar`), manípulos deslizantes (`QSlider::handle`) e chips de estado (`roleBadge`, `streamActionChip`, `streamIdTag`, `systemChip`, `badgeNeutral`, `badgeSignal`, `badgeGreen`, `badgeAmber`, `timecodeChip`).
+  - Transformação da barra de eventos em dock flutuante inferior (`floatingDock`, border-radius de 34px) com margens laterais elevadas (24, 0, 24, 14) e alinhamento centralizado, integrando botões pílula e etiqueta contadora de eventos.
+  - Implementação de colapso responsivo vertical no `resizeEvent`: reorganização automática das colunas em pilha única vertical (`QBoxLayout.TopToBottom`) quando a largura da janela for inferior a 960px e retorno para layout lado a lado (`QBoxLayout.LeftToRight`) em larguras superiores ou iguais a 960px.
+  - Formalização das funções de estilo `get_theme_tokens(mode)` e `apply_one_ui_monochrome_theme(app, mode)` garantindo fidelidade estrita à paleta monocromática neutra (Dark: `#000000`, `#1b1c20`, `#26272d`, `#33343b`, `#f2f3f7`, `#9a9eac`, `#2d2f36`; Light: `#f1f2f6`, `#ffffff`, `#eceef4`, `#e1e4ed`, `#16181d`, `#6a7080`, `#dcdfe8`).
+  - Expansão da suíte de testes unitários para 97 testes (100% aprovados), validando tokens, colapso responsivo e geometria da dock flutuante.
 - **Estética dos Seletores de Opção (Checkboxes com Visto Verde Nítido):**
   - Substituição de caixas sólidas monocromáticas ambíguas por indicadores com cantos arredondados contendo um glifo de visto/check verde esmeralda nítido (`check_glyph.png`, vetor anti-aliased renderizado dinamicamente via `QPainter` com stroke de 2.4px).
   - Conformidade estrita com o design system monocromático nos temas Dark e Light, integrando o glifo visual através do seletor `QCheckBox::indicator:checked`.

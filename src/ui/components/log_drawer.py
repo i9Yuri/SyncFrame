@@ -1,4 +1,4 @@
-"""Retractable terminal event log drawer for diagnostic monitoring."""
+"""Floating dock event log drawer for diagnostic monitoring."""
 
 from datetime import datetime
 from typing import Optional
@@ -17,16 +17,16 @@ from PySide6.QtWidgets import (
 
 class LogDrawer(QFrame):
     """
-    Collapsible event log console adhering to Workbench precision specs:
-    - Fixed base drawer
+    Floating dock event log console adhering to One UI continuous ergonomics:
+    - Floating bottom dock with 34px rounded capsule geometry
     - Formatted entries with timestamps and status indicators
-    - Expand / Collapse toggle with event counter badge
+    - Expand / Collapse toggle with event counter pill badge
     """
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setObjectName("eventLogDrawer")
-        self.setProperty("class", "bentoCard")
+        self.setObjectName("floatingDock")
+        self.setProperty("class", "floatingDock")
         self.is_expanded: bool = False
         self.event_count: int = 0
 
@@ -35,30 +35,30 @@ class LogDrawer(QFrame):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(20, 10, 20, 10)
 
         header = QHBoxLayout()
         header.setSpacing(10)
 
-        self.title_lbl = QLabel("Event log")
+        self.title_lbl = QLabel("Registro de eventos")
         self.title_lbl.setProperty("class", "logTitle")
         header.addWidget(self.title_lbl)
 
         self.badge_count = QLabel("00 EVENTS")
-        self.badge_count.setProperty("class", "badgeNeutral")
+        self.badge_count.setProperty("class", "systemChip")
         header.addWidget(self.badge_count)
 
         header.addStretch()
 
         self.btn_clear = QPushButton("Limpar")
         self.btn_clear.setProperty("class", "btnSecondary")
-        self.btn_clear.setFixedWidth(70)
+        self.btn_clear.setFixedWidth(78)
         self.btn_clear.clicked.connect(self.clear_logs)
         header.addWidget(self.btn_clear)
 
         self.btn_toggle = QPushButton("Expandir ▲")
         self.btn_toggle.setProperty("class", "btnSecondary")
-        self.btn_toggle.setFixedWidth(110)
+        self.btn_toggle.setFixedWidth(118)
         self.btn_toggle.clicked.connect(self.toggle_collapse)
         header.addWidget(self.btn_toggle)
 
