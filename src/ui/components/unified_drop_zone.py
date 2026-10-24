@@ -106,8 +106,8 @@ class UnifiedDropZone(QFrame):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setObjectName("bentoCard")
-        self.setProperty("class", "bentoCard")
+        self.setObjectName("unifiedDropZone")
+        self.setProperty("class", "unifiedDropZone")
         self.setAcceptDrops(True)
 
         self.loaded_files: List[str] = []
@@ -117,8 +117,8 @@ class UnifiedDropZone(QFrame):
 
     def init_ui(self):
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(18, 16, 18, 16)
-        root_layout.setSpacing(12)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
         self.stack = QStackedWidget()
 
@@ -127,10 +127,13 @@ class UnifiedDropZone(QFrame):
         # ======================================================================
         self.page_empty = QFrame()
         self.page_empty.setObjectName("dropFrameEmpty")
+        self.page_empty.setMaximumHeight(240)
+        self.setMaximumHeight(240)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         empty_layout = QVBoxLayout(self.page_empty)
         empty_layout.setAlignment(Qt.AlignCenter)
         empty_layout.setSpacing(10)
-        empty_layout.setContentsMargins(20, 24, 20, 24)
+        empty_layout.setContentsMargins(20, 20, 20, 20)
 
         tag_row = QHBoxLayout()
         tag_row.setAlignment(Qt.AlignCenter)
@@ -151,8 +154,9 @@ class UnifiedDropZone(QFrame):
 
         btn_browse = QPushButton("Selecionar Arquivos...")
         btn_browse.setProperty("class", "btnPrimary")
-        btn_browse.setMinimumWidth(160)
-        btn_browse.setMaximumWidth(220)
+        btn_browse.setMinimumWidth(180)
+        btn_browse.setMaximumWidth(240)
+        btn_browse.setMinimumHeight(44)
         btn_browse.clicked.connect(self._open_file_dialog)
         empty_layout.addWidget(btn_browse, alignment=Qt.AlignCenter)
 
@@ -163,6 +167,7 @@ class UnifiedDropZone(QFrame):
         # ======================================================================
         self.page_single = QFrame()
         self.page_single.setObjectName("dropFrameSingle")
+        self.page_single.setMaximumHeight(240)
         single_layout = QVBoxLayout(self.page_single)
         single_layout.setAlignment(Qt.AlignCenter)
         single_layout.setSpacing(10)
@@ -596,10 +601,12 @@ class UnifiedDropZone(QFrame):
                 self.badge_a_fmt.setText(src.extension or os.path.splitext(src.file_path)[1].replace(".", "").upper())
 
         self.chip_sources_count.setText(f"{len(media_sources)} / 2 SOURCES")
+        self.update_dropzone_state(True)
         self.stack.setCurrentIndex(2)
 
     def set_verdict(self, verdict: AutoMatchVerdict):
         self.current_verdict = verdict
+        self.update_dropzone_state(True)
 
         file_v = verdict.recommended_video.file_path
         file_a = verdict.recommended_target_audio.file_path if verdict.recommended_target_audio else ""
@@ -1012,6 +1019,19 @@ class UnifiedDropZone(QFrame):
         """Returns CSS/QSS styling string for stream action/state chips (Copy, Align)."""
         return get_action_chip_style(action_type)
 
+    def update_dropzone_state(self, has_files: bool) -> None:
+        """Updates dropzone geometry and height dynamically based on file ingestion state."""
+        if has_files:
+            self.setMaximumHeight(16777215)
+            self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+            if hasattr(self, "page_empty"):
+                self.page_empty.setMaximumHeight(16777215)
+        else:
+            self.setMaximumHeight(240)
+            self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            if hasattr(self, "page_empty"):
+                self.page_empty.setMaximumHeight(240)
+
     def reset(self):
         """Resets the drop zone to initial standby state."""
         self.loaded_files = []
@@ -1033,6 +1053,7 @@ class UnifiedDropZone(QFrame):
         self.frame_arbitration.setVisible(False)
         self.frame_audio_audit.setVisible(False)
         self.frame_channel_alert.setVisible(False)
+        self.update_dropzone_state(False)
         self.stack.setCurrentIndex(0)
         self.reset_requested.emit()
 

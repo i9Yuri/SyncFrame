@@ -92,26 +92,16 @@ class PreviewPlayer(QFrame):
 
         # Bottom: 6px capsule progress bar + status text
         self.playback_bar = QProgressBar()
+        self.playback_bar.setObjectName("playbackBar")
         self.playback_bar.setRange(0, 100)
         self.playback_bar.setValue(0)
         self.playback_bar.setTextVisible(False)
         self.playback_bar.setFixedHeight(6)
-        self.playback_bar.setStyleSheet("""
-            QProgressBar {
-                background-color: rgba(255, 255, 255, 0.18);
-                border-radius: 3px;
-                border: none;
-            }
-            QProgressBar::chunk {
-                background-color: #5b9bff;
-                border-radius: 3px;
-            }
-        """)
         ms_layout.addWidget(self.playback_bar)
 
         self.status_label = QLabel("Pronto para reprodução sincronizada nos marcadores")
+        self.status_label.setObjectName("lblPlayerStatus")
         self.status_label.setProperty("class", "hint")
-        self.status_label.setStyleSheet("color: #aeb3c2; font-size: 13px;")
         ms_layout.addWidget(self.status_label)
 
         layout.addWidget(self.monitor_screen)

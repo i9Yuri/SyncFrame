@@ -205,7 +205,7 @@ class SyncFrameMainWindow(QWidget):
         cre_head.addStretch()
         badge_passthrough = QLabel("Zero re-encode")
         badge_passthrough.setProperty("class", "tagGreen")
-        cre_head.addWidget(badge_passthrough)
+        cre_head.addWidget(badge_passthrough, alignment=Qt.AlignVCenter)
         cre_layout.addLayout(cre_head)
 
         # Destination Path selector (.out container)
@@ -352,6 +352,8 @@ class SyncFrameMainWindow(QWidget):
         # Notify subcomponents
         if hasattr(self, "correlation_view") and hasattr(self.correlation_view, "set_theme_mode"):
             self.correlation_view.set_theme_mode(self.current_theme)
+        if hasattr(self, "preview_player") and hasattr(self.preview_player, "set_theme_mode"):
+            self.preview_player.set_theme_mode(self.current_theme)
 
         # Recursively unpolish and polish all child widgets to refresh CSS properties
         for child in self.findChildren(QWidget):
@@ -365,6 +367,20 @@ class SyncFrameMainWindow(QWidget):
             st.unpolish(self)
             st.polish(self)
         self.update()
+
+    def apply_theme(self, theme_name: Literal["dark", "light"]) -> None:
+        """Public API method to apply the theme to the main window."""
+        self.apply_application_theme(theme_name)
+
+    def update_dropzone_state(self, has_files: bool) -> None:
+        """Updates dropzone geometry and height dynamically based on file ingestion state."""
+        self.drop_zone.update_dropzone_state(has_files)
+
+    def set_manual_offset(self, offset_ms: float) -> None:
+        """Forwards manual offset override to sync controls and preview player."""
+        self.manual_offset_override = offset_ms
+        self.sync_controls.set_manual_offset(offset_ms)
+        self.preview_player.update_offset(offset_ms)
 
     def toggle_theme_mode(self) -> None:
         """Toggles between strictly monochrome neutral dark and neutral light workbench theme."""

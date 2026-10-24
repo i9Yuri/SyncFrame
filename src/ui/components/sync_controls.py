@@ -316,3 +316,28 @@ class SyncControls(QFrame):
         self.spin_offset.blockSignals(False)
         self.offset_changed.emit(0.0)
 
+    def set_offset(self, offset_ms: float, is_calculated: bool = False):
+        """Sets the offset value, updates slider and displays, and emits offset_changed signal."""
+        clamped = max(-60000.0, min(60000.0, offset_ms))
+        self.current_offset = clamped
+        if is_calculated:
+            self.algorithmic_offset = clamped
+
+        sign = "+" if self.current_offset >= 0 else "−"
+        val_str = f"{abs(self.current_offset):.1f}".replace(".", ",")
+        self.lbl_offset_val.setText(f"{sign}{val_str} ms")
+
+        self.slider.blockSignals(True)
+        self.slider.setValue(int(round(self.current_offset)))
+        self.slider.blockSignals(False)
+
+        self.spin_offset.blockSignals(True)
+        self.spin_offset.setValue(self.current_offset)
+        self.spin_offset.blockSignals(False)
+
+        self.offset_changed.emit(self.current_offset)
+
+    def set_manual_offset(self, offset_ms: float) -> None:
+        """Explicitly sets the manual temporal alignment offset in milliseconds."""
+        self.set_offset(offset_ms, is_calculated=False)
+

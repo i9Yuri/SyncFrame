@@ -8,6 +8,18 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [1.2.0] - 2026-10-24
 
 ### Corrigido
+- **Contorno Recortado na Área de Drop (Dropzone Corner Clipping):**
+  - Isolamento estrito da borda pontilhada no `#dropFrameEmpty` e neutralização do contorno recortado no container raiz (`UnifiedDropZone`), eliminando o vazamento de borda interna sob a linha tracejada com cantos arredondados (`border-radius: 24px`).
+  - Configuração de fundo transparente em `QStackedWidget` nas folhas de estilo de ambos os temas para evitar artefatos de herança de estilo sobre os componentes filhos.
+- **Geometria de Cantos Arredondados Contínuos (One UI / Modern Card Ergonomics):**
+  - Sanado o defeito de renderização do Qt QSS onde a especificação `border-radius: 999px` em elementos com altura inferior a 1998px falhava silenciosamente e revertia para cantos retangulares de 90 graus.
+  - Aplicação de raios exatos proporcionais à metade da altura dos componentes: 12px para chips/badges, 16px-18px para botões secundários e botões de micro-passo (`-250 ms`, `+250 ms`), 20px para caixas de telemetria (`metBox`), 22px para botões primários ("Selecionar Arquivos..."), 24px para o monitor de prévia labial e 34px para o dock flutuante.
+- **Harmonização Cromática e Visual do Modo Claro:**
+  - Erradicação de caixas pretas duras residuais no miniplayer de inspeção labial e caixas de contraste, mapeando o fundo do visor para `#eceef4`, chips de timecode para `#ffffff` com texto `#16181d`, barra de progresso para `#e1e4ed`/`#3e82f7` e bordas para `#dcdfe8`.
+  - Alinhamento vertical centralizado do badge de passthrough ("Zero re-encode") no cabeçalho do card de saída do remux.
+- **Otimização Dimensional da Dropzone Vazia e Expansão Dinâmica:**
+  - Compactação da Dropzone vazia para altura máxima de 240px (`QSizePolicy.Fixed`), garantindo que tanto a área de drop quanto o card "Saída do remux" caibam simultaneamente no viewport padrão (800px) sem gerar barras de rolagem verticais.
+  - Implementação de transição dinâmica via `update_dropzone_state(has_files: bool)` expandindo a área para dimensão fluida (`QSizePolicy.Preferred`, sem restrição de altura) quando os arquivos de mídia forem carregados.
 - **Disparo e Encadeamento Assíncrono do Botão "Sincronizar e Concluir":**
   - Resolução definitiva da inércia visual na esteira unificada de alinhamento acústico e multiplexação.
   - Correção de exceção fatal de assinatura (`TypeError`) no construtor de `UnifiedPipelineWorker` com suporte a `parent: Optional[object] = None`.
@@ -25,6 +37,9 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Cobertura de Testes de Sinais e Controles:**
   - Criação da suíte `tests/test_pipeline_signals.py` com 10 testes dedicados validando contratos de sinais, cancelamento resiliente, formatação de badges audiófilos e classes CSS de contêineres arredondados (elevando a suíte do projeto para 94 testes 100% aprovados).
 
+- **Contratos e Geradores de Estilo para Ergonomia de Interface:**
+  - Implementação das funções utilitárias `get_pill_button_style`, `get_compact_dropzone_style` e `get_telemetry_card_style` em `src/ui/style.py`.
+  - Disponibilização dos métodos públicos `apply_theme(theme_name)`, `update_dropzone_state(has_files)` e `set_manual_offset(offset_ms)` em `SyncFrameMainWindow`, `UnifiedDropZone` e `SyncControls`.
 - **Refatoração Estrutural de Apresentação com One UI e Ergonomia de Superfícies Contínuas:**
   - Transposição completa da geometria visual da interface para o paradigma de superfícies contínuas e cantos arredondados generosos (border-radius de 28px nos painéis/cartões principais `panelCard` e `bentoCard`, 22px em subcartões `subCard`, `fileCardWorkbench`, `streamRowCard`, `arbitrationCard`, `offsetCallout`, `metricCallout`, `viewportScreen`).
   - Formato de pílula contínua oval (border-radius de 999px) aplicado universalmente a todos os botões (`QPushButton`), caixas de seleção suspensa (`QComboBox`), campos de texto (`QLineEdit`), barras de progresso (`QProgressBar`), manípulos deslizantes (`QSlider::handle`) e chips de estado (`roleBadge`, `streamActionChip`, `streamIdTag`, `systemChip`, `badgeNeutral`, `badgeSignal`, `badgeGreen`, `badgeAmber`, `timecodeChip`).
