@@ -31,8 +31,12 @@ class AudioProfile:
     sample_rate: int
     bit_rate: Optional[int] = None
     is_surround: bool = False
+    is_immersive: bool = False
+    spatial_label: str = ""
 
     def layout_label(self) -> str:
+        if self.is_immersive and self.spatial_label:
+            return self.spatial_label
         return format_channel_layout_label(self.channels, self.channel_layout)
 
     def spec_label(self) -> str:
@@ -42,6 +46,8 @@ class AudioProfile:
         if self.bit_rate and self.bit_rate > 0:
             kbps = int(round(self.bit_rate / 1000.0))
             parts.append(f"{kbps} kbps")
+        if self.spatial_label:
+            parts.append(self.spatial_label)
         return " • ".join(parts)
 
 
@@ -66,6 +72,9 @@ class StreamMetadata:
     container_format: str = "mkv"
     audio_profile: Optional[AudioProfile] = None
     container_time_offsets: Optional["ContainerTimeOffsets"] = None
+    is_immersive: bool = False
+    spatial_label: str = ""
+    is_suspicious_transcode: bool = False
 
     def display_label(self) -> str:
         """User-friendly label for stream selection in GUI dropdowns."""
@@ -78,8 +87,8 @@ class StreamMetadata:
             return f"Vídeo #{self.id}: {details}{default_tag}"
         else:
             ch_str = f"{self.channels}ch" if self.channels > 0 else ""
-            if self.channels > 0 and self.channel_layout:
-                layout_lbl = format_channel_layout_label(self.channels, self.channel_layout)
+            layout_lbl = self.spatial_label or (format_channel_layout_label(self.channels, self.channel_layout) if self.channels > 0 else "")
+            if layout_lbl:
                 ch_str = f"{self.channels}ch ({layout_lbl})"
             sr_str = f"{self.sample_rate}Hz" if self.sample_rate > 0 else ""
             title_str = f" - {self.title}" if self.title else ""
@@ -244,7 +253,7 @@ class StreamCandidate:
             return f"[{res}{fps_str}] {self.stream.codec.upper()} [{fmt}] — {basename} (Trilha #{self.stream.id})"
         else:
             lang = self.stream.language.upper() if self.stream.language else "UND"
-            layout_tag = format_channel_layout_label(self.stream.channels, self.stream.channel_layout) if self.stream.channels else ""
+            layout_tag = self.stream.spatial_label or (format_channel_layout_label(self.stream.channels, self.stream.channel_layout) if self.stream.channels else "")
             title = f" ({self.stream.title})" if self.stream.title else ""
             specs = " • ".join(filter(None, [self.stream.codec.upper(), layout_tag]))
             return f"[{lang}] {specs}{title} [{fmt}] — {basename} (Trilha #{self.stream.id})"

@@ -140,6 +140,27 @@ QLabel.eyebrowText {
     border: none;
 }
 
+/* Instrument Telemetry & Callout Displays (Precision Bench Dark) */
+QFrame.offsetCallout {
+    background-color: #15181d;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+
+QFrame.metricCallout {
+    background-color: #15181d;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+QFrame.viewportScreen {
+    background-color: #15181d;
+    border: 1px solid #282d34;
+    border-radius: 8px;
+}
+
 /* Monospace Numbers & Metrics */
 QLabel.monoValue {
     background-color: transparent;
@@ -151,11 +172,11 @@ QLabel.monoValue {
 }
 
 QLabel.largeOffsetDisplay {
-    background-color: #181b20;
+    background-color: #15181d;
     color: #eef0f2;
     border: 1px solid #282d34;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 4px 8px;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 26px;
     font-weight: 800;
@@ -173,12 +194,12 @@ QLabel.diagnosisBanner {
     font-weight: 600;
 }
 
-QLabel#lblTimecodeChip {
-    background-color: #181b20;
+QLabel#lblTimecodeChip, QLabel.timecodeChip {
+    background-color: #15181d;
     color: #eef0f2;
     border: 1px solid #282d34;
-    border-radius: 5px;
-    padding: 2px 8px;
+    border-radius: 6px;
+    padding: 4px 8px;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 11px;
     font-weight: 700;
@@ -735,6 +756,27 @@ QLabel.eyebrowText {
     border: none;
 }
 
+/* Instrument Telemetry & Callout Displays (Precision Bench Light) */
+QFrame.offsetCallout {
+    background-color: #f1f3ef;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+
+QFrame.metricCallout {
+    background-color: #f1f3ef;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+QFrame.viewportScreen {
+    background-color: #ffffff;
+    border: 1px solid #d9ddd7;
+    border-radius: 8px;
+}
+
 /* Monospace Numbers & Metrics */
 QLabel.monoValue {
     background-color: transparent;
@@ -750,7 +792,7 @@ QLabel.largeOffsetDisplay {
     color: #191c1a;
     border: 1px solid #d9ddd7;
     border-radius: 6px;
-    padding: 6px 12px;
+    padding: 4px 8px;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 26px;
     font-weight: 800;
@@ -768,12 +810,12 @@ QLabel.diagnosisBanner {
     font-weight: 600;
 }
 
-QLabel#lblTimecodeChip {
+QLabel#lblTimecodeChip, QLabel.timecodeChip {
     background-color: #f1f3ef;
     color: #191c1a;
     border: 1px solid #d9ddd7;
-    border-radius: 5px;
-    padding: 2px 8px;
+    border-radius: 6px;
+    padding: 4px 8px;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     font-size: 11px;
     font-weight: 700;
@@ -1225,13 +1267,13 @@ def get_telemetry_badge_style(mode: Literal["dark", "light"] = "dark") -> str:
     if mode == "dark":
         return """
         QFrame.offsetCallout {
-            background-color: #181b20;
+            background-color: #15181d;
             border: 1px solid #282d34;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 4px 8px;
         }
         QFrame.metricCallout {
-            background-color: #181b20;
+            background-color: #15181d;
             border: 1px solid #282d34;
             border-radius: 8px;
             padding: 6px 10px;
@@ -1242,7 +1284,7 @@ def get_telemetry_badge_style(mode: Literal["dark", "light"] = "dark") -> str:
         background-color: #f1f3ef;
         border: 1px solid #d9ddd7;
         border-radius: 8px;
-        padding: 8px 12px;
+        padding: 4px 8px;
     }
     QFrame.metricCallout {
         background-color: #f1f3ef;
@@ -1258,7 +1300,7 @@ def get_player_viewport_style(mode: Literal["dark", "light"] = "dark") -> str:
     if mode == "dark":
         return """
         QFrame.viewportScreen {
-            background-color: #111317;
+            background-color: #15181d;
             border: 1px solid #282d34;
             border-radius: 8px;
         }
@@ -1333,11 +1375,11 @@ def get_telemetry_display_style(is_accent: bool = False) -> str:
             font-weight: 700;
         """
     return """
-        background-color: #181b20;
+        background-color: #15181d;
         color: #eef0f2;
         border: 1px solid #282d34;
         border-radius: 6px;
-        padding: 4px 10px;
+        padding: 4px 8px;
         font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
         font-weight: 700;
     """

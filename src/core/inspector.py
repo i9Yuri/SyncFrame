@@ -36,6 +36,184 @@ def _parse_fraction(frac_str: str) -> float:
         return 0.0
 
 
+def sanitize_stream_bitrate(
+    raw_bitrate: Optional[int],
+    stream_size: int,
+    duration_sec: float,
+    codec: str,
+    channels: int = 2
+) -> int:
+    """
+    Sanitizes audio stream bitrate against physical codec ceilings, eliminating corrupt
+    or container-wide bitrates (e.g., 17,697 kbps on an AAC stream).
+    Falls back to precise physical byte-rate calculation ((stream_size * 8) / duration_sec)
+    or nominal standard codec tables.
+    """
+    c = (codec or "").lower().replace("-", "").replace("_", "").replace(" ", "")
+
+    ceilings = {
+        "aac": 640_000,
+        "mp4a": 640_000,
+        "ac3": 640_000,
+        "eac3": 1_536_000,
+        "mp3": 320_000,
+        "mp2": 384_000,
+        "opus": 510_000,
+        "vorbis": 500_000,
+        "ogg": 500_000,
+        "dts": 1_536_000,
+        "flac": 24_576_000,
+        "truehd": 24_576_000,
+        "dtshd": 24_576_000,
+        "pcm": 36_864_000,
+    }
+
+    nominals = {
+        "aac": 384_000 if channels >= 6 else 192_000,
+        "mp4a": 384_000 if channels >= 6 else 192_000,
+        "ac3": 640_000 if channels >= 8 else (384_000 if channels >= 6 else 192_000),
+        "eac3": 768_000 if channels >= 8 else (640_000 if channels >= 6 else 224_000),
+        "mp3": 192_000,
+        "opus": 160_000,
+        "dts": 768_000,
+        "flac": 1_500_000,
+        "truehd": 3_500_000,
+    }
+
+    ceiling = 640_000
+    for k, v in ceilings.items():
+        if k in c:
+            ceiling = v
+            break
+
+    # 1. Check raw_bitrate within theoretical physical limits
+    if raw_bitrate is not None and 0 < raw_bitrate <= ceiling:
+        return int(raw_bitrate)
+
+    # 2. Fallback to physical stream_size / duration calculation
+    if stream_size > 0 and duration_sec > 0:
+        est = int(round((stream_size * 8.0) / duration_sec))
+        if 0 < est <= ceiling:
+            return est
+
+    # 3. Fallback to nominal standard table
+    for k, v in nominals.items():
+        if k in c:
+            return v
+
+    return 192_000
+
+
+def detect_immersive_audio_metadata(stream_info: dict) -> Tuple[str, bool]:
+    """
+    Detects immersive/spatial audio metadata (Dolby Atmos, E-AC-3 JOC, TrueHD Atmos,
+    multichannel spatial layouts 7.1.4, 7.1, 5.1).
+    Returns:
+        (descriptive_badge_label, is_immersive_boolean)
+    """
+    codec = str(stream_info.get("codec_name") or stream_info.get("codec") or "").lower()
+    profile = str(stream_info.get("profile") or "").lower()
+    layout = str(stream_info.get("channel_layout") or "").lower()
+    channels = int(stream_info.get("channels") or 0)
+    tags = stream_info.get("tags") or {}
+    title = str(tags.get("title") or stream_info.get("title") or "").lower()
+    side_data_list = stream_info.get("side_data_list") or []
+
+    # Check for Dolby Atmos or JOC (Joint Object Coding)
+    has_atmos = False
+    if "atmos" in profile or "joc" in profile or "joint object coding" in profile:
+        has_atmos = True
+    elif "atmos" in title or "e-ac-3 joc" in title or "eac3 joc" in title or "truehd atmos" in title:
+        has_atmos = True
+    else:
+        for sd in side_data_list:
+            sd_type = str(sd.get("side_data_type") or "").lower()
+            if "atmos" in sd_type or "joc" in sd_type or "spatial" in sd_type:
+                has_atmos = True
+                break
+
+    # Spatial layout with height / ceiling channels (e.g. 7.1.4, 5.1.2, 5.1.4, 7.1.2)
+    has_height = any(k in layout for k in ("7.1.4", "5.1.2", "5.1.4", "7.1.2", "top", "height"))
+
+    if has_atmos:
+        if "7.1.4" in layout:
+            return "7.1.4 ATMOS", True
+        elif channels == 8 or "7.1" in layout:
+            return "7.1 ATMOS", True
+        elif channels == 6 or "5.1" in layout:
+            return "5.1 ATMOS", True
+        elif "truehd" in codec:
+            return "TRUEHD ATMOS", True
+        return "DOLBY ATMOS", True
+
+    if has_height:
+        if "7.1.4" in layout:
+            return "7.1.4 SPATIAL", True
+        return f"{channels}ch SPATIAL", True
+
+    # High fidelity multichannel Dolby / DTS
+    if channels == 8 or "7.1" in layout:
+        if any(k in codec for k in ("eac3", "ac3", "truehd", "dolby")):
+            return "7.1 DOLBY AUDIO", False
+        elif "dts" in codec:
+            return "7.1 DTS-HD", False
+        return "Surround 7.1", False
+
+    if channels == 6 or "5.1" in layout:
+        if any(k in codec for k in ("eac3", "ac3", "truehd", "dolby")):
+            return "5.1 DOLBY AUDIO", False
+        elif "dts" in codec:
+            return "5.1 DTS SURROUND", False
+        return "Surround 5.1", False
+
+    if channels == 2 or "stereo" in layout:
+        return "Estéreo 2.0", False
+
+    if channels == 1 or "mono" in layout:
+        return "Mono 1.0", False
+
+    return format_channel_layout_label(channels, layout), False
+
+
+def probe_audio_channels_fast(file_path: str, stream_index: int) -> Tuple[int, str]:
+    """
+    Fast fallback decode via ffmpeg -i ... -t 1 -af astats -f null -
+    to certify physical audio channels and layout if container metadata is missing.
+    """
+    if not os.path.isfile(file_path):
+        return 2, "stereo"
+    cmd = [
+        "ffmpeg", "-v", "info",
+        "-i", file_path,
+        "-map", f"0:{stream_index}",
+        "-t", "1",
+        "-af", "astats",
+        "-f", "null",
+        "-"
+    ]
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+        stderr = res.stderr or ""
+        for line in stderr.splitlines():
+            if "Audio:" in line:
+                if "5.1" in line:
+                    return 6, "5.1(side)"
+                elif "7.1" in line:
+                    return 8, "7.1"
+                elif "stereo" in line:
+                    return 2, "stereo"
+                elif "mono" in line:
+                    return 1, "mono"
+            if "Channel count:" in line:
+                val = line.split("Channel count:")[-1].strip().split()[0]
+                if val.isdigit():
+                    ch = int(val)
+                    return ch, format_channel_layout_label(ch)
+    except Exception as exc:
+        logger.debug("Fast probe audio channels fallback failed: %s", exc)
+    return 2, "stereo"
+
+
 def probe_media_file(file_path: str) -> MediaContainerInfo:
     """
     Performs deep inspection of any media container (MKV, MP4, M4V, MOV) using ffprobe
@@ -104,9 +282,6 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
         channel_layout = str(s.get("channel_layout", ""))
         sample_rate = int(s.get("sample_rate", 0))
 
-        bitrate_str = s.get("bit_rate") or format_info.get("bit_rate")
-        bitrate_int = int(bitrate_str) if bitrate_str and str(bitrate_str).isdigit() else None
-
         fps = _parse_fraction(s.get("r_frame_rate", ""))
         if fps == 0.0:
             fps = _parse_fraction(s.get("avg_frame_rate", ""))
@@ -135,7 +310,6 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
         for side_data in s.get("side_data_list", []):
             side_type = str(side_data.get("side_data_type", "")).lower()
             if "edit list" in side_type or "elst" in side_type:
-                # If initial media time or start time is specified
                 media_time = side_data.get("media_time")
                 if media_time is not None:
                     edit_list_offset_ms = float(media_time) / 1000.0
@@ -151,14 +325,55 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
         )
 
         audio_profile = None
-        if codec_type == "audio":
+        is_imm = False
+        spatial_lbl = ""
+        is_suspicious = False
+
+        if codec_type == "video":
+            bitrate_str = s.get("bit_rate") or format_info.get("bit_rate")
+            bitrate_int = int(bitrate_str) if bitrate_str and str(bitrate_str).isdigit() else None
+        else:
+            spatial_lbl, is_imm = detect_immersive_audio_metadata(s)
+            if channels <= 0:
+                channels, channel_layout = probe_audio_channels_fast(file_path, stream_index)
+
+            stream_size = 0
+            for tag_k, tag_v in tags.items():
+                if "NUMBER_OF_BYTES" in tag_k.upper():
+                    try:
+                        stream_size = int(tag_v)
+                        break
+                    except (ValueError, TypeError):
+                        pass
+
+            raw_br = s.get("bit_rate")
+            raw_br_int = None
+            if raw_br and str(raw_br).isdigit():
+                raw_br_int = int(raw_br)
+                if "aac" in codec.lower() and raw_br_int > 640_000:
+                    is_suspicious = True
+            elif "BPS" in tags and str(tags["BPS"]).isdigit():
+                raw_br_int = int(tags["BPS"]) * 8
+                if "aac" in codec.lower() and raw_br_int > 640_000:
+                    is_suspicious = True
+
+            bitrate_int = sanitize_stream_bitrate(
+                raw_bitrate=raw_br_int,
+                stream_size=stream_size,
+                duration_sec=duration_sec,
+                codec=codec,
+                channels=channels
+            )
+
             audio_profile = AudioProfile(
                 codec=codec,
                 channels=channels,
                 channel_layout=channel_layout,
                 sample_rate=sample_rate,
                 bit_rate=bitrate_int,
-                is_surround=(channels >= 6 or "5.1" in channel_layout or "7.1" in channel_layout)
+                is_surround=(channels >= 6 or "5.1" in channel_layout or "7.1" in channel_layout),
+                is_immersive=is_imm,
+                spatial_label=spatial_lbl
             )
 
         meta = StreamMetadata(
@@ -178,7 +393,10 @@ def probe_media_file(file_path: str) -> MediaContainerInfo:
             channel_layout=channel_layout,
             container_format=container_format,
             audio_profile=audio_profile,
-            container_time_offsets=stream_time_offsets
+            container_time_offsets=stream_time_offsets,
+            is_immersive=is_imm,
+            spatial_label=spatial_lbl,
+            is_suspicious_transcode=is_suspicious
         )
 
         all_streams.append(meta)
@@ -317,13 +535,39 @@ def _inspect_via_mkvmerge(file_path: str) -> List[StreamMetadata]:
             duration_ms = container_duration_ms
 
             audio_profile = None
+            is_imm = False
+            spatial_lbl = ""
+            is_suspicious = False
+            bitrate_int = None
             if track_type == "audio":
+                raw_bps = props.get("bps") or props.get("bit_rate")
+                raw_br = None
+                if raw_bps is not None and str(raw_bps).isdigit():
+                    raw_br = int(raw_bps) * 8 if "bps" in props else int(raw_bps)
+                    if "aac" in codec.lower() and raw_br > 640_000:
+                        is_suspicious = True
+                dur_sec = container_duration_ms / 1000.0 if container_duration_ms > 0 else 0.0
+                stream_size = int(props.get("number_of_bytes", 0)) if str(props.get("number_of_bytes", 0)).isdigit() else 0
+                bitrate_int = sanitize_stream_bitrate(raw_br, stream_size, dur_sec, codec, channels=channels)
+
+                ch_layout = f"{channels}.0" if channels in (1, 2) else ("5.1" if channels == 6 else f"{channels}ch")
+                spatial_lbl, is_imm = detect_immersive_audio_metadata({
+                    "codec": codec,
+                    "profile": codec_id,
+                    "channel_layout": ch_layout,
+                    "channels": channels,
+                    "title": title
+                })
+
                 audio_profile = AudioProfile(
                     codec=codec,
                     channels=channels,
-                    channel_layout=f"{channels}.0" if channels in (1, 2) else ("5.1" if channels == 6 else f"{channels}ch"),
+                    channel_layout=ch_layout,
                     sample_rate=sample_rate,
-                    is_surround=(channels >= 6)
+                    bit_rate=bitrate_int,
+                    is_surround=(channels >= 6),
+                    is_immersive=is_imm,
+                    spatial_label=spatial_lbl
                 )
 
             streams.append(StreamMetadata(
@@ -338,10 +582,15 @@ def _inspect_via_mkvmerge(file_path: str) -> List[StreamMetadata]:
                 track_type=track_type,
                 title=title,
                 codec_id=codec_id,
+                bitrate=bitrate_int,
                 width=width_int,
                 height=height_int,
+                channel_layout=f"{channels}.0" if channels in (1, 2) else ("5.1" if channels == 6 else f"{channels}ch"),
                 container_format="mkv",
-                audio_profile=audio_profile
+                audio_profile=audio_profile,
+                is_immersive=is_imm,
+                spatial_label=spatial_lbl,
+                is_suspicious_transcode=is_suspicious
             ))
     except Exception as exc:
         logger.warning("mkvmerge -J inspection failed for %s: %s", file_path, exc)
@@ -378,12 +627,18 @@ def inspect_media(file_path: str) -> List[StreamMetadata]:
                         if s.track_type == "audio":
                             s.channel_layout = ff.channel_layout
                             s.audio_profile = ff.audio_profile
-                            s.bitrate = s.bitrate or ff.bitrate
+                            s.bitrate = ff.bitrate or s.bitrate
+                            s.is_immersive = ff.is_immersive
+                            s.spatial_label = ff.spatial_label
+                            s.is_suspicious_transcode = ff.is_suspicious_transcode
                     elif s.track_type == "audio" and audio_idx < len(ff_audios):
                         ff = ff_audios[audio_idx]
                         s.channel_layout = ff.channel_layout
                         s.audio_profile = ff.audio_profile
-                        s.bitrate = s.bitrate or ff.bitrate
+                        s.bitrate = ff.bitrate or s.bitrate
+                        s.is_immersive = ff.is_immersive
+                        s.spatial_label = ff.spatial_label
+                        s.is_suspicious_transcode = ff.is_suspicious_transcode
                         audio_idx += 1
             except Exception as exc:
                 logger.debug("Enrichment via ffprobe skipped for %s: %s", file_path, exc)
@@ -643,6 +898,62 @@ def get_codec_tier(codec_name: str) -> int:
     return 1
 
 
+def calculate_perceptual_audio_score(stream: StreamMetadata) -> float:
+    """
+    Computes deterministic perceptual acoustic quality score based on 3 hierarchical tiers:
+    Tier 1: Real channel profile (7.1/7.1.4 > 5.1 > 2.0 > 1.0).
+    Tier 2: Codec purity and authenticity (Lossless Master: 100 > Broadcast/Cinema AC3/E-AC-3: 80 > Web AAC/MP3: 50).
+    Tier 3: Suspicious transcode audit (penalizing dubious inflated AAC web rips).
+    """
+    channels = stream.channels if stream.channels and stream.channels > 0 else 2
+    codec = (stream.codec or "").lower().replace("-", "").replace("_", "").replace(" ", "")
+
+    # Tier 1: Real Channel Profile (dominates completely: 8ch > 6ch > 2ch > 1ch)
+    if channels >= 8:
+        channel_score = 800_000.0
+    elif channels == 6:
+        channel_score = 600_000.0
+    elif channels == 2:
+        channel_score = 200_000.0
+    elif channels == 1:
+        channel_score = 100_000.0
+    else:
+        channel_score = channels * 100_000.0
+
+    # Tier 2: Codec Purity & Authenticity
+    if any(k in codec for k in ("flac", "truehd", "dtshd", "dtsma", "pcm", "alac", "wav")):
+        codec_score = 10_000.0  # Lossless Master (Score 100)
+    elif getattr(stream, "is_immersive", False) or "atmos" in (getattr(stream, "spatial_label", "") or "").lower():
+        codec_score = 9_000.0   # Broadcast Immersive E-AC-3 JOC / Atmos
+    elif any(k in codec for k in ("eac3", "ac3", "dts", "dolby")):
+        codec_score = 8_000.0   # Broadcast Nativo / Cinema AC-3 (Score 80)
+    elif "opus" in codec:
+        codec_score = 7_000.0   # High quality transparent lossy
+    elif "aac" in codec:
+        codec_score = 5_000.0   # Web transcode lossy (Score 50)
+    elif any(k in codec for k in ("mp3", "mp2", "vorbis", "wma")):
+        codec_score = 4_000.0   # Legacy lossy (Score 40)
+    else:
+        codec_score = 1_000.0
+
+    # Tier 3: Suspicious transcode audit & Bitrate
+    is_suspicious = getattr(stream, "is_suspicious_transcode", False)
+    if "aac" in codec and (is_suspicious or (stream.bitrate and stream.bitrate > 640_000)):
+        transcode_penalty = 1_500.0
+    else:
+        transcode_penalty = 0.0
+
+    # Bitrate tie-breaker (modest scaling, max 80 points)
+    bitrate_kbps = (stream.bitrate or 0) / 1000.0
+    bitrate_score = min(bitrate_kbps * 0.1, 80.0)
+
+    # Sample rate tie-breaker
+    sr = stream.sample_rate if stream.sample_rate and stream.sample_rate > 0 else 48000
+    sr_score = min((sr / 100000.0), 10.0)
+
+    return channel_score + codec_score + bitrate_score + sr_score - transcode_penalty
+
+
 def evaluate_audio_quality(stream: StreamMetadata) -> AudioQualityScore:
     """
     Calculates deterministic acoustic fidelity index (AudioQualityScore) for an audio stream.
@@ -657,13 +968,7 @@ def evaluate_audio_quality(stream: StreamMetadata) -> AudioQualityScore:
     bit_rate = stream.bitrate if stream.bitrate and stream.bitrate > 0 else 0
     codec_tier = get_codec_tier(stream.codec)
 
-    bitrate_kbps = bit_rate / 1000.0
-    total_score = (
-        (channels * 100000.0)
-        + (codec_tier * 1000.0)
-        + (bitrate_kbps * 0.5)
-        + (sample_rate / 100000.0)
-    )
+    total_score = calculate_perceptual_audio_score(stream)
 
     return AudioQualityScore(
         channels=channels,
@@ -675,22 +980,17 @@ def evaluate_audio_quality(stream: StreamMetadata) -> AudioQualityScore:
 
 
 def _describe_audio_stream(stream: StreamMetadata) -> str:
-    """Helper formatting technical summary of audio stream (e.g. '5.1 AC3 640 kbps')."""
-    layout = format_channel_layout_label(stream.channels, stream.channel_layout)
-    if layout.startswith("Surround "):
-        layout_short = layout.replace("Surround ", "")
-    elif layout.startswith("Estéreo "):
-        layout_short = layout.replace("Estéreo ", "")
-    elif layout.startswith("Mono "):
-        layout_short = layout.replace("Mono ", "")
-    else:
-        layout_short = layout
+    """Helper formatting technical summary of audio stream (e.g. '5.1 AC-3 384 kbps')."""
+    layout = stream.spatial_label or format_channel_layout_label(stream.channels, stream.channel_layout)
+    for pfx in ("Surround ", "Estéreo ", "Mono "):
+        if layout.startswith(pfx):
+            layout = layout.replace(pfx, "")
 
     codec = (stream.codec or "audio").upper()
     if stream.bitrate and stream.bitrate > 0:
         kbps = int(round(stream.bitrate / 1000.0))
-        return f"{layout_short} {codec} {kbps} kbps"
-    return f"{layout_short} {codec}"
+        return f"{layout} {codec} {kbps} kbps"
+    return f"{layout} {codec}"
 
 
 def arbitrate_duplicate_language_streams(
@@ -777,10 +1077,14 @@ def arbitrate_duplicate_language_streams(
     if best_ext_score.total_score > best_base_score.total_score:
         # External is strictly superior -> replacement and discard base PT track(s)
         discard_ids = [s.id for s in base_pt]
+        if "ac3" in (best_ext.codec or "").lower() and "aac" in (best_base.codec or "").lower():
+            reason_txt = f"Dublagem Externa Selecionada: {ext_desc} (Substituindo faixa local: {base_desc} que será descartada; faixa externa selecionada por apresentar áudio multicanal de broadcast autêntico)"
+        else:
+            reason_txt = f"Dublagem Externa Selecionada: {ext_desc} (Substituindo faixa local: {base_desc} que será descartada)"
         return StreamArbitrationResult(
             selected_target_audio=best_ext,
             discarded_audio_ids=discard_ids,
-            reason=f"Dublagem Externa Selecionada: {ext_desc} (Substituindo faixa local: {base_desc} que será descartada)",
+            reason=reason_txt,
             is_replacement=True
         )
     elif best_ext_score.total_score == best_base_score.total_score:

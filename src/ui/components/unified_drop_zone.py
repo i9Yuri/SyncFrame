@@ -48,8 +48,29 @@ def elide_filename(filename: str, max_chars: int = 36) -> str:
     return f"{stem[:left]}...{stem[-right:]}{ext}"
 
 
+def format_audio_dropdown_item(cand: StreamCandidate, max_filename_len: int = 24) -> str:
+    """
+    Formats audio dropdown item specification:
+    [Arquivo Origem] • Trilha #ID • Idioma • Codec • Canais (ex.: 5.1 / 7.1) • Bitrate Real
+    """
+    base = elide_filename(os.path.basename(cand.file_path), max_chars=max_filename_len)
+    track_id = f"Trilha #{cand.stream.id}"
+    lang = (cand.stream.language or "und").upper()
+    codec = (cand.stream.codec or "audio").upper()
+    channels = cand.stream.spatial_label or format_channel_layout_label(cand.stream.channels, cand.stream.channel_layout)
+    if cand.stream.bitrate and cand.stream.bitrate > 0:
+        bitrate_kbps = int(round(cand.stream.bitrate / 1000.0))
+        bitrate_str = f"{bitrate_kbps} kbps"
+    else:
+        bitrate_str = "Bitrate N/D"
+    return f"[{base}] • {track_id} • {lang} • {codec} • {channels} • {bitrate_str}"
+
+
 def format_stream_item_text(cand: StreamCandidate, max_filename_len: int = 36) -> str:
     """Formats technical specifications with middle elision on the filename for compact workbench readability."""
+    if cand.stream.track_type == "audio":
+        return format_audio_dropdown_item(cand, max_filename_len=24)
+
     basename = elide_filename(os.path.basename(cand.file_path), max_chars=max_filename_len)
     fmt = cand.stream.container_format.upper() if cand.stream.container_format else "MKV"
     if cand.stream.track_type == "video":
@@ -58,7 +79,7 @@ def format_stream_item_text(cand: StreamCandidate, max_filename_len: int = 36) -
         return f"[{res}{fps_str}] {cand.stream.codec.upper()} [{fmt}] — {basename} (Trilha #{cand.stream.id})"
     else:
         lang = cand.stream.language.upper() if cand.stream.language else "UND"
-        layout_tag = format_channel_layout_label(cand.stream.channels, cand.stream.channel_layout) if cand.stream.channels else ""
+        layout_tag = cand.stream.spatial_label or (format_channel_layout_label(cand.stream.channels, cand.stream.channel_layout) if cand.stream.channels else "")
         title = f" ({cand.stream.title})" if cand.stream.title else ""
         specs = " • ".join(filter(None, [cand.stream.codec.upper(), layout_tag]))
         return f"[{lang}] {specs}{title} [{fmt}] — {basename} (Trilha #{cand.stream.id})"
@@ -74,6 +95,8 @@ class UnifiedDropZone(QFrame):
     """
     files_ready = Signal(str, str)
     confirmation_confirmed = Signal(object, object, object, bool)  # (video_cand, target_cand, ref_cand, keep_orig)
+    target_audio_changed = Signal(int)
+    ref_audio_changed = Signal(int)
     reset_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -350,10 +373,10 @@ class UnifiedDropZone(QFrame):
         self.combo_video.currentIndexChanged.connect(self._update_audio_audit)
 
         self.combo_target_audio = QComboBox()
-        self.combo_target_audio.currentIndexChanged.connect(self._update_audio_audit)
+        self.combo_target_audio.currentIndexChanged.connect(self._on_combo_target_changed)
 
         self.combo_ref_audio = QComboBox()
-        self.combo_ref_audio.currentIndexChanged.connect(self._update_audio_audit)
+        self.combo_ref_audio.currentIndexChanged.connect(self._on_combo_ref_changed)
 
         # Structured Two-Level Stream Rows via configure_stream_row contract
         self.row_video = self.configure_stream_row(
@@ -633,20 +656,27 @@ class UnifiedDropZone(QFrame):
 
         self.update_role_badge(self.badge_v_status, "Melhor Imagem")
 
+        # Collect all audio candidates from both sources
+        all_audio_cands: List[StreamCandidate] = []
+        if verdict.recommended_target_audio:
+            all_audio_cands.append(verdict.recommended_target_audio)
+        for alt in verdict.alternative_audios:
+            if alt not in all_audio_cands:
+                all_audio_cands.append(alt)
+        if verdict.reference_audio and verdict.reference_audio not in all_audio_cands:
+            all_audio_cands.append(verdict.reference_audio)
+
         # Target audio combo
         self.combo_target_audio.blockSignals(True)
         self.combo_target_audio.clear()
-        if verdict.recommended_target_audio:
-            tgt_cand = verdict.recommended_target_audio
-            self.combo_target_audio.addItem(
-                format_stream_item_text(tgt_cand),
-                userData=tgt_cand
-            )
-            self.combo_target_audio.setItemData(0, tgt_cand.summary_title(), Qt.ToolTipRole)
-        for alt in verdict.alternative_audios:
-            idx = self.combo_target_audio.count()
-            self.combo_target_audio.addItem(format_stream_item_text(alt), userData=alt)
-            self.combo_target_audio.setItemData(idx, alt.summary_title(), Qt.ToolTipRole)
+        target_idx = 0
+        for i, cand in enumerate(all_audio_cands):
+            self.combo_target_audio.addItem(format_stream_item_text(cand), userData=cand)
+            self.combo_target_audio.setItemData(i, cand.summary_title(), Qt.ToolTipRole)
+            if verdict.recommended_target_audio and cand == verdict.recommended_target_audio:
+                target_idx = i
+        if self.combo_target_audio.count() > 0:
+            self.combo_target_audio.setCurrentIndex(target_idx)
         self.combo_target_audio.blockSignals(False)
 
         if verdict.is_ambiguous:
@@ -657,15 +687,14 @@ class UnifiedDropZone(QFrame):
         # Reference audio combo
         self.combo_ref_audio.blockSignals(True)
         self.combo_ref_audio.clear()
-        if verdict.reference_audio:
-            ref_cand = verdict.reference_audio
-            self.combo_ref_audio.addItem(format_stream_item_text(ref_cand), userData=ref_cand)
-            self.combo_ref_audio.setItemData(0, ref_cand.summary_title(), Qt.ToolTipRole)
-        for alt in verdict.alternative_audios:
-            if alt != verdict.reference_audio:
-                idx = self.combo_ref_audio.count()
-                self.combo_ref_audio.addItem(format_stream_item_text(alt), userData=alt)
-                self.combo_ref_audio.setItemData(idx, alt.summary_title(), Qt.ToolTipRole)
+        ref_idx = 0
+        for i, cand in enumerate(all_audio_cands):
+            self.combo_ref_audio.addItem(format_stream_item_text(cand), userData=cand)
+            self.combo_ref_audio.setItemData(i, cand.summary_title(), Qt.ToolTipRole)
+            if verdict.reference_audio and cand == verdict.reference_audio:
+                ref_idx = i
+        if self.combo_ref_audio.count() > 0:
+            self.combo_ref_audio.setCurrentIndex(ref_idx)
         self.combo_ref_audio.blockSignals(False)
 
         self.update_role_badge(self.badge_ref_status, "Referência Fixa")
@@ -680,6 +709,76 @@ class UnifiedDropZone(QFrame):
 
         # Set focus to confirm button for instant Enter activation
         self.btn_confirm.setFocus()
+
+    def _on_combo_target_changed(self, index: int):
+        cand = self.combo_target_audio.currentData()
+        track_id = cand.stream.id if cand else index
+        self.on_user_target_audio_changed(track_id)
+
+    def _on_combo_ref_changed(self, index: int):
+        cand = self.combo_ref_audio.currentData()
+        track_id = cand.stream.id if cand else index
+        self.on_user_ref_audio_changed(track_id)
+
+    def on_user_target_audio_changed(self, selected_track_id: int) -> None:
+        """Handles manual user selection of the target dubbing track."""
+        curr_cand = self.combo_target_audio.currentData()
+        if not curr_cand or curr_cand.stream.id != selected_track_id:
+            for i in range(self.combo_target_audio.count()):
+                c = self.combo_target_audio.itemData(i)
+                if c and c.stream.id == selected_track_id:
+                    self.combo_target_audio.blockSignals(True)
+                    self.combo_target_audio.setCurrentIndex(i)
+                    self.combo_target_audio.blockSignals(False)
+                    break
+
+        target_cand: Optional[StreamCandidate] = self.combo_target_audio.currentData()
+        ref_cand: Optional[StreamCandidate] = self.combo_ref_audio.currentData()
+        if target_cand and ref_cand and target_cand.file_path == ref_cand.file_path and target_cand.stream.id == ref_cand.stream.id:
+            self.lbl_channel_alert.setText("[AVISO] Seleção conflitante: A faixa alvo de dublagem não pode ser idêntica à faixa de referência.")
+            self.frame_channel_alert.setVisible(True)
+            self.btn_confirm.setEnabled(False)
+            self.update_role_badge(self.badge_a_status, "Conflito", is_amber=True)
+            return
+
+        self.btn_confirm.setEnabled(True)
+        self.frame_channel_alert.setVisible(False)
+        if self.current_verdict and self.current_verdict.recommended_target_audio and target_cand == self.current_verdict.recommended_target_audio:
+            self.update_role_badge(self.badge_a_status, "Ajuste Manual" if self.current_verdict.is_ambiguous else "Recomendado")
+        else:
+            self.update_role_badge(self.badge_a_status, "Seleção Manual")
+        self._update_audio_audit()
+        self.target_audio_changed.emit(selected_track_id)
+
+    def on_user_ref_audio_changed(self, selected_track_id: int) -> None:
+        """Handles manual user selection of the reference audio track."""
+        curr_cand = self.combo_ref_audio.currentData()
+        if not curr_cand or curr_cand.stream.id != selected_track_id:
+            for i in range(self.combo_ref_audio.count()):
+                c = self.combo_ref_audio.itemData(i)
+                if c and c.stream.id == selected_track_id:
+                    self.combo_ref_audio.blockSignals(True)
+                    self.combo_ref_audio.setCurrentIndex(i)
+                    self.combo_ref_audio.blockSignals(False)
+                    break
+
+        target_cand: Optional[StreamCandidate] = self.combo_target_audio.currentData()
+        ref_cand: Optional[StreamCandidate] = self.combo_ref_audio.currentData()
+        if target_cand and ref_cand and target_cand.file_path == ref_cand.file_path and target_cand.stream.id == ref_cand.stream.id:
+            self.lbl_channel_alert.setText("[AVISO] Seleção conflitante: A faixa de referência não pode ser idêntica à faixa alvo de dublagem.")
+            self.frame_channel_alert.setVisible(True)
+            self.btn_confirm.setEnabled(False)
+            self.update_role_badge(self.badge_ref_status, "Conflito", is_amber=True)
+            return
+
+        self.btn_confirm.setEnabled(True)
+        self.frame_channel_alert.setVisible(False)
+        if self.current_verdict and self.current_verdict.reference_audio and ref_cand == self.current_verdict.reference_audio:
+            self.update_role_badge(self.badge_ref_status, "Referência Fixa")
+        else:
+            self.update_role_badge(self.badge_ref_status, "Ref. Manual")
+        self._update_audio_audit()
+        self.ref_audio_changed.emit(selected_track_id)
 
     def _update_audio_audit(self):
         """Updates acoustic audit badges and contextual channel warnings based on combo selection."""
@@ -706,10 +805,12 @@ class UnifiedDropZone(QFrame):
             self.lbl_audit_origin.setProperty("class", "badgeNeutral")
         self.lbl_audit_origin.setStyle(self.lbl_audit_origin.style())
 
-        # Channel layout badge
-        layout_text = format_channel_layout_label(tgt_stream.channels, tgt_stream.channel_layout)
+        # Channel layout badge & Immersive Atmos detection
+        layout_text = tgt_stream.spatial_label or format_channel_layout_label(tgt_stream.channels, tgt_stream.channel_layout)
         self.badge_audit_layout.setText(layout_text)
-        if tgt_stream.channels >= 6:
+        if tgt_stream.is_immersive or "atmos" in layout_text.lower():
+            self.badge_audit_layout.setProperty("class", "badgeSignal")
+        elif tgt_stream.channels >= 6:
             self.badge_audit_layout.setProperty("class", "badgeGreen")
         else:
             self.badge_audit_layout.setProperty("class", "badgeNeutral")
@@ -724,8 +825,11 @@ class UnifiedDropZone(QFrame):
         self.lbl_audit_specs.setText(spec_str)
 
         # Contextual Channel Difference Alert
+        if target_cand and ref_cand and target_cand.file_path == ref_cand.file_path and target_cand.stream.id == ref_cand.stream.id:
+            return
+
         if tgt_stream.channels in (1, 2) and ref_cand and ref_cand.stream.channels >= 6:
-            ref_layout = format_channel_layout_label(ref_cand.stream.channels, ref_cand.stream.channel_layout)
+            ref_layout = ref_cand.stream.spatial_label or format_channel_layout_label(ref_cand.stream.channels, ref_cand.stream.channel_layout)
             self.lbl_channel_alert.setText(
                 f"[INFO] {layout_text} identificado na dublagem; áudio original em inglês possui {ref_layout} ({ref_cand.stream.channels} canais)."
             )

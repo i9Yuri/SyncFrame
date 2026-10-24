@@ -186,6 +186,8 @@ class SyncFrameMainWindow(QWidget):
         self.drop_zone = UnifiedDropZone()
         self.drop_zone.files_ready.connect(self._on_files_ready)
         self.drop_zone.confirmation_confirmed.connect(self._on_confirmation_confirmed)
+        self.drop_zone.target_audio_changed.connect(self._on_target_audio_changed)
+        self.drop_zone.ref_audio_changed.connect(self._on_ref_audio_changed)
         self.drop_zone.reset_requested.connect(self._on_reset_requested)
         col_left.addWidget(self.drop_zone)
 
@@ -500,6 +502,15 @@ class SyncFrameMainWindow(QWidget):
 
         self.auto_chain_remux = True
         self.start_analysis()
+
+    def _on_target_audio_changed(self, track_id: int):
+        self.selected_target_audio_id = track_id
+        target_cand = self.drop_zone.combo_target_audio.currentData()
+        if target_cand:
+            self.audio_path = target_cand.file_path
+
+    def _on_ref_audio_changed(self, track_id: int):
+        self.selected_ref_audio_id = track_id
 
     def _on_reset_requested(self):
         self._set_stepper_active(0)
