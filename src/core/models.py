@@ -233,12 +233,35 @@ class RemuxJob:
     run_post_audit: bool = True
     discarded_audio_ids: List[int] = field(default_factory=list)
     target_audio_track_id: Optional[int] = None
+    ref_audio_file: Optional[str] = None
 
     def __post_init__(self):
         if self.target_audio_track_id is not None:
             self.target_track_id = self.target_audio_track_id
         else:
             self.target_audio_track_id = self.target_track_id
+        if self.ref_audio_file is None:
+            self.ref_audio_file = self.video_file
+
+
+@dataclass
+class StreamReviewState:
+    """State contract representing selected tracks and custom options in the Review Gate."""
+    selected_video_id: int
+    selected_target_audio_id: int
+    selected_ref_audio_id: int
+    pal_restore_enabled: bool
+    target_codec: str
+    is_customized: bool = False
+
+
+@dataclass
+class SmartDefaultsConfig:
+    """Dynamic configuration calculated from video and audio streams for PAL and codec selection."""
+    pal_pitch_restore: bool
+    pal_badge_text: str
+    target_codec: str
+    reason: str
 
 
 @dataclass

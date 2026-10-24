@@ -3,7 +3,7 @@
 import os
 from typing import List, Optional, Tuple
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QObject, QEvent
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -21,15 +21,51 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.disk_utils import format_bytes
-from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label, MediaSourceInfo
+from ...core.models import (
+    AutoMatchVerdict,
+    StreamCandidate,
+    format_channel_layout_label,
+    MediaSourceInfo,
+    StreamReviewState,
+    SmartDefaultsConfig
+)
 from ...core.inspector import (
     PORTUGUESE_TAGS,
     PORTUGUESE_KEYWORDS,
     format_audiophile_recommendation_badge,
-    format_audiophile_discard_notice
+    format_audiophile_discard_notice,
+    determine_smart_defaults
 )
 from ..style import get_role_badge_style, get_action_chip_style
 from .audio_preserve_checkbox import AudioPreserveCheckbox
+
+
+class WheelBlockerFilter(QObject):
+    """Filters wheel events on comboboxes to prevent accidental track changes during scrolling."""
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Wheel:
+            event.ignore()
+            return True
+        return super().eventFilter(watched, event)
+
+
+_global_wheel_blocker = WheelBlockerFilter()
+
+
+def install_wheel_blocker(combobox: QComboBox) -> None:
+    """Disables mouse wheel scrolling on a QComboBox, forwarding the scroll to its parent."""
+    combobox.installEventFilter(_global_wheel_blocker)
+    combobox.wheelEvent = lambda event: event.ignore()
+
+
+class NoWheelComboBox(QComboBox):
+    """QComboBox subclass that ignores wheel scroll events unless popup is open."""
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        install_wheel_blocker(self)
+
+    def wheelEvent(self, event):
+        event.ignore()
 
 
 def elide_filename(filename: str, max_chars: int = 36) -> str:
@@ -219,8 +255,8 @@ class UnifiedDropZone(QFrame):
         self.block_sources.setObjectName("blockSourcesIngested")
         self.block_sources.setProperty("class", "subCard")
         bs_layout = QVBoxLayout(self.block_sources)
-        bs_layout.setContentsMargins(22, 22, 22, 22)
-        bs_layout.setSpacing(14)
+        bs_layout.setContentsMargins(16, 12, 16, 12)
+        bs_layout.setSpacing(8)
 
         # Header with Card title, sources count tag and Change button
         conf_header = QHBoxLayout()
@@ -249,8 +285,8 @@ class UnifiedDropZone(QFrame):
         self.card_file_v = QFrame()
         self.card_file_v.setProperty("class", "fileBox")
         cf_v_layout = QVBoxLayout(self.card_file_v)
-        cf_v_layout.setContentsMargins(16, 16, 16, 16)
-        cf_v_layout.setSpacing(6)
+        cf_v_layout.setContentsMargins(12, 8, 12, 8)
+        cf_v_layout.setSpacing(4)
 
         head_v = QHBoxLayout()
         lbl_v_role = QLabel("Referência de vídeo")
@@ -276,8 +312,8 @@ class UnifiedDropZone(QFrame):
         self.card_file_a = QFrame()
         self.card_file_a.setProperty("class", "fileBox")
         cf_a_layout = QVBoxLayout(self.card_file_a)
-        cf_a_layout.setContentsMargins(16, 16, 16, 16)
-        cf_a_layout.setSpacing(6)
+        cf_a_layout.setContentsMargins(12, 8, 12, 8)
+        cf_a_layout.setSpacing(4)
 
         head_a = QHBoxLayout()
         lbl_a_role = QLabel("Áudio dublado")
@@ -306,8 +342,8 @@ class UnifiedDropZone(QFrame):
         self.frame_arbitration.setObjectName("frameArbitration")
         self.frame_arbitration.setProperty("class", "arbitrationCard")
         arb_layout = QHBoxLayout(self.frame_arbitration)
-        arb_layout.setContentsMargins(16, 14, 16, 14)
-        arb_layout.setSpacing(12)
+        arb_layout.setContentsMargins(14, 8, 14, 8)
+        arb_layout.setSpacing(8)
 
         dub_text_box = QVBoxLayout()
         dub_text_box.setSpacing(2)
@@ -354,8 +390,8 @@ class UnifiedDropZone(QFrame):
         self.block_review.setObjectName("blockReviewGate")
         self.block_review.setProperty("class", "subCard")
         br_layout = QVBoxLayout(self.block_review)
-        br_layout.setContentsMargins(22, 22, 22, 22)
-        br_layout.setSpacing(12)
+        br_layout.setContentsMargins(16, 12, 16, 12)
+        br_layout.setSpacing(8)
 
         rf_head = QHBoxLayout()
         rf_head.setSpacing(10)
@@ -363,38 +399,48 @@ class UnifiedDropZone(QFrame):
         rf_title.setProperty("class", "cardTitle")
         rf_head.addWidget(rf_title)
         rf_head.addStretch()
+
+        self.btn_restore_recommendation = QPushButton("Restaurar Recomendação")
+        self.btn_restore_recommendation.setProperty("class", "btnSm")
+        self.btn_restore_recommendation.setToolTip("Restaura a combinação ótima original calculada pelo probing inicial.")
+        self.btn_restore_recommendation.clicked.connect(self.reset_to_recommended_state)
+        rf_head.addWidget(self.btn_restore_recommendation)
+
         lbl_no_rec = QLabel("Sem reencode de vídeo")
         lbl_no_rec.setProperty("class", "tagGreen")
         rf_head.addWidget(lbl_no_rec)
         br_layout.addLayout(rf_head)
 
-        # Comboboxes instantiated
+        # Comboboxes instantiated with wheel blocker
         self.combo_video = QComboBox()
         self.combo_video.currentIndexChanged.connect(self._update_audio_audit)
+        install_wheel_blocker(self.combo_video)
 
         self.combo_target_audio = QComboBox()
         self.combo_target_audio.currentIndexChanged.connect(self._on_combo_target_changed)
+        install_wheel_blocker(self.combo_target_audio)
 
         self.combo_ref_audio = QComboBox()
         self.combo_ref_audio.currentIndexChanged.connect(self._on_combo_ref_changed)
+        install_wheel_blocker(self.combo_ref_audio)
 
         # Structured Two-Level Stream Rows via configure_stream_row contract
         self.row_video = self.configure_stream_row(
-            "V01", "Melhor Imagem", "", "Copy", self.combo_video
+            "V01", "Melhor Imagem", "", "Vídeo Intocado (Cópia Direta)", self.combo_video
         )
         self.badge_v_status = self.row_video.badge
         self.chip_v_act = self.row_video.chip
         br_layout.addWidget(self.row_video)
 
         self.row_target = self.configure_stream_row(
-            "A02", "Português Oficial", "", "Align", self.combo_target_audio
+            "A02", "Português Oficial", "", "Sincronizar e Alinhar", self.combo_target_audio
         )
         self.badge_a_status = self.row_target.badge
         self.chip_a_act = self.row_target.chip
         br_layout.addWidget(self.row_target)
 
         self.row_ref = self.configure_stream_row(
-            "A01", "Referência Fixa", "", "Copy", self.combo_ref_audio
+            "A01", "Referência Fixa", "", "Manter como Secundária", self.combo_ref_audio
         )
         self.badge_ref_status = self.row_ref.badge
         self.chip_ref_act = self.row_ref.chip
@@ -405,7 +451,7 @@ class UnifiedDropZone(QFrame):
         self.frame_audio_audit.setObjectName("frameAudioAudit")
         self.frame_audio_audit.setProperty("class", "auditPill")
         audit_layout = QHBoxLayout(self.frame_audio_audit)
-        audit_layout.setContentsMargins(18, 8, 18, 8)
+        audit_layout.setContentsMargins(14, 6, 14, 6)
         audit_layout.setSpacing(10)
 
         lbl_audit_title = QLabel("Auditoria de canais")
@@ -431,37 +477,37 @@ class UnifiedDropZone(QFrame):
         self.frame_channel_alert = QFrame()
         self.frame_channel_alert.setProperty("class", "subCard")
         alert_layout = QHBoxLayout(self.frame_channel_alert)
-        alert_layout.setContentsMargins(8, 8, 8, 8)
+        alert_layout.setContentsMargins(8, 6, 8, 6)
         self.lbl_channel_alert = QLabel("")
         self.lbl_channel_alert.setProperty("class", "diagnosisBanner")
         alert_layout.addWidget(self.lbl_channel_alert)
         self.frame_channel_alert.setVisible(False)
         br_layout.addWidget(self.frame_channel_alert)
 
-        # Vertical Options Stack (.opts): Audio preservation + PAL pitch restore + Re-encode codec
+        # Compact Horizontal Options Row (.opts): Audio preservation + PAL pitch restore + Re-encode codec
         self.frame_options = QFrame()
         self.frame_options.setObjectName("frameOptions")
         self.frame_options.setProperty("class", "optionsContainer")
-        options_col = QVBoxLayout(self.frame_options)
-        options_col.setContentsMargins(0, 4, 0, 4)
-        options_col.setSpacing(6)
+        options_row = QHBoxLayout(self.frame_options)
+        options_row.setContentsMargins(0, 2, 0, 2)
+        options_row.setSpacing(8)
 
         # Option 1: Audio preservation
         opt_1 = QFrame()
         opt_1.setProperty("class", "optRow")
         l1 = QHBoxLayout(opt_1)
-        l1.setContentsMargins(18, 4, 14, 4)
+        l1.setContentsMargins(12, 4, 12, 4)
         self.check_keep_original = AudioPreserveCheckbox(self.page_confirm, language_name="inglês")
         self.check_keep_original.setLayoutDirection(Qt.RightToLeft)
         self.check_keep_original.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         l1.addWidget(self.check_keep_original)
-        options_col.addWidget(opt_1)
+        options_row.addWidget(opt_1, 1)
 
         # Option 2: PAL Pitch restore
         opt_2 = QFrame()
         opt_2.setProperty("class", "optRow")
         l2 = QHBoxLayout(opt_2)
-        l2.setContentsMargins(18, 4, 14, 4)
+        l2.setContentsMargins(12, 4, 12, 4)
         self.check_pal_pitch = QCheckBox("Restauração PAL (25 fps → 24 fps)")
         self.check_pal_pitch.setLayoutDirection(Qt.RightToLeft)
         self.check_pal_pitch.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -469,13 +515,13 @@ class UnifiedDropZone(QFrame):
             "Aplica desaceleração natural com correção de tom (asetrate+aresample soxr) para dublagens originadas de masters PAL (25 fps)."
         )
         l2.addWidget(self.check_pal_pitch)
-        options_col.addWidget(opt_2)
+        options_row.addWidget(opt_2, 1)
 
         # Option 3: Re-encode codec
         opt_3 = QFrame()
         opt_3.setProperty("class", "optRow")
         l3 = QHBoxLayout(opt_3)
-        l3.setContentsMargins(18, 4, 14, 4)
+        l3.setContentsMargins(12, 4, 12, 4)
         lbl_codec = QLabel("Codec de re-encode")
         lbl_codec.setProperty("class", "optLabel")
         l3.addWidget(lbl_codec)
@@ -489,15 +535,16 @@ class UnifiedDropZone(QFrame):
         self.combo_audio_codec.setToolTip(
             "Codec de saída caso time-stretch contínuo ou restauração PAL seja obrigatório."
         )
+        install_wheel_blocker(self.combo_audio_codec)
         l3.addWidget(self.combo_audio_codec)
-        options_col.addWidget(opt_3)
+        options_row.addWidget(opt_3, 1)
 
         br_layout.addWidget(self.frame_options)
 
         # Primary Action Row: Single button ("Sincronizar e concluir") anchored cleanly
         action_row = QHBoxLayout()
-        action_row.setSpacing(14)
-        action_row.setContentsMargins(0, 6, 0, 0)
+        action_row.setSpacing(12)
+        action_row.setContentsMargins(0, 4, 0, 0)
 
         self.btn_confirm = QPushButton("Sincronizar e concluir")
         self.btn_confirm.setProperty("class", "btnPrimary")
@@ -746,6 +793,19 @@ class UnifiedDropZone(QFrame):
             lang_name = "inglês" if lang in ("eng", "en") else lang.upper()
             self.check_keep_original.set_language_name(lang_name)
 
+        # Smart defaults for PAL pitch restoration and output codec
+        if verdict.recommended_video and verdict.recommended_target_audio:
+            smart = determine_smart_defaults(
+                verdict.recommended_video.stream,
+                verdict.recommended_target_audio.stream
+            )
+            self.check_pal_pitch.setChecked(smart.pal_pitch_restore)
+            if smart.pal_badge_text:
+                self.check_pal_pitch.setToolTip(smart.pal_badge_text)
+            idx_c = self.combo_audio_codec.findData(smart.target_codec)
+            if idx_c >= 0:
+                self.combo_audio_codec.setCurrentIndex(idx_c)
+
         # Update acoustic audit card
         self._update_audio_audit()
 
@@ -776,6 +836,16 @@ class UnifiedDropZone(QFrame):
 
         target_cand: Optional[StreamCandidate] = self.combo_target_audio.currentData()
         ref_cand: Optional[StreamCandidate] = self.combo_ref_audio.currentData()
+        video_cand: Optional[StreamCandidate] = self.combo_video.currentData()
+
+        if target_cand and video_cand:
+            smart = determine_smart_defaults(video_cand.stream, target_cand.stream)
+            self.check_pal_pitch.setChecked(smart.pal_pitch_restore)
+            if smart.pal_badge_text:
+                self.check_pal_pitch.setToolTip(smart.pal_badge_text)
+            idx_c = self.combo_audio_codec.findData(smart.target_codec)
+            if idx_c >= 0:
+                self.combo_audio_codec.setCurrentIndex(idx_c)
         if target_cand and ref_cand and target_cand.file_path == ref_cand.file_path and target_cand.stream.id == ref_cand.stream.id:
             self.lbl_channel_alert.setText("[AVISO] Seleção conflitante: A faixa alvo de dublagem não pode ser idêntica à faixa de referência.")
             self.frame_channel_alert.setVisible(True)
@@ -930,29 +1000,29 @@ class UnifiedDropZone(QFrame):
     ) -> QWidget:
         """
         Configures a structured two-level stream row (.trk / .trk.rec):
-        - Upper line: 44x44px rounded identifier (.tid), dynamic auto-fit role badge, and action chip (.tag / .tag.n).
+        - Upper line: rounded identifier (.tid), dynamic auto-fit role badge, and action chip (.tag / .tag.n).
         - Lower line: Technical description or embedded stream combo selector.
         """
         row_frame = QFrame()
-        is_rec = action_chip == "Align" or "Recomendado" in role_badge or "RECOMENDADA" in role_badge
+        is_rec = action_chip in ("Align", "Sincronizar e Alinhar") or "Recomendado" in role_badge or "RECOMENDADA" in role_badge
         row_frame.setProperty("recommended", "true" if is_rec else "false")
         row_frame.setProperty("class", "trackRow" + (" trackRowRec" if is_rec else ""))
         rf_layout = QVBoxLayout(row_frame)
-        rf_layout.setContentsMargins(16, 14, 16, 14)
-        rf_layout.setSpacing(8)
+        rf_layout.setContentsMargins(14, 8, 14, 8)
+        rf_layout.setSpacing(6)
 
         # Upper line
         top_line = QHBoxLayout()
-        top_line.setSpacing(12)
+        top_line.setSpacing(10)
         top_line.setContentsMargins(0, 0, 0, 0)
 
         lbl_id = QLabel(track_id)
         lbl_id.setProperty("class", "trackIdBox")
         lbl_id.setProperty("recommended", "true" if is_rec else "false")
         fm_id = lbl_id.fontMetrics()
-        id_w = max(44, fm_id.horizontalAdvance(track_id) + 16)
+        id_w = max(38, fm_id.horizontalAdvance(track_id) + 12)
         lbl_id.setMinimumWidth(id_w)
-        lbl_id.setFixedHeight(44)
+        lbl_id.setFixedHeight(32)
         lbl_id.setAlignment(Qt.AlignCenter)
         top_line.addWidget(lbl_id)
 
@@ -961,8 +1031,8 @@ class UnifiedDropZone(QFrame):
         badge.setStyleSheet(self.get_role_badge_style(role_badge))
         badge.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
         fm = badge.fontMetrics()
-        badge_w = fm.horizontalAdvance(role_badge) + 24
-        badge.setMinimumWidth(max(badge_w, 88))
+        badge_w = fm.horizontalAdvance(role_badge) + 20
+        badge.setMinimumWidth(max(badge_w, 80))
         badge.setAlignment(Qt.AlignCenter)
         top_line.addWidget(badge)
 
@@ -971,7 +1041,9 @@ class UnifiedDropZone(QFrame):
         chip = QLabel(action_chip)
         chip.setProperty("class", "streamActionChip")
         chip.setStyleSheet(self.get_action_chip_style(action_chip))
-        chip.setMinimumWidth(68)
+        fm_chip = chip.fontMetrics()
+        chip_w = max(68, fm_chip.horizontalAdvance(action_chip) + 20)
+        chip.setMinimumWidth(chip_w)
         chip.setAlignment(Qt.AlignCenter)
         top_line.addWidget(chip)
 
@@ -994,6 +1066,95 @@ class UnifiedDropZone(QFrame):
         row_frame.badge = badge
         row_frame.chip = chip
         return row_frame
+
+    def reset_to_recommended_state(self) -> None:
+        """
+        Resets track selectors, flags and audio codec back to the initial deterministic recommendation.
+        """
+        if not self.current_verdict:
+            return
+
+        target_track_id = -1
+        ref_track_id = -1
+
+        if self.current_verdict.recommended_video:
+            for i in range(self.combo_video.count()):
+                cand = self.combo_video.itemData(i)
+                if cand and cand.stream.id == self.current_verdict.recommended_video.stream.id and cand.file_path == self.current_verdict.recommended_video.file_path:
+                    self.combo_video.setCurrentIndex(i)
+                    break
+
+        if self.current_verdict.recommended_target_audio:
+            target_track_id = self.current_verdict.recommended_target_audio.stream.id
+            for i in range(self.combo_target_audio.count()):
+                cand = self.combo_target_audio.itemData(i)
+                if cand and cand.stream.id == target_track_id and cand.file_path == self.current_verdict.recommended_target_audio.file_path:
+                    self.combo_target_audio.setCurrentIndex(i)
+                    break
+
+        if self.current_verdict.reference_audio:
+            ref_track_id = self.current_verdict.reference_audio.stream.id
+            for i in range(self.combo_ref_audio.count()):
+                cand = self.combo_ref_audio.itemData(i)
+                if cand and cand.stream.id == ref_track_id and cand.file_path == self.current_verdict.reference_audio.file_path:
+                    self.combo_ref_audio.setCurrentIndex(i)
+                    break
+
+        if hasattr(self, "check_revert_arbitration"):
+            self.check_revert_arbitration.setChecked(False)
+        self.check_keep_original.setChecked(True)
+
+        if self.current_verdict.recommended_video and self.current_verdict.recommended_target_audio:
+            smart = determine_smart_defaults(
+                self.current_verdict.recommended_video.stream,
+                self.current_verdict.recommended_target_audio.stream
+            )
+            self.check_pal_pitch.setChecked(smart.pal_pitch_restore)
+            if smart.pal_badge_text:
+                self.check_pal_pitch.setToolTip(smart.pal_badge_text)
+            idx_c = self.combo_audio_codec.findData(smart.target_codec)
+            if idx_c >= 0:
+                self.combo_audio_codec.setCurrentIndex(idx_c)
+
+        self._update_audio_audit()
+        self.btn_confirm.setEnabled(True)
+        self.btn_confirm.setToolTip("")
+        self.lbl_channel_alert.setText("")
+        self.frame_channel_alert.setVisible(False)
+
+        if target_track_id >= 0:
+            self.target_audio_changed.emit(target_track_id)
+        if ref_track_id >= 0:
+            self.ref_audio_changed.emit(ref_track_id)
+
+    def get_review_state(self) -> StreamReviewState:
+        """Constructs a snapshot contract representing the user-configured stream selection state."""
+        v_cand: Optional[StreamCandidate] = self.combo_video.currentData()
+        t_cand: Optional[StreamCandidate] = self.combo_target_audio.currentData()
+        r_cand: Optional[StreamCandidate] = self.combo_ref_audio.currentData()
+
+        v_id = v_cand.stream.id if v_cand and v_cand.stream else 0
+        t_id = t_cand.stream.id if t_cand and t_cand.stream else 0
+        r_id = r_cand.stream.id if r_cand and r_cand.stream else 0
+
+        is_customized = False
+        if self.current_verdict:
+            rec_v = self.current_verdict.recommended_video
+            rec_t = self.current_verdict.recommended_target_audio
+            rec_r = self.current_verdict.reference_audio
+            if (rec_v and rec_v.stream and rec_v.stream.id != v_id) or \
+               (rec_t and rec_t.stream and rec_t.stream.id != t_id) or \
+               (rec_r and rec_r.stream and rec_r.stream.id != r_id):
+                is_customized = True
+
+        return StreamReviewState(
+            selected_video_id=v_id,
+            selected_target_audio_id=t_id,
+            selected_ref_audio_id=r_id,
+            pal_restore_enabled=self.check_pal_pitch.isChecked(),
+            target_codec=self.combo_audio_codec.currentData() or "aac",
+            is_customized=is_customized
+        )
 
     def update_role_badge(self, badge: QLabel, text: str, is_amber: bool = False) -> None:
         """Sets role badge text and recalculates dynamic auto-fit width to prevent truncation."""
@@ -1046,9 +1207,13 @@ class UnifiedDropZone(QFrame):
         self.update_role_badge(self.badge_v_status, "Melhor Imagem")
         self.update_role_badge(self.badge_a_status, "Português Oficial")
         self.update_role_badge(self.badge_ref_status, "Referência Fixa")
-        self.chip_v_act.setText("Copy")
-        self.chip_a_act.setText("Align")
-        self.chip_ref_act.setText("Copy")
+        for ch, txt in [
+            (self.chip_v_act, "Vídeo Intocado (Cópia Direta)"),
+            (self.chip_a_act, "Sincronizar e Alinhar"),
+            (self.chip_ref_act, "Manter como Secundária")
+        ]:
+            ch.setText(txt)
+            ch.setMinimumWidth(max(68, ch.fontMetrics().horizontalAdvance(txt) + 20))
         self.frame_ambiguity.setVisible(False)
         self.frame_arbitration.setVisible(False)
         self.frame_audio_audit.setVisible(False)

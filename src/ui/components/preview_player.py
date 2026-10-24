@@ -152,8 +152,11 @@ class PreviewPlayer(QFrame):
             self.status_label.setText("Erro: Arquivo de vídeo indisponível")
             return
 
-        if shutil.which("mpv") is None:
-            self.status_label.setText("Erro: mpv player não instalado no sistema")
+        has_mpv = shutil.which("mpv") is not None
+        has_ffplay = shutil.which("ffplay") is not None
+
+        if not has_mpv and not has_ffplay:
+            self.status_label.setText("Erro: mpv e ffplay não encontrados no sistema")
             return
 
         self.stop_preview()
@@ -179,26 +182,39 @@ class PreviewPlayer(QFrame):
         delay_sec = map_offset_to_player_delay(self.current_offset_ms)
         self.status_label.setText(f"Reproduzindo em {pct_val}%… (delay: {delay_sec:+.3f}s)")
 
-        cmd = [
-            "mpv",
-            f"--start={start_sec:.2f}",
-            "--length=12",
-            f"--audio-delay={delay_sec:.4f}",
-            "--force-window=yes",
-            "--title=SyncFrame — Lip-Sync Spot Check"
-        ]
-
-        if self.audio_path and os.path.exists(self.audio_path) and self.audio_path != self.video_path:
-            cmd.append(f"--audio-file={self.audio_path}")
-
-        cmd.append(self.video_path)
+        if has_mpv:
+            cmd = [
+                "mpv",
+                f"--start={start_sec:.2f}",
+                "--length=12",
+                f"--audio-delay={delay_sec:.4f}",
+                "--force-window=yes",
+                "--title=SyncFrame — Lip-Sync Spot Check"
+            ]
+            if self.audio_path and os.path.exists(self.audio_path) and self.audio_path != self.video_path:
+                cmd.append(f"--audio-file={self.audio_path}")
+            cmd.append(self.video_path)
+            player_name = "MPV"
+        else:
+            cmd = [
+                "ffplay",
+                "-ss", f"{start_sec:.2f}",
+                "-t", "12",
+                "-window_title", "SyncFrame — Lip-Sync Spot Check",
+                "-autoexit"
+            ]
+            delay_ms_int = int(round(delay_sec * 1000.0))
+            if delay_ms_int != 0:
+                cmd.extend(["-af", f"adelay={delay_ms_int}|{delay_ms_int}"])
+            cmd.append(self.video_path)
+            player_name = "ffplay"
 
         try:
             self.active_proc = subprocess.Popen(cmd)
             self.btn_stop.setEnabled(True)
         except Exception as e:
-            logger.error("Falha ao invocar MPV: %s", e)
-            self.status_label.setText(f"Falha ao iniciar MPV: {e}")
+            logger.error("Falha ao invocar %s: %s", player_name, e)
+            self.status_label.setText(f"Falha ao iniciar {player_name}: {e}")
 
     def stop_preview(self):
         if self.active_proc and self.active_proc.poll() is None:

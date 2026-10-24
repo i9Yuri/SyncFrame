@@ -23,11 +23,21 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Disparo e Encadeamento Assíncrono do Botão "Sincronizar e Concluir":**
   - Resolução definitiva da inércia visual na esteira unificada de alinhamento acústico e multiplexação.
   - Correção de exceção fatal de assinatura (`TypeError`) no construtor de `UnifiedPipelineWorker` com suporte a `parent: Optional[object] = None`.
-  - Compatibilização de campos no modelo `RemuxJob`, sincronizando bidirecionalmente `target_track_id` e `target_audio_track_id` para prevenir falhas de inicialização em chamadas da interface.
+  - Compatibilização de campos no modelo `RemuxJob`, sincronizando bidirecionalmente `target_track_id` e `target_audio_track_id` para prevenir falhas de inicialização em chamadas da interface, além da extração correta de áudio de referência via `ref_audio_file`.
   - Correção de atributo inconsistente `metrics.correlation_points` substituído pelo vetor matemático real `metrics.correlation_curve`.
-  - Implementação e amarração do contrato completo de sinais assíncronos: `analysis_started`, `step_progress`, `correlation_ready`, `correlation_completed`, `preview_ready`, `finished_success`, `execution_failed` e `log_message`.
+  - Implementação e amarração do contrato completo de sinais assíncronos: `analysis_started`, `step_progress`, `correlation_ready`, `correlation_completed`, `preview_segments_ready`, `preview_ready`, `remux_progress`, `remux_completed`, `finished_success`, `execution_failed` e `log_message`.
   - Máquina de estados de acionamento do botão primário: desativação temporária (`setEnabled(False)`), atualização de rótulo para "Processando sincronização...", ativação de cursor de espera (`Qt.WaitCursor`) e restauração atômica (`_restore_action_button()`) ao concluir ou cancelar a operação.
-  - Emissão dinâmica de status e telemetria gráfica no visualizador de correlação espectral FFT e no player de spot check.
+  - Emissão dinâmica de telemetria espectral no visualizador FFT e ativação imediata dos marcadores de lip-sync no player spot check, com fallback transparente para `ffplay` quando `mpv` não estiver instalado e tratamento neutro de baixa confiança (< 0.40) preservando o pico estático detectado.
+- **Compactação Dimensional da Coluna Esquerda e Prevenção de Overflow:**
+  - Reestruturação das opções secundárias do Review Gate em linha horizontal compacta (`options_row`) e redução de padding vertical nas linhas de trilha (`trackRow`) para 8px e identificadores (`tid`) para 32px de altura, assegurando que o card "Saída do remux" e botões de ação fiquem simultaneamente visíveis em viewports padrão (>= 1366x768 e 1280x800) sem barras de rolagem.
+- **Bloqueio de Scroll Acidental nos Seletores de Trilha:**
+  - Implementação de `install_wheel_blocker(combobox)` e componente `NoWheelComboBox`, bloqueando alterações inadvertidas de faixa ao rolar a roda do mouse sobre comboboxes e repassando o evento de rolagem diretamente à área de rolagem pai (`QScrollArea`).
+- **Clareza Semântica dos Chips de Ação das Faixas:**
+  - Substituição de termos técnicos opacos "Copy" e "Align" por rótulos autoexplicativos: "Vídeo Intocado (Cópia Direta)" (V01), "Sincronizar e Alinhar" (A02) e "Manter como Secundária" (A01), com cálculo de largura dinâmica via `QFontMetrics` para prevenir corte textual.
+- **Restauração Rápida de Recomendação e Heurísticas Preditivas:**
+  - Adição do botão pílula "Restaurar Recomendação" no cabeçalho do Review Gate (`reset_to_recommended_state`), permitindo reverter instantaneamente qualquer ajuste manual para a arbitragem ótima original.
+  - Implementação de `determine_smart_defaults(video, audio) -> SmartDefaultsConfig`, detectando automaticamente cadência PAL (25 fps áudio vs <= 24.2 fps vídeo) para marcar restauração de pitch e parametrizando o codec ideal (FLAC para lossless, E-AC3 para multicanais, Opus/AAC para estéreo).
+  - Disponibilização do componente unificado `StreamReviewGate` (`src/ui/components/stream_review_gate.py`) e contrato de estado `StreamReviewState`.
 
 ### Adicionado
 - **Sistema Didático de Recomendação Acústica (Audiophile Badges):**

@@ -16,7 +16,8 @@ from .models import (
     ContainerTimeOffsets,
     format_channel_layout_label,
     AudioQualityScore,
-    StreamArbitrationResult
+    StreamArbitrationResult,
+    SmartDefaultsConfig
 )
 
 logger = logging.getLogger(__name__)
@@ -1237,4 +1238,54 @@ def evaluate_media_streams(file_a: Any, file_b: Any) -> AutoMatchVerdict:
         ambiguity_reason=ambiguity_reason,
         arbitration_result=arbitration
     )
+
+
+def determine_smart_defaults(
+    video_stream: StreamMetadata,
+    target_audio_stream: StreamMetadata
+) -> SmartDefaultsConfig:
+    """
+    Evaluates video and target audio metadata to dynamically calculate smart defaults:
+    1. PAL Cadence Detection (25 fps -> 24 fps):
+       If audio has PAL cadence (fps ~25.0, title/tags indicate PAL, or 25 fps audio paired
+       with film video at 23.976/24.0 fps), enables pal_pitch_restore by default.
+    2. Smart Output Codec Selection:
+       - Lossless target (FLAC, TrueHD, PCM, DTS-HD MA): "flac" (Lossless).
+       - Multichannel lossy (AC-3, E-AC-3, DTS 5.1/7.1): "eac3" (Surround).
+       - Stereo lossy (AAC, MP3, Opus 2.0): "opus" or "aac".
+    """
+    v_fps = video_stream.fps if video_stream and video_stream.fps > 0 else 23.976
+    a_fps = target_audio_stream.fps if target_audio_stream and target_audio_stream.fps > 0 else 0.0
+    title_lower = (target_audio_stream.title or "").lower() if target_audio_stream else ""
+
+    is_pal = False
+    if (24.8 <= a_fps <= 25.2) and (v_fps <= 24.2):
+        is_pal = True
+    elif any(k in title_lower for k in ("pal", "25fps", "25 fps", "25.000")):
+        is_pal = True
+
+    pal_badge = "[Detectada cadência PAL: Restauração de pitch recomendada]" if is_pal else ""
+
+    codec_lower = (target_audio_stream.codec or "").lower() if target_audio_stream else ""
+    channels = target_audio_stream.channels if target_audio_stream else 2
+
+    is_lossless = any(c in codec_lower for c in ("flac", "truehd", "pcm", "alac", "dts-hd", "dtshd", "mlp"))
+
+    if is_lossless:
+        selected_codec = "flac"
+        reason = "Áudio alvo sem perdas: preservação lossless via FLAC"
+    elif channels >= 6 or any(c in codec_lower for c in ("ac3", "eac3", "dts", "surround")):
+        selected_codec = "eac3"
+        reason = "Áudio multicanal surround: E-AC3 otimizado para preservação espacial"
+    else:
+        selected_codec = "opus" if ("opus" in codec_lower or "aac" not in codec_lower) else "aac"
+        reason = "Áudio estéreo comprimido: codec transparente de alta eficiência"
+
+    return SmartDefaultsConfig(
+        pal_pitch_restore=is_pal,
+        pal_badge_text=pal_badge,
+        target_codec=selected_codec,
+        reason=reason
+    )
+
 

@@ -70,10 +70,13 @@ class SyncFrameMainWindow(QWidget):
 
         self.latest_metrics: Optional[SyncMetrics] = None
         self.pipeline_worker: Optional[UnifiedPipelineWorker] = None
+        self.active_worker: Optional[UnifiedPipelineWorker] = None
         self.analyze_worker: Optional[AnalyzeWorker] = None
         self.remux_worker: Optional[RemuxWorker] = None
+        self.ref_audio_file: Optional[str] = None
         self.auto_chain_remux: bool = False
         self.manual_offset_override: Optional[float] = None
+        self._completion_modal_shown: bool = False
 
         self.setAcceptDrops(True)
         self.init_ui()
@@ -496,6 +499,7 @@ class SyncFrameMainWindow(QWidget):
         self._set_stepper_active(2)
         self.video_path = chosen_video.file_path
         self.audio_path = chosen_target_audio.file_path
+        self.ref_audio_file = chosen_ref_audio.file_path if chosen_ref_audio else self.video_path
         self.selected_video_track_id = chosen_video.stream.id
         self.selected_target_audio_id = chosen_target_audio.stream.id
 
@@ -585,7 +589,8 @@ class SyncFrameMainWindow(QWidget):
             keep_original_audio=keep_orig,
             pal_pitch_restore=bool(pal_pitch),
             audio_codec=str(codec),
-            discarded_audio_ids=discarded_ids
+            discarded_audio_ids=discarded_ids,
+            ref_audio_file=getattr(self, "ref_audio_file", None) or self.video_path
         )
 
         self.job = job
@@ -595,30 +600,37 @@ class SyncFrameMainWindow(QWidget):
             self.drop_zone.btn_confirm.setText("Processando sincronização...")
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
+        self._completion_modal_shown = False
         self.btn_cancel.setEnabled(True)
         self.lbl_progress_status.setText("Iniciando esteira unificada de processamento...")
         self.progress_bar.setValue(5)
         self.log_drawer.append_log("Disparando UnifiedPipelineWorker...")
         self.correlation_view.set_status("Extraindo amostras acústicas e calculando FFT...")
 
-        self.pipeline_worker = UnifiedPipelineWorker(
+        worker = UnifiedPipelineWorker(
             job,
             manual_offset_override=self.manual_offset_override,
             parent=self
         )
-        self.pipeline_worker.analysis_started.connect(self._on_analysis_started)
-        self.pipeline_worker.step_progress.connect(self._on_step_progress)
-        self.pipeline_worker.correlation_ready.connect(self._on_correlation_ready)
-        self.pipeline_worker.correlation_completed.connect(self._on_correlation_completed)
-        self.pipeline_worker.preview_ready.connect(self._on_preview_ready)
-        self.pipeline_worker.finished_success.connect(self._on_finished_success)
-        self.pipeline_worker.execution_failed.connect(self._on_execution_failed)
+        self.pipeline_worker = worker
+        self.active_worker = worker
 
-        self.pipeline_worker.progress.connect(self._on_worker_progress)
-        self.pipeline_worker.log_message.connect(self.log_drawer.append_log)
-        self.pipeline_worker.metrics_ready.connect(self._on_metrics_ready)
-        self.pipeline_worker.completed.connect(self._on_pipeline_completed)
-        self.pipeline_worker.start()
+        worker.analysis_started.connect(self._on_analysis_started)
+        worker.step_progress.connect(self._on_step_progress)
+        worker.correlation_ready.connect(self._on_correlation_ready)
+        worker.correlation_completed.connect(self._on_correlation_completed)
+        worker.preview_segments_ready.connect(self._on_preview_segments_ready)
+        worker.preview_ready.connect(self._on_preview_ready)
+        worker.remux_progress.connect(self._on_remux_progress)
+        worker.remux_completed.connect(self._on_remux_completed)
+        worker.finished_success.connect(self._on_finished_success)
+        worker.execution_failed.connect(self._on_execution_failed)
+
+        worker.progress.connect(self._on_worker_progress)
+        worker.log_message.connect(self.log_drawer.append_log)
+        worker.metrics_ready.connect(self._on_metrics_ready)
+        worker.completed.connect(self._on_pipeline_completed)
+        worker.start()
 
     def _restore_action_button(self):
         """Restores the primary action button and normal mouse cursor."""
@@ -644,11 +656,41 @@ class SyncFrameMainWindow(QWidget):
 
     def _on_correlation_completed(self, offset_ms: float, confidence: float, drift: float, curve: list):
         self.correlation_view.set_data(curve, offset_ms, confidence)
+        self.sync_controls.set_offset(offset_ms, is_calculated=True)
+        if hasattr(self.sync_controls, "lbl_drift_val"):
+            self.sync_controls.lbl_drift_val.setText(f"{drift:.6f}x".replace(".", ","))
+        if hasattr(self.sync_controls, "lbl_confidence"):
+            if confidence < 0.40:
+                self.sync_controls.lbl_confidence.setText(f"Baixa ({confidence:.2f}) - Inspecione marcadores")
+            else:
+                self.sync_controls.lbl_confidence.setText(f"{confidence:.2f}")
         self.preview_player.update_offset(offset_ms)
         self.preview_player.set_preview_ready(f"Offset acústico determinado: {offset_ms:+.1f} ms")
+        self.preview_player.set_markers_enabled(True)
+
+    def _on_preview_segments_ready(self, segment_paths: list):
+        self.preview_player.set_markers_enabled(True)
 
     def _on_preview_ready(self, preview_data: object):
         self.preview_player.set_markers_enabled(True)
+
+    def _on_remux_progress(self, pct: float):
+        self.progress_bar.setValue(int(pct))
+        if hasattr(self, "lbl_progress_pct"):
+            self.lbl_progress_pct.setText(f"{int(pct)}%")
+
+    def _on_remux_completed(self, output_path: str):
+        self._restore_action_button()
+        self.btn_cancel.setEnabled(False)
+        self.progress_bar.setValue(100)
+        if hasattr(self, "lbl_progress_pct"):
+            self.lbl_progress_pct.setText("100%")
+        self.lbl_progress_status.setText("Remux finalizado com sucesso.")
+        self._set_stepper_active(3)
+        self.log_drawer.append_log(f"Remux concluído: {output_path}")
+        if not getattr(self, "_completion_modal_shown", False):
+            self._completion_modal_shown = True
+            show_completion_modal(self, output_path)
 
     def _on_finished_success(self, output_path: str):
         self.log_drawer.append_log(f"Esteira unificada finalizada com sucesso: {output_path}")
@@ -688,14 +730,24 @@ class SyncFrameMainWindow(QWidget):
         if success:
             self._set_stepper_active(3)
             self.log_drawer.append_log(f"Concluído com êxito: {self.txt_output_path.text()}")
-            show_completion_modal(self, self.txt_output_path.text().strip())
+            if not getattr(self, "_completion_modal_shown", False):
+                self._completion_modal_shown = True
+                show_completion_modal(self, self.txt_output_path.text().strip())
         else:
             self.log_drawer.append_log(f"Falha na operação: {msg}")
             QMessageBox.critical(self, "Erro no Remux", msg)
 
+    def reset_to_recommended_state(self) -> None:
+        """Resets the review gate state back to the initial deterministic recommendation."""
+        if hasattr(self, "drop_zone"):
+            self.drop_zone.reset_to_recommended_state()
+
     def cancel_active_operation(self):
         self._restore_action_button()
-        if self.pipeline_worker and self.pipeline_worker.isRunning():
+        if self.active_worker and self.active_worker.isRunning():
+            self.lbl_progress_status.setText("Cancelando esteira...")
+            self.active_worker.cancel()
+        elif self.pipeline_worker and self.pipeline_worker.isRunning():
             self.lbl_progress_status.setText("Cancelando esteira...")
             self.pipeline_worker.cancel()
         if self.analyze_worker and self.analyze_worker.isRunning():

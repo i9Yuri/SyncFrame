@@ -30,8 +30,11 @@ class UnifiedPipelineWorker(QThread):
     correlation_ready = Signal(dict)    # dict with offset_ms, confidence, pslr, curve_points
     correlation_completed = Signal(float, float, float, list)  # (offset_ms, confidence, drift_ratio, corr_curve)
     preview_ready = Signal(object)
-    finished_success = Signal(str)     # output_path
-    execution_failed = Signal(str)     # error_message
+    preview_segments_ready = Signal(list)  # (segment_paths_list)
+    remux_progress = Signal(float)         # (percentage_float)
+    remux_completed = Signal(str)          # (output_path)
+    finished_success = Signal(str)         # output_path
+    execution_failed = Signal(str)         # error_message
 
     # Backwards-compatibility signals
     progress = Signal(float, str)       # (percentage_float, status_message)
@@ -88,8 +91,9 @@ class UnifiedPipelineWorker(QThread):
                     self.log_message.emit(msg_ref)
 
                     ref_wav = workspace.get_path("ref_sample.wav")
+                    ref_file = getattr(self.job, "ref_audio_file", None) or self.job.video_file
                     extract_reference_channel(
-                        file_path=self.job.video_file,
+                        file_path=ref_file,
                         stream_id=self.job.ref_audio_track_id,
                         duration_sec=120.0,
                         start_sec=15.0,
@@ -145,16 +149,16 @@ class UnifiedPipelineWorker(QThread):
                     )
                     self.metrics_ready.emit(metrics)
                     self.preview_ready.emit(corr_dict)
+                    self.preview_segments_ready.emit([ref_wav, target_wav])
 
-                    if metrics.confidence_score < 0.30:
-                        logger.warning("Low correlation confidence (%.2f). Using 0.0ms fallback.", metrics.confidence_score)
-                        self.job.offset_ms = 0.0
-                        msg_low = "Pico de correlação com baixa confiança (<30%). Aplicando offset neutro de 0 ms..."
+                    self.job.offset_ms = metrics.static_offset_ms
+                    if metrics.confidence_score < 0.40:
+                        logger.warning("Low correlation confidence (%.2f). Using best detected peak (%.1f ms).", metrics.confidence_score, metrics.static_offset_ms)
+                        msg_low = f"Pico detectado com baixa correlação ({metrics.confidence_score*100:.0f}%). Verifique os marcadores de lip-sync antes de concluir."
                         self.step_progress.emit(msg_low, 35.0)
                         self.progress.emit(35.0, msg_low)
                         self.log_message.emit(msg_low)
                     else:
-                        self.job.offset_ms = metrics.static_offset_ms
                         msg_det = f"Offset acústico determinado: {self.job.offset_ms:+.1f} ms (confiança: {metrics.confidence_score*100:.0f}%)..."
                         self.step_progress.emit(msg_det, 35.0)
                         self.progress.emit(35.0, msg_det)
@@ -171,6 +175,7 @@ class UnifiedPipelineWorker(QThread):
                         scaled = 35.0 + (pct * 0.65)
                         self.step_progress.emit(msg, scaled)
                         self.progress.emit(scaled, msg)
+                        self.remux_progress.emit(scaled)
                     else:
                         self.log_message.emit(msg)
 
@@ -189,6 +194,8 @@ class UnifiedPipelineWorker(QThread):
                     msg_done = "Sincronização e remux concluídos com sucesso!"
                     self.step_progress.emit(msg_done, 100.0)
                     self.progress.emit(100.0, msg_done)
+                    self.remux_progress.emit(100.0)
+                    self.remux_completed.emit(self.job.output_path)
                     self.log_message.emit(f"Arquivo gerado: {self.job.output_path}")
                     self.finished_success.emit(self.job.output_path)
                     self.completed.emit(True, f"Arquivo sincronizado gerado com sucesso em:\n{self.job.output_path}")
