@@ -186,9 +186,9 @@ class WorkspaceLayoutManager:
             widget.setProperty("editMode", "true" if enabled else "false")
             # Apply dynamic inline border for immediate visual feedback in edit mode
             if enabled:
-                widget.setStyleSheet(widget.styleSheet() + "\nQFrame { border: 1px dashed #50535e; }")
+                widget.setStyleSheet(widget.styleSheet() + "\nQFrame { border: 2px dashed #50535e; border-radius: 32px; }")
             else:
-                current_sheet = widget.styleSheet().replace("\nQFrame { border: 1px dashed #50535e; }", "")
+                current_sheet = widget.styleSheet().replace("\nQFrame { border: 2px dashed #50535e; border-radius: 32px; }", "").replace("\nQFrame { border: 1px dashed #50535e; }", "")
                 widget.setStyleSheet(current_sheet)
             widget.style().unpolish(widget)
             widget.style().polish(widget)

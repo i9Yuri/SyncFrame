@@ -58,6 +58,12 @@ class CorrelationView(QFrame):
 
         w = self.width()
         h = self.height()
+
+        # Enforce continuous rounded corner clipping
+        clip_path = QPainterPath()
+        clip_path.addRoundedRect(0, 0, w, h, 28, 28)
+        painter.setClipPath(clip_path)
+
         margin_x = 24
         margin_y = 28
         plot_w = w - (2 * margin_x)
@@ -167,3 +173,4 @@ class CorrelationView(QFrame):
         font.setBold(True)
         painter.setFont(font)
         painter.drawText(margin_x, margin_y - 10, self.status_text)
+        painter.end()

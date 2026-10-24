@@ -85,6 +85,29 @@ class CompletionDialog(QDialog):
         self.setWindowTitle("Processo Concluído — SyncFrame")
         self.setModal(True)
         self.setFixedSize(540, 240)
+        self.setStyleSheet("""
+            QDialog#completionDialog {
+                background-color: #1b1c20;
+                color: #f2f3f7;
+                border-radius: 28px;
+                border: 1px solid #33343b;
+            }
+            QLabel#badgeSuccessGlyph {
+                border-radius: 18px;
+                background-color: rgba(47, 177, 107, 0.16);
+                color: #2fb16b;
+                font-weight: 700;
+                font-size: 13px;
+            }
+            QLineEdit#outputBoxMonospace {
+                background-color: #26272d;
+                color: #f2f3f7;
+                border: 1px solid #33343b;
+                border-radius: 999px;
+                padding: 6px 14px;
+                font-family: monospace;
+            }
+        """)
 
         self._init_ui()
 
@@ -101,6 +124,7 @@ class CompletionDialog(QDialog):
         self.glyph_badge = QLabel("OK")
         self.glyph_badge.setObjectName("badgeSuccessGlyph")
         self.glyph_badge.setAlignment(Qt.AlignCenter)
+        self.glyph_badge.setFixedSize(36, 36)
         header_row.addWidget(self.glyph_badge)
 
         header_text_box = QVBoxLayout()

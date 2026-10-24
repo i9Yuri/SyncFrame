@@ -119,6 +119,44 @@ QWidget {
     selection-color: #f2f3f7;
 }
 
+QFrame {
+    border-radius: 24px;
+}
+
+QDialog, QMessageBox, QDialog#completionDialog {
+    background-color: #1b1c20;
+    color: #f2f3f7;
+    border-radius: 28px;
+    border: 1px solid #33343b;
+}
+
+QToolTip {
+    background-color: #1b1c20;
+    color: #f2f3f7;
+    border: 1px solid #33343b;
+    border-radius: 12px;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+QMenu {
+    background-color: #1b1c20;
+    color: #f2f3f7;
+    border: 1px solid #33343b;
+    border-radius: 18px;
+    padding: 6px;
+}
+
+QMenu::item {
+    border-radius: 10px;
+    padding: 6px 16px;
+}
+
+QMenu::item:selected {
+    background-color: #26272d;
+    border-radius: 10px;
+}
+
 QLabel {
     background-color: transparent;
     border: none;
@@ -127,6 +165,7 @@ QLabel {
 QScrollArea {
     background-color: transparent;
     border: none;
+    border-radius: 24px;
 }
 
 QScrollArea > QWidget > QWidget {
@@ -136,6 +175,7 @@ QScrollArea > QWidget > QWidget {
 QStackedWidget {
     background-color: transparent;
     border: none;
+    border-radius: 24px;
 }
 
 /* Header Area (One UI Topbar) */
@@ -346,7 +386,7 @@ QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRest
 /* File Box (Pair Grid) */
 QFrame.fileBox, QFrame.fileCardWorkbench, QFrame.subCard, QFrame#cardFileV, QFrame#cardFileA {
     background-color: #26272d;
-    border-radius: 16px;
+    border-radius: 20px;
     border: none;
 }
 
@@ -369,9 +409,9 @@ QLabel.fileMeta {
 
 /* Dubbing Container (.dub) */
 QFrame.dubBox, QFrame.arbitrationCard, QFrame#frameArbitration {
-    background-color: #1e3157;
+    background-color: #26272d;
     border-radius: 24px;
-    border: none;
+    border: 1px solid #33343b;
 }
 
 QLabel.dubTitle {
@@ -426,7 +466,7 @@ QLabel.trackDesc, QLabel.streamDesc {
 }
 
 QLabel.roleBadge {
-    border-radius: 12px;
+    border-radius: 14px;
     background-color: #1b1c20;
     color: #f2f3f7;
     padding: 3px 12px;
@@ -435,7 +475,7 @@ QLabel.roleBadge {
 }
 
 QLabel.streamActionChip {
-    border-radius: 12px;
+    border-radius: 14px;
     background-color: #33343b;
     color: #ffffff;
     padding: 4px 14px;
@@ -447,7 +487,7 @@ QLabel.streamActionChip {
 /* Audit Pill Row (.audit) */
 QFrame.auditPill, QFrame#frameAudioAudit {
     background-color: #26272d;
-    border-radius: 21px;
+    border-radius: 22px;
     border: none;
 }
 
@@ -477,6 +517,7 @@ QCheckBox {
 QCheckBox::indicator {
     width: 46px;
     height: 28px;
+    border-radius: 14px;
     background: transparent;
 }
 
@@ -495,12 +536,17 @@ QFrame.outPill, QFrame#frameOutPath {
     border: none;
 }
 
-QLineEdit.outPath, QLineEdit#txtOutputPath, QLineEdit {
-    background: transparent;
+QLineEdit.outPath, QLineEdit#txtOutputPath, QLineEdit, QLineEdit#outputBoxMonospace {
+    background-color: #26272d;
     color: #f2f3f7;
     font-size: 13px;
-    border: none;
-    padding-left: 10px;
+    border: 1px solid #33343b;
+    padding: 6px 16px;
+    border-radius: 999px;
+}
+
+QLineEdit:focus, QLineEdit#txtOutputPath:focus, QLineEdit#outputBoxMonospace:focus {
+    border: 1px solid #50535e;
     border-radius: 999px;
 }
 
@@ -511,7 +557,7 @@ QComboBox {
     padding: 6px 14px;
     font-weight: 600;
     font-size: 13px;
-    border: none;
+    border: 1px solid #33343b;
 }
 
 QComboBox:hover {
@@ -527,10 +573,23 @@ QComboBox::drop-down {
 QComboBox QAbstractItemView {
     background-color: #1b1c20;
     color: #f2f3f7;
-    border-radius: 14px;
-    padding: 4px;
+    border: 1px solid #33343b;
+    border-radius: 16px;
+    padding: 6px;
     selection-background-color: #33343b;
     selection-color: #f2f3f7;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    border-radius: 10px;
+    padding: 6px 12px;
+    min-height: 28px;
+}
+
+QComboBox QAbstractItemView::item:hover, QComboBox QAbstractItemView::item:selected {
+    background-color: #33343b;
+    border-radius: 10px;
 }
 
 /* Progress Bar (.prog) */
@@ -606,7 +665,7 @@ QCheckBox.checkGlyph::indicator:checked {
 /* Linear Rail Slider (.sl) */
 QFrame.sliderContainer, QFrame#frameSlider {
     background-color: #26272d;
-    border-radius: 16px;
+    border-radius: 20px;
     border: 1px solid #33343b;
 }
 
@@ -651,7 +710,7 @@ QPushButton.stepBtn:hover, QPushButton.btnNudge:hover {
 /* Metrics Grid (.mets) */
 QFrame.metBox, QFrame.metricCallout {
     background-color: #26272d;
-    border-radius: 20px;
+    border-radius: 22px;
     border: none;
 }
 
@@ -664,7 +723,7 @@ QLabel.metVal, QLabel.monoValue {
 /* Note Pill (.note) */
 QFrame.notePill {
     background-color: #26272d;
-    border-radius: 18px;
+    border-radius: 20px;
     border: none;
 }
 
@@ -745,37 +804,64 @@ QLabel.logTitle {
 QPlainTextEdit {
     background-color: #1b1c20;
     color: #9a9eac;
-    border: none;
-    border-radius: 18px;
+    border: 1px solid #26272d;
+    border-radius: 20px;
     font-size: 13px;
-    padding: 8px;
+    padding: 10px;
 }
 
 /* Scrollbars */
 QScrollBar:vertical {
     background: transparent;
-    width: 6px;
+    width: 8px;
     margin: 0;
+    border-radius: 4px;
 }
 
 QScrollBar::handle:vertical {
     background: #33343b;
     min-height: 24px;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 QScrollBar::handle:vertical:hover {
     background: #40424c;
+    border-radius: 4px;
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
+    background: transparent;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 8px;
+    margin: 0;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #33343b;
+    min-width: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #40424c;
+    border-radius: 4px;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+    background: transparent;
 }
 
 /* Unified & Empty Drop Zone */
 UnifiedDropZone, QFrame#unifiedDropZone {
     background: transparent;
     border: none;
+    border-radius: 24px;
 }
 
 QFrame#dropFrameEmpty {
@@ -793,6 +879,52 @@ QFrame#dropFrameSingle {
     border: 1px solid #33343b;
     border-radius: 24px;
     background-color: #1b1c20;
+}
+
+/* Additional Rounded Components */
+QDoubleSpinBox, QSpinBox {
+    background-color: #1b1c20;
+    color: #f2f3f7;
+    border: 1px solid #33343b;
+    border-radius: 999px;
+    padding: 4px 12px;
+}
+
+QGroupBox {
+    border: 1px solid #33343b;
+    border-radius: 20px;
+    padding-top: 14px;
+}
+
+QAbstractScrollArea {
+    border-radius: 20px;
+}
+
+QLabel#badgeSuccessGlyph {
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    border-radius: 18px;
+    background-color: rgba(47, 177, 107, 0.16);
+    color: #2fb16b;
+    font-weight: 700;
+    font-size: 14px;
+    qproperty-alignment: AlignCenter;
+}
+
+QPushButton#collapsibleHeaderBtn, QPushButton.collapsibleBtn {
+    border-radius: 999px;
+    background-color: #26272d;
+    color: #f2f3f7;
+    padding: 8px 18px;
+    font-weight: 600;
+    border: none;
+}
+
+QPushButton#collapsibleHeaderBtn:hover, QPushButton.collapsibleBtn:hover {
+    background-color: #33343b;
+    border-radius: 999px;
 }
 """
 
@@ -813,6 +945,44 @@ QWidget {
     selection-color: #16181d;
 }
 
+QFrame {
+    border-radius: 24px;
+}
+
+QDialog, QMessageBox, QDialog#completionDialog {
+    background-color: #ffffff;
+    color: #16181d;
+    border-radius: 28px;
+    border: 1px solid #dcdfe8;
+}
+
+QToolTip {
+    background-color: #ffffff;
+    color: #16181d;
+    border: 1px solid #dcdfe8;
+    border-radius: 12px;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+QMenu {
+    background-color: #ffffff;
+    color: #16181d;
+    border: 1px solid #dcdfe8;
+    border-radius: 18px;
+    padding: 6px;
+}
+
+QMenu::item {
+    border-radius: 10px;
+    padding: 6px 16px;
+}
+
+QMenu::item:selected {
+    background-color: #eceef4;
+    border-radius: 10px;
+}
+
 QLabel {
     background-color: transparent;
     border: none;
@@ -821,6 +991,7 @@ QLabel {
 QScrollArea {
     background-color: transparent;
     border: none;
+    border-radius: 24px;
 }
 
 QScrollArea > QWidget > QWidget {
@@ -830,6 +1001,7 @@ QScrollArea > QWidget > QWidget {
 QStackedWidget {
     background-color: transparent;
     border: none;
+    border-radius: 24px;
 }
 
 /* Header Area (One UI Topbar) */
@@ -1040,7 +1212,7 @@ QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRest
 /* File Box (Pair Grid) */
 QFrame.fileBox, QFrame.fileCardWorkbench, QFrame.subCard, QFrame#cardFileV, QFrame#cardFileA {
     background-color: #eceef4;
-    border-radius: 16px;
+    border-radius: 20px;
     border: none;
 }
 
@@ -1120,7 +1292,7 @@ QLabel.trackDesc, QLabel.streamDesc {
 }
 
 QLabel.roleBadge {
-    border-radius: 12px;
+    border-radius: 14px;
     background-color: #ffffff;
     color: #16181d;
     padding: 3px 12px;
@@ -1129,7 +1301,7 @@ QLabel.roleBadge {
 }
 
 QLabel.streamActionChip {
-    border-radius: 12px;
+    border-radius: 14px;
     background-color: #e1e4ed;
     color: #16181d;
     padding: 4px 14px;
@@ -1141,7 +1313,7 @@ QLabel.streamActionChip {
 /* Audit Pill Row (.audit) */
 QFrame.auditPill, QFrame#frameAudioAudit {
     background-color: #eceef4;
-    border-radius: 21px;
+    border-radius: 22px;
     border: none;
 }
 
@@ -1171,6 +1343,7 @@ QCheckBox {
 QCheckBox::indicator {
     width: 46px;
     height: 28px;
+    border-radius: 14px;
     background: transparent;
 }
 
@@ -1189,12 +1362,17 @@ QFrame.outPill, QFrame#frameOutPath {
     border: none;
 }
 
-QLineEdit.outPath, QLineEdit#txtOutputPath, QLineEdit {
-    background: transparent;
+QLineEdit.outPath, QLineEdit#txtOutputPath, QLineEdit, QLineEdit#outputBoxMonospace {
+    background-color: #eceef4;
     color: #16181d;
     font-size: 13px;
-    border: none;
-    padding-left: 10px;
+    border: 1px solid #dcdfe8;
+    padding: 6px 16px;
+    border-radius: 999px;
+}
+
+QLineEdit:focus, QLineEdit#txtOutputPath:focus, QLineEdit#outputBoxMonospace:focus {
+    border: 1px solid #16181d;
     border-radius: 999px;
 }
 
@@ -1205,7 +1383,7 @@ QComboBox {
     padding: 6px 14px;
     font-weight: 600;
     font-size: 13px;
-    border: none;
+    border: 1px solid #dcdfe8;
 }
 
 QComboBox:hover {
@@ -1221,10 +1399,23 @@ QComboBox::drop-down {
 QComboBox QAbstractItemView {
     background-color: #ffffff;
     color: #16181d;
-    border-radius: 14px;
-    padding: 4px;
+    border: 1px solid #dcdfe8;
+    border-radius: 16px;
+    padding: 6px;
     selection-background-color: #e1e4ed;
     selection-color: #16181d;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    border-radius: 10px;
+    padding: 6px 12px;
+    min-height: 28px;
+}
+
+QComboBox QAbstractItemView::item:hover, QComboBox QAbstractItemView::item:selected {
+    background-color: #e1e4ed;
+    border-radius: 10px;
 }
 
 /* Progress Bar (.prog) */
@@ -1300,7 +1491,7 @@ QCheckBox.checkGlyph::indicator:checked {
 /* Linear Rail Slider (.sl) */
 QFrame.sliderContainer, QFrame#frameSlider {
     background-color: #eceef4;
-    border-radius: 16px;
+    border-radius: 20px;
     border: 1px solid #dcdfe8;
 }
 
@@ -1345,7 +1536,7 @@ QPushButton.stepBtn:hover, QPushButton.btnNudge:hover {
 /* Metrics Grid (.mets) */
 QFrame.metBox, QFrame.metricCallout {
     background-color: #eceef4;
-    border-radius: 20px;
+    border-radius: 22px;
     border: none;
 }
 
@@ -1358,7 +1549,7 @@ QLabel.metVal, QLabel.monoValue {
 /* Note Pill (.note) */
 QFrame.notePill {
     background-color: #eceef4;
-    border-radius: 18px;
+    border-radius: 20px;
     border: none;
 }
 
@@ -1439,37 +1630,64 @@ QLabel.logTitle {
 QPlainTextEdit {
     background-color: #ffffff;
     color: #6a7080;
-    border: none;
-    border-radius: 18px;
+    border: 1px solid #dcdfe8;
+    border-radius: 20px;
     font-size: 13px;
-    padding: 8px;
+    padding: 10px;
 }
 
 /* Scrollbars */
 QScrollBar:vertical {
     background: transparent;
-    width: 6px;
+    width: 8px;
     margin: 0;
+    border-radius: 4px;
 }
 
 QScrollBar::handle:vertical {
     background: #e1e4ed;
     min-height: 24px;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 QScrollBar::handle:vertical:hover {
     background: #dcdfe8;
+    border-radius: 4px;
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
+    background: transparent;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 8px;
+    margin: 0;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #e1e4ed;
+    min-width: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #dcdfe8;
+    border-radius: 4px;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+    background: transparent;
 }
 
 /* Unified & Empty Drop Zone */
 UnifiedDropZone, QFrame#unifiedDropZone {
     background: transparent;
     border: none;
+    border-radius: 24px;
 }
 
 QFrame#dropFrameEmpty {
@@ -1487,6 +1705,52 @@ QFrame#dropFrameSingle {
     border: 1px solid #dcdfe8;
     border-radius: 24px;
     background-color: #ffffff;
+}
+
+/* Additional Rounded Components */
+QDoubleSpinBox, QSpinBox {
+    background-color: #ffffff;
+    color: #16181d;
+    border: 1px solid #dcdfe8;
+    border-radius: 999px;
+    padding: 4px 12px;
+}
+
+QGroupBox {
+    border: 1px solid #dcdfe8;
+    border-radius: 20px;
+    padding-top: 14px;
+}
+
+QAbstractScrollArea {
+    border-radius: 20px;
+}
+
+QLabel#badgeSuccessGlyph {
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    border-radius: 18px;
+    background-color: rgba(47, 177, 107, 0.16);
+    color: #2fb16b;
+    font-weight: 700;
+    font-size: 14px;
+    qproperty-alignment: AlignCenter;
+}
+
+QPushButton#collapsibleHeaderBtn, QPushButton.collapsibleBtn {
+    border-radius: 999px;
+    background-color: #eceef4;
+    color: #16181d;
+    padding: 8px 18px;
+    font-weight: 600;
+    border: none;
+}
+
+QPushButton#collapsibleHeaderBtn:hover, QPushButton.collapsibleBtn:hover {
+    background-color: #e1e4ed;
+    border-radius: 999px;
 }
 """
 
@@ -1540,7 +1804,7 @@ def get_player_viewport_style(mode: Literal["dark", "light"] = "dark") -> str:
     return "border-radius: 28px;"
 
 
-def get_clean_badge_style(radius: int = 12, bg: str = "#26272d", border: str = "#2d2f36") -> str:
+def get_clean_badge_style(radius: int = 14, bg: str = "#26272d", border: str = "#2d2f36") -> str:
     """Returns CSS properties for clean, high-density micro-badges with smooth border-radius."""
     return f"background-color: {bg}; border-radius: {radius}px; padding: 3px 12px;"
 
@@ -1557,12 +1821,12 @@ def get_topbar_brand_style() -> str:
 
 def get_role_badge_style(role_type: str) -> str:
     """Returns CSS/QSS styling string for stream role classification badges."""
-    return "border-radius: 12px; padding: 2px 12px; font-size: 12px; font-weight: 600;"
+    return "border-radius: 14px; padding: 2px 12px; font-size: 12px; font-weight: 600;"
 
 
 def get_action_chip_style(action_type: str) -> str:
     """Returns CSS/QSS styling string for stream action/state chips (Copy, Align)."""
-    return "border-radius: 12px; padding: 4px 14px; font-size: 12px; font-weight: 700; min-width: 64px;"
+    return "border-radius: 14px; padding: 4px 14px; font-size: 12px; font-weight: 700; min-width: 64px;"
 
 
 def get_pill_button_style(is_primary: bool = False, mode: Literal["dark", "light"] = "dark") -> str:
@@ -1570,10 +1834,10 @@ def get_pill_button_style(is_primary: bool = False, mode: Literal["dark", "light
     if is_primary:
         bg = "#ffffff" if mode == "dark" else "#16181d"
         fg = "#000000" if mode == "dark" else "#ffffff"
-        return f"border-radius: 22px; background-color: {bg}; color: {fg}; font-weight: 700; padding: 12px 26px; border: none;"
+        return f"border-radius: 999px; background-color: {bg}; color: {fg}; font-weight: 700; padding: 12px 26px; border: none;"
     bg = "#26272d" if mode == "dark" else "#eceef4"
     fg = "#f2f3f7" if mode == "dark" else "#16181d"
-    return f"border-radius: 18px; background-color: {bg}; color: {fg}; font-weight: 600; padding: 10px 18px; border: none;"
+    return f"border-radius: 999px; background-color: {bg}; color: {fg}; font-weight: 600; padding: 10px 18px; border: none;"
 
 
 def get_compact_dropzone_style(is_dragover: bool = False, mode: Literal["dark", "light"] = "dark") -> str:
@@ -1590,7 +1854,7 @@ def get_compact_dropzone_style(is_dragover: bool = False, mode: Literal["dark", 
 def get_telemetry_card_style(mode: Literal["dark", "light"] = "dark") -> str:
     """Returns CSS/QSS styling string for telemetry cards."""
     bg_col = "#26272d" if mode == "dark" else "#eceef4"
-    return f"background-color: {bg_col}; border-radius: 20px; border: none;"
+    return f"background-color: {bg_col}; border-radius: 22px; border: none;"
 
 
 class StyleEngine:

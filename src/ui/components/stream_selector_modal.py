@@ -33,11 +33,39 @@ class StreamSelectorModal(QDialog):
         self.resize(780, 560)
         self.setMinimumWidth(680)
 
-        # Neutral monochrome dialog styling
+        # Neutral monochrome dialog styling with universal continuous rounding
         self.setStyleSheet("""
             QDialog {
-                background-color: #121212;
-                color: #e5e5e5;
+                background-color: #1b1c20;
+                color: #f2f3f7;
+                border-radius: 28px;
+                border: 1px solid #33343b;
+            }
+            QFrame.bentoCard {
+                background-color: #26272d;
+                border-radius: 24px;
+                border: none;
+            }
+            QComboBox {
+                border-radius: 999px;
+                background-color: #1b1c20;
+                color: #f2f3f7;
+                padding: 6px 14px;
+                border: 1px solid #33343b;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1b1c20;
+                color: #f2f3f7;
+                border: 1px solid #33343b;
+                border-radius: 16px;
+                padding: 6px;
+            }
+            QComboBox QAbstractItemView::item {
+                border-radius: 10px;
+                padding: 6px 12px;
+            }
+            QPushButton {
+                border-radius: 999px;
             }
         """)
 
@@ -67,7 +95,7 @@ class StreamSelectorModal(QDialog):
                 QFrame {
                     background-color: rgba(245, 158, 11, 0.12);
                     border: 1px solid rgba(245, 158, 11, 0.4);
-                    border-radius: 8px;
+                    border-radius: 20px;
                     padding: 10px;
                 }
             """)
@@ -162,7 +190,7 @@ class StreamSelectorModal(QDialog):
         r_head.addStretch()
 
         badge_r = QLabel("Referência FFT")
-        badge_r.setProperty("class", "badgeBlue")
+        badge_r.setProperty("class", "badgeNeutral")
         r_head.addWidget(badge_r)
         cr_layout.addLayout(r_head)
 

@@ -69,14 +69,14 @@ class FileDropCard(QFrame):
         self.drop_area = QFrame()
         self.drop_area.setStyleSheet("""
             QFrame {
-                border: 2px dashed #334155;
-                border-radius: 8px;
-                background-color: #020617;
+                border: 2px dashed #33343b;
+                border-radius: 24px;
+                background-color: #1b1c20;
                 padding: 14px;
             }
             QFrame:hover {
-                border-color: #0891b2;
-                background-color: #0b1329;
+                border-color: #ffffff;
+                background-color: #26272d;
             }
         """)
         drop_layout = QVBoxLayout(self.drop_area)
@@ -85,7 +85,7 @@ class FileDropCard(QFrame):
 
         self.drop_label = QLabel("Arraste e solte o arquivo MKV aqui\nou clique para navegar")
         self.drop_label.setAlignment(Qt.AlignCenter)
-        self.drop_label.setStyleSheet("background: transparent; color: #94a3b8; font-size: 12px; border: none;")
+        self.drop_label.setStyleSheet("background: transparent; color: #9a9eac; font-size: 12px; border: none;")
         drop_layout.addWidget(self.drop_label)
 
         btn_browse = QPushButton("Selecionar Arquivo...")
@@ -105,7 +105,7 @@ class FileDropCard(QFrame):
         # Stream selector row
         stream_layout = QHBoxLayout()
         stream_lbl = QLabel("Faixa Ativa:")
-        stream_lbl.setStyleSheet("background: transparent; color: #cbd5e1; font-weight: 600; border: none;")
+        stream_lbl.setStyleSheet("background: transparent; color: #f2f3f7; font-weight: 600; border: none;")
         stream_layout.addWidget(stream_lbl)
 
         self.combo_streams = QComboBox()
@@ -119,18 +119,18 @@ class FileDropCard(QFrame):
             event.acceptProposedAction()
             self.drop_area.setStyleSheet("""
                 QFrame {
-                    border: 2px dashed #22d3ee;
-                    border-radius: 8px;
-                    background-color: #083344;
+                    border: 2px dashed #ffffff;
+                    border-radius: 24px;
+                    background-color: #26272d;
                 }
             """)
 
     def dragLeaveEvent(self, event):
         self.drop_area.setStyleSheet("""
             QFrame {
-                border: 2px dashed #334155;
-                border-radius: 8px;
-                background-color: #020617;
+                border: 2px dashed #33343b;
+                border-radius: 24px;
+                background-color: #1b1c20;
             }
         """)
 
