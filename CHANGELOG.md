@@ -7,6 +7,30 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.1.1] - 2026-10-23
+
+### Adicionado
+- **Arbitragem Determinística de Faixas de Áudio Duplicadas (Substituição de Áudio PT Inferior):**
+  - Heurística determinística de 3 níveis para arbitrar trilhas no mesmo idioma (dublagem PT pré-existente no vídeo base vs. dublagem externa):
+    - Prioridade 1: Quantidade de canais (7.1 > 5.1 > 2.0 > 1.0).
+    - Prioridade 2: Hierarquia de codecs de preservação (Lossless FLAC/TrueHD > E-AC3/AC3/Opus/DTS > AAC > MP3).
+    - Prioridade 3: Bitrate nominal (kbps).
+  - Descarte automático da faixa embutida inferior do arquivo de base via flags de exclusao `--audio-tracks !<id>` no `mkvmerge` quando a externa for superior.
+  - Banner contextual explicito no Review Gate com opcao de reversao manual pelo operador antes da multiplexacao.
+- **Suíte de Testes para Arbitragem de Streams:**
+  - Adicao de `tests/test_stream_arbitration.py` com cobertura completa de canais, codecs, taxas de bits, reversao e comandos mkvmerge (totalizando 67 testes unitarios).
+
+### Corrigido
+- **Responsividade e Modo Janela:**
+  - Resolucao de truncamento e corte lateral em dimensoes compactas (1024x600, 1280x720) atraves de flexibilizacao de larguras e `QScrollArea` com rolagem sob demanda.
+  - Remocao definitiva da barra residual horizontal sob a topbar (`pipeline_ruler`).
+- **Motor de Temas 100% Monocromatico (Dark e Light Mode):**
+  - Restauracao da comutacao dinamica e funcional entre Modo Escuro e Modo Claro.
+  - Erradicacao total de cores saturadas (verde, azul, ciano, limao) em prol de paleta neutra preto-e-branco e escala de cinza cirurgica em ambos os modos.
+  - Correcao de contraste e legibilidade de textos no modo claro atraves da remocao de estilos inline rigidos.
+
+---
+
 ## [1.1.0] - 2026-10-23
 
 ### Adicionado

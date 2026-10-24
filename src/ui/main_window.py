@@ -142,7 +142,7 @@ class SyncFrameMainWindow(QWidget):
         self.btn_theme = QPushButton("Modo Claro")
         self.btn_theme.setProperty("class", "btnSecondary")
         self.btn_theme.setToolTip("Alternar entre Dark e Light Mode")
-        self.btn_theme.clicked.connect(self._toggle_theme)
+        self.btn_theme.clicked.connect(self.toggle_theme_mode)
         tb_layout.addWidget(self.btn_theme)
 
         badge_v = QLabel("v1.0.0")
@@ -151,18 +151,9 @@ class SyncFrameMainWindow(QWidget):
 
         root_layout.addWidget(self.topbar)
 
-        # ======================================================================
-        # 2. Precision Pipeline Progress Ruler (Slim 2px continuous bar)
-        # ======================================================================
+        # Passive progress / stepper references retained for backwards compatibility
         self.pipeline_ruler = QProgressBar()
-        self.pipeline_ruler.setObjectName("pipelineRuler")
-        self.pipeline_ruler.setRange(0, 100)
-        self.pipeline_ruler.setValue(25)  # Phase 1: Ingestão active
-        self.pipeline_ruler.setTextVisible(False)
-        self.pipeline_ruler.setFixedHeight(2)
-        root_layout.addWidget(self.pipeline_ruler)
-
-        # Retain passive step button/label references for backwards compatibility
+        self.pipeline_ruler.setVisible(False)
         self.btn_step_01 = QPushButton("01 Ingestão")
         self.btn_step_02 = QPushButton("02 Auditoria")
         self.btn_step_03 = QPushButton("03 Sincronização")
@@ -170,12 +161,12 @@ class SyncFrameMainWindow(QWidget):
         self.lbl_stepper_info = QLabel("Atalho de aprovação: ENTER")
 
         # ======================================================================
-        # 3. Responsive Scroll Area for Central Workbench Layout
+        # 2. Responsive Scroll Area for Central Workbench Layout
         # ======================================================================
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         body_container = QWidget()
@@ -324,13 +315,13 @@ class SyncFrameMainWindow(QWidget):
         self.log_drawer = LogDrawer()
         root_layout.addWidget(self.log_drawer)
 
-        # Set default dark theme
+        # Set default dark theme on app and window
+        app = QApplication.instance()
+        if app:
+            apply_workbench_theme(app, "dark")
         apply_workbench_theme(self, "dark")
 
     def _set_stepper_active(self, step_idx: int):
-        val = min(100, max(25, (step_idx + 1) * 25))
-        if hasattr(self, "pipeline_ruler"):
-            self.pipeline_ruler.setValue(val)
         btns = [self.btn_step_01, self.btn_step_02, self.btn_step_03, self.btn_step_04]
         for i, b in enumerate(btns):
             if i < step_idx:
@@ -344,8 +335,8 @@ class SyncFrameMainWindow(QWidget):
                 b.setProperty("done", "false")
             b.setStyle(b.style())
 
-    def _toggle_theme(self):
-        """Toggles between neutral dark and neutral light workbench theme."""
+    def toggle_theme_mode(self) -> None:
+        """Toggles between strictly monochrome neutral dark and neutral light workbench theme."""
         if self.current_theme == "dark":
             self.current_theme = "light"
             self.btn_theme.setText("Modo Escuro")
@@ -353,10 +344,29 @@ class SyncFrameMainWindow(QWidget):
             self.current_theme = "dark"
             self.btn_theme.setText("Modo Claro")
 
-        self.correlation_view.set_theme_mode(self.current_theme)
         app = QApplication.instance()
-        target = app if app else self
-        apply_workbench_theme(target, self.current_theme)
+        theme_qss = get_theme_stylesheet(self.current_theme)
+        if app:
+            app.setStyleSheet(theme_qss)
+        self.setStyleSheet(theme_qss)
+
+        # Notify subcomponents
+        if hasattr(self, "correlation_view") and hasattr(self.correlation_view, "set_theme_mode"):
+            self.correlation_view.set_theme_mode(self.current_theme)
+
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
+
+    def _toggle_theme(self):
+        """Backwards-compatible alias for toggle_theme_mode."""
+        self.toggle_theme_mode()
+
+    def resizeEvent(self, event):
+        """Ensures responsive adaptation and geometry recalculation on window resize."""
+        super().resizeEvent(event)
+        if hasattr(self, "scroll_area"):
+            self.scroll_area.updateGeometry()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -460,6 +470,7 @@ class SyncFrameMainWindow(QWidget):
         keep_orig = self.drop_zone.check_keep_original.isChecked()
         pal_pitch = getattr(self.drop_zone, "check_pal_pitch", None) and self.drop_zone.check_pal_pitch.isChecked()
         codec = self.drop_zone.combo_audio_codec.currentData() if hasattr(self.drop_zone, "combo_audio_codec") else "flac"
+        discarded_ids = self.drop_zone.get_discarded_audio_ids() if hasattr(self.drop_zone, "get_discarded_audio_ids") else []
 
         job = RemuxJob(
             output_path=out_path,
@@ -472,7 +483,8 @@ class SyncFrameMainWindow(QWidget):
             ref_audio_track_id=self.selected_ref_audio_id,
             keep_original_audio=keep_orig,
             pal_pitch_restore=bool(pal_pitch),
-            audio_codec=str(codec)
+            audio_codec=str(codec),
+            discarded_audio_ids=discarded_ids
         )
 
         self.btn_cancel.setEnabled(True)

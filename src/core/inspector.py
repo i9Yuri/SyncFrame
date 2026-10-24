@@ -14,7 +14,9 @@ from .models import (
     AudioProfile,
     MediaContainerInfo,
     ContainerTimeOffsets,
-    format_channel_layout_label
+    format_channel_layout_label,
+    AudioQualityScore,
+    StreamArbitrationResult
 )
 
 logger = logging.getLogger(__name__)
@@ -620,10 +622,190 @@ def identify_target_and_ref_audios(
     return recommended_target, reference_audio, all_candidates, is_ambiguous, ambiguity_reason
 
 
+def get_codec_tier(codec_name: str) -> int:
+    """
+    Ranks codec preservation tier:
+    Tier 5: Lossless/Master (FLAC, TrueHD, DTS-HD MA, PCM, ALAC, WAV)
+    Tier 4: High-fidelity lossy (E-AC3/EAC3, DTS, AC3, Opus)
+    Tier 3: Standard lossy (AAC)
+    Tier 2: Legacy lossy (MP3, MP2, Vorbis, WMA)
+    Tier 1: Low-profile/Voice/Unknown
+    """
+    c = (codec_name or "").lower().replace("-", "").replace("_", "").replace(" ", "")
+    if any(k in c for k in ("flac", "truehd", "dtshd", "dtsma", "pcm", "alac", "wav")):
+        return 5
+    elif any(k in c for k in ("eac3", "dts", "ac3", "opus", "dolby")):
+        return 4
+    elif "aac" in c:
+        return 3
+    elif any(k in c for k in ("mp3", "mp2", "vorbis", "ogg", "wma")):
+        return 2
+    return 1
+
+
+def evaluate_audio_quality(stream: StreamMetadata) -> AudioQualityScore:
+    """
+    Calculates deterministic acoustic fidelity index (AudioQualityScore) for an audio stream.
+    Priorities:
+    1. Channels (7.1 > 5.1 > 2.0 > 1.0)
+    2. Codec Tier (Lossless > E-AC3/AC3/Opus/DTS > AAC > MP3)
+    3. Bitrate (nominal kbps)
+    Handles missing or null bitrate gracefully without raising exceptions.
+    """
+    channels = stream.channels if stream.channels and stream.channels > 0 else 2
+    sample_rate = stream.sample_rate if stream.sample_rate and stream.sample_rate > 0 else 48000
+    bit_rate = stream.bitrate if stream.bitrate and stream.bitrate > 0 else 0
+    codec_tier = get_codec_tier(stream.codec)
+
+    bitrate_kbps = bit_rate / 1000.0
+    total_score = (
+        (channels * 100000.0)
+        + (codec_tier * 1000.0)
+        + (bitrate_kbps * 0.5)
+        + (sample_rate / 100000.0)
+    )
+
+    return AudioQualityScore(
+        channels=channels,
+        sample_rate=sample_rate,
+        bit_rate=bit_rate,
+        codec_tier=codec_tier,
+        total_score=total_score
+    )
+
+
+def _describe_audio_stream(stream: StreamMetadata) -> str:
+    """Helper formatting technical summary of audio stream (e.g. '5.1 AC3 640 kbps')."""
+    layout = format_channel_layout_label(stream.channels, stream.channel_layout)
+    if layout.startswith("Surround "):
+        layout_short = layout.replace("Surround ", "")
+    elif layout.startswith("Estéreo "):
+        layout_short = layout.replace("Estéreo ", "")
+    elif layout.startswith("Mono "):
+        layout_short = layout.replace("Mono ", "")
+    else:
+        layout_short = layout
+
+    codec = (stream.codec or "audio").upper()
+    if stream.bitrate and stream.bitrate > 0:
+        kbps = int(round(stream.bitrate / 1000.0))
+        return f"{layout_short} {codec} {kbps} kbps"
+    return f"{layout_short} {codec}"
+
+
+def arbitrate_duplicate_language_streams(
+    base_video_streams: List[StreamMetadata],
+    external_streams: List[StreamMetadata],
+    lang_code: str = "por"
+) -> StreamArbitrationResult:
+    """
+    Arbitrates duplicate language audio streams between base video file and external file.
+    If external stream is of higher quality, selects it and marks base language stream for discard.
+    If metrics are equal, keeps external stream by default.
+    If base stream is equal or superior, notifies user without discarding base stream.
+    """
+    def _is_target_lang(s: StreamMetadata) -> bool:
+        if s.track_type != "audio":
+            return False
+        lang = (s.language or "").lower()
+        title = (s.title or "").lower()
+        if lang_code.lower() in PORTUGUESE_TAGS or lang_code.lower() in ("por", "pt"):
+            is_tag = lang in PORTUGUESE_TAGS
+            is_title = any(kw in title for kw in PORTUGUESE_KEYWORDS)
+            return is_tag or is_title
+        return lang == lang_code.lower()
+
+    base_pt = [s for s in base_video_streams if _is_target_lang(s)]
+    ext_pt = [s for s in external_streams if _is_target_lang(s)]
+
+    # If external stream has no explicit tag, but external file contains audio tracks
+    if not ext_pt:
+        ext_audios = [s for s in external_streams if s.track_type == "audio"]
+        if ext_audios:
+            ext_pt = ext_audios
+
+    # Scenario 1: No base PT stream exists (no conflict)
+    if not base_pt:
+        if ext_pt:
+            ext_scored = [(s, evaluate_audio_quality(s)) for s in ext_pt]
+            ext_scored.sort(key=lambda x: x[1].total_score, reverse=True)
+            chosen = ext_scored[0][0]
+            desc = _describe_audio_stream(chosen)
+            return StreamArbitrationResult(
+                selected_target_audio=chosen,
+                discarded_audio_ids=[],
+                reason=f"Dublagem externa selecionada ({desc}) sem faixas duplicadas no arquivo base.",
+                is_replacement=False
+            )
+        else:
+            audios = [s for s in external_streams + base_video_streams if s.track_type == "audio"]
+            fallback = audios[0] if audios else StreamMetadata(
+                id=0, codec="unknown", channels=2, sample_rate=48000, fps=0, duration_ms=0, language="por", is_default=True
+            )
+            return StreamArbitrationResult(
+                selected_target_audio=fallback,
+                discarded_audio_ids=[],
+                reason="Nenhuma faixa identificada com idioma especificado.",
+                is_replacement=False
+            )
+
+    # Scenario 2: Base PT stream exists, but no external stream provided
+    if not ext_pt:
+        base_scored = [(s, evaluate_audio_quality(s)) for s in base_pt]
+        base_scored.sort(key=lambda x: x[1].total_score, reverse=True)
+        chosen = base_scored[0][0]
+        desc = _describe_audio_stream(chosen)
+        return StreamArbitrationResult(
+            selected_target_audio=chosen,
+            discarded_audio_ids=[],
+            reason=f"Faixa local mantida ({desc}); nenhuma faixa externa fornecida.",
+            is_replacement=False
+        )
+
+    # Scenario 3: Duplicate language conflict! Compare qualities
+    base_scored = [(s, evaluate_audio_quality(s)) for s in base_pt]
+    base_scored.sort(key=lambda x: x[1].total_score, reverse=True)
+    best_base, best_base_score = base_scored[0]
+
+    ext_scored = [(s, evaluate_audio_quality(s)) for s in ext_pt]
+    ext_scored.sort(key=lambda x: x[1].total_score, reverse=True)
+    best_ext, best_ext_score = ext_scored[0]
+
+    base_desc = _describe_audio_stream(best_base)
+    ext_desc = _describe_audio_stream(best_ext)
+
+    if best_ext_score.total_score > best_base_score.total_score:
+        # External is strictly superior -> replacement and discard base PT track(s)
+        discard_ids = [s.id for s in base_pt]
+        return StreamArbitrationResult(
+            selected_target_audio=best_ext,
+            discarded_audio_ids=discard_ids,
+            reason=f"Dublagem Externa Selecionada: {ext_desc} (Substituindo faixa local: {base_desc} que será descartada)",
+            is_replacement=True
+        )
+    elif best_ext_score.total_score == best_base_score.total_score:
+        # Identical metrics -> fallback keeps external track already validated for sync
+        discard_ids = [s.id for s in base_pt]
+        return StreamArbitrationResult(
+            selected_target_audio=best_ext,
+            discarded_audio_ids=discard_ids,
+            reason=f"Dublagem Externa Selecionada: {ext_desc} (Métricas equivalentes à faixa local: {base_desc} que será descartada)",
+            is_replacement=True
+        )
+    else:
+        # Base is superior -> notify user
+        return StreamArbitrationResult(
+            selected_target_audio=best_base,
+            discarded_audio_ids=[],
+            reason=f"Faixa local do vídeo ({base_desc}) já possui fidelidade técnica superior à externa ({ext_desc})",
+            is_replacement=False
+        )
+
+
 def evaluate_media_streams(file_a: str, file_b: str) -> AutoMatchVerdict:
     """
     Executes immediate comparative heuristic evaluation of two media files (MKV, MP4, M4V, MOV),
-    producing an AutoMatchVerdict with recommended streams and alternatives.
+    producing an AutoMatchVerdict with recommended streams, alternatives, and duplicate language arbitration.
     """
     streams_a = inspect_media(file_a)
     streams_b = inspect_media(file_b)
@@ -646,6 +828,21 @@ def evaluate_media_streams(file_a: str, file_b: str) -> AutoMatchVerdict:
         chosen_video.file_path
     )
 
+    # Perform duplicate audio stream arbitration
+    base_streams = [s for f, s in all_streams_with_files if f == chosen_video.file_path]
+    external_streams = [s for f, s in all_streams_with_files if f != chosen_video.file_path]
+
+    arbitration = arbitrate_duplicate_language_streams(base_streams, external_streams, lang_code="por")
+
+    # If arbitration decided on an external replacement, ensure recommended_target points to it
+    if arbitration and arbitration.is_replacement:
+        for cand in all_audios:
+            if cand.stream.id == arbitration.selected_target_audio.id and cand.file_path != chosen_video.file_path:
+                recommended_target = cand
+                recommended_target.is_recommended = True
+                recommended_target.badge_label = "Dublagem Superior Selecionada"
+                break
+
     alt_audios = [a for a in all_audios if a != recommended_target]
 
     return AutoMatchVerdict(
@@ -655,5 +852,7 @@ def evaluate_media_streams(file_a: str, file_b: str) -> AutoMatchVerdict:
         alternative_audios=alt_audios,
         reference_audio=reference_audio,
         is_ambiguous=is_ambiguous,
-        ambiguity_reason=ambiguity_reason
+        ambiguity_reason=ambiguity_reason,
+        arbitration_result=arbitration
     )
+

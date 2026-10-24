@@ -185,6 +185,25 @@ class SyncMetrics:
 
 
 @dataclass
+class AudioQualityScore:
+    """Quantitative acoustic fidelity index for stream quality ranking."""
+    channels: int
+    sample_rate: int
+    bit_rate: int
+    codec_tier: int
+    total_score: float
+
+
+@dataclass
+class StreamArbitrationResult:
+    """Verdict of audio stream quality comparison and duplicate language replacement."""
+    selected_target_audio: StreamMetadata
+    discarded_audio_ids: List[int]
+    reason: str
+    is_replacement: bool
+
+
+@dataclass
 class RemuxJob:
     """Parameters required to execute a lossless remux using mkvmerge."""
     output_path: str
@@ -203,6 +222,7 @@ class RemuxJob:
     pal_pitch_restore: bool = False
     audio_codec: str = "flac"  # "flac", "opus", "eac3", "aac"
     run_post_audit: bool = True
+    discarded_audio_ids: List[int] = field(default_factory=list)
 
 
 @dataclass
@@ -240,3 +260,5 @@ class AutoMatchVerdict:
     reference_audio: Optional[StreamCandidate] = None
     is_ambiguous: bool = False
     ambiguity_reason: str = ""
+    arbitration_result: Optional[StreamArbitrationResult] = None
+

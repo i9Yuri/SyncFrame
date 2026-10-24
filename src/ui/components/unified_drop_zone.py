@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from ...core.disk_utils import format_bytes
 from ...core.models import AutoMatchVerdict, StreamCandidate, format_channel_layout_label
+from ...core.inspector import PORTUGUESE_TAGS, PORTUGUESE_KEYWORDS
 from .audio_preserve_checkbox import AudioPreserveCheckbox
 
 
@@ -74,18 +75,17 @@ class UnifiedDropZone(QFrame):
         self.lbl_empty_title = QLabel("Arraste e solte os 2 arquivos de mídia aqui\nou selecione ambos pelo navegador")
         self.lbl_empty_title.setAlignment(Qt.AlignCenter)
         self.lbl_empty_title.setProperty("class", "dropTitle")
-        self.lbl_empty_title.setStyleSheet("background: transparent; font-size: 14px; font-weight: 700; color: #eef0f2; border: none;")
         empty_layout.addWidget(self.lbl_empty_title)
 
         lbl_hint = QLabel("MKV / MP4 / M4V / MOV  •  1 Vídeo de Referência + 1 Faixa de Dublagem")
         lbl_hint.setAlignment(Qt.AlignCenter)
         lbl_hint.setProperty("class", "subText")
-        lbl_hint.setStyleSheet("background: transparent; color: #7e8792; font-size: 11px; border: none;")
         empty_layout.addWidget(lbl_hint)
 
         btn_browse = QPushButton("Selecionar Arquivos...")
         btn_browse.setProperty("class", "btnPrimary")
-        btn_browse.setFixedWidth(200)
+        btn_browse.setMinimumWidth(160)
+        btn_browse.setMaximumWidth(220)
         btn_browse.clicked.connect(self._open_file_dialog)
         empty_layout.addWidget(btn_browse, alignment=Qt.AlignCenter)
 
@@ -106,9 +106,7 @@ class UnifiedDropZone(QFrame):
         single_layout.addWidget(self.badge_waiting, alignment=Qt.AlignCenter)
 
         self.lbl_single_filename = QLabel("")
-        self.lbl_single_filename.setStyleSheet(
-            "background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 13px; color: #eef0f2; border: none;"
-        )
+        self.lbl_single_filename.setProperty("class", "monoValue")
         self.lbl_single_filename.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(self.lbl_single_filename)
 
@@ -187,11 +185,11 @@ class UnifiedDropZone(QFrame):
         cf_v_layout.addLayout(head_v)
 
         self.lbl_v_filename = QLabel("video_ref.mkv")
-        self.lbl_v_filename.setStyleSheet("background: transparent; font-weight: 700; font-size: 12px; color: #eef0f2; border: none;")
+        self.lbl_v_filename.setProperty("class", "cardTitle")
         cf_v_layout.addWidget(self.lbl_v_filename)
 
         self.lbl_v_meta = QLabel("0.0 GB  •  00:00:00")
-        self.lbl_v_meta.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792; border: none;")
+        self.lbl_v_meta.setProperty("class", "subText")
         cf_v_layout.addWidget(self.lbl_v_meta)
         pair_row.addWidget(self.card_file_v, 1)
 
@@ -213,11 +211,11 @@ class UnifiedDropZone(QFrame):
         cf_a_layout.addLayout(head_a)
 
         self.lbl_a_filename = QLabel("audio_dub.mp4")
-        self.lbl_a_filename.setStyleSheet("background: transparent; font-weight: 700; font-size: 12px; color: #eef0f2; border: none;")
+        self.lbl_a_filename.setProperty("class", "cardTitle")
         cf_a_layout.addWidget(self.lbl_a_filename)
 
         self.lbl_a_meta = QLabel("0.0 MB  •  00:00:00")
-        self.lbl_a_meta.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #7e8792; border: none;")
+        self.lbl_a_meta.setProperty("class", "subText")
         cf_a_layout.addWidget(self.lbl_a_meta)
         pair_row.addWidget(self.card_file_a, 1)
 
@@ -230,16 +228,37 @@ class UnifiedDropZone(QFrame):
 
         # Ambiguity Banner
         self.frame_ambiguity = QFrame()
-        self.frame_ambiguity.setStyleSheet(
-            "background-color: rgba(231, 199, 131, 0.1); border: 1px solid rgba(231, 199, 131, 0.35); border-radius: 6px; padding: 6px 10px;"
-        )
+        self.frame_ambiguity.setProperty("class", "subCard")
         amb_layout = QHBoxLayout(self.frame_ambiguity)
-        amb_layout.setContentsMargins(0, 0, 0, 0)
+        amb_layout.setContentsMargins(8, 8, 8, 8)
         self.lbl_ambiguity = QLabel("")
-        self.lbl_ambiguity.setStyleSheet("background: transparent; color: #e7c783; font-size: 11px; font-weight: 600; border: none;")
+        self.lbl_ambiguity.setProperty("class", "diagnosisBanner")
         amb_layout.addWidget(self.lbl_ambiguity)
         self.frame_ambiguity.setVisible(False)
         confirm_layout.addWidget(self.frame_ambiguity)
+
+        # Stream Arbitration Decision Banner (Replacement of inferior PT dub)
+        self.frame_arbitration = QFrame()
+        self.frame_arbitration.setProperty("class", "subCard")
+        arb_layout = QVBoxLayout(self.frame_arbitration)
+        arb_layout.setContentsMargins(12, 10, 12, 10)
+        arb_layout.setSpacing(6)
+
+        self.lbl_arbitration_title = QLabel("ARBITRAGEM DE DUBLAGEM DUPLICADA")
+        self.lbl_arbitration_title.setProperty("class", "eyebrowText")
+        arb_layout.addWidget(self.lbl_arbitration_title)
+
+        self.lbl_arbitration = QLabel("")
+        self.lbl_arbitration.setProperty("class", "diagnosisBanner")
+        self.lbl_arbitration.setWordWrap(True)
+        arb_layout.addWidget(self.lbl_arbitration)
+
+        self.check_revert_arbitration = QCheckBox("Manter dublagem local embutida (reverter substituição)")
+        self.check_revert_arbitration.toggled.connect(self._on_revert_arbitration_toggled)
+        arb_layout.addWidget(self.check_revert_arbitration)
+
+        self.frame_arbitration.setVisible(False)
+        confirm_layout.addWidget(self.frame_arbitration)
 
         # Card 02: Stream Review Gate (Tabela de Auditoria)
         review_frame = QFrame()
@@ -267,12 +286,12 @@ class UnifiedDropZone(QFrame):
 
         # Row 1: Primary Video
         lbl_v_tag = QLabel("V01 / Vídeo:")
-        lbl_v_tag.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
+        lbl_v_tag.setProperty("class", "subText")
         table_grid.addWidget(lbl_v_tag, 0, 0)
 
         self.badge_v_status = QLabel("Melhor Imagem")
         self.badge_v_status.setProperty("class", "badgeGreen")
-        self.badge_v_status.setFixedWidth(120)
+        self.badge_v_status.setMinimumWidth(80)
         table_grid.addWidget(self.badge_v_status, 0, 1)
 
         self.combo_video = QComboBox()
@@ -281,17 +300,17 @@ class UnifiedDropZone(QFrame):
 
         chip_v_act = QLabel("Copy")
         chip_v_act.setProperty("class", "systemChip")
-        chip_v_act.setFixedWidth(54)
+        chip_v_act.setMinimumWidth(44)
         table_grid.addWidget(chip_v_act, 0, 3)
 
         # Row 2: Target Dubbed Audio
         lbl_a_tag = QLabel("A02 / Alvo (PT):")
-        lbl_a_tag.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
+        lbl_a_tag.setProperty("class", "subText")
         table_grid.addWidget(lbl_a_tag, 1, 0)
 
         self.badge_a_status = QLabel("Português")
         self.badge_a_status.setProperty("class", "badgeSignal")
-        self.badge_a_status.setFixedWidth(120)
+        self.badge_a_status.setMinimumWidth(80)
         table_grid.addWidget(self.badge_a_status, 1, 1)
 
         self.combo_target_audio = QComboBox()
@@ -300,17 +319,17 @@ class UnifiedDropZone(QFrame):
 
         chip_a_act = QLabel("Align")
         chip_a_act.setProperty("class", "badgeSignal")
-        chip_a_act.setFixedWidth(54)
+        chip_a_act.setMinimumWidth(44)
         table_grid.addWidget(chip_a_act, 1, 3)
 
         # Row 3: Reference Audio
         lbl_ref_tag = QLabel("A01 / Ref. (ENG):")
-        lbl_ref_tag.setStyleSheet("background: transparent; font-family: 'SFMono-Regular', monospace; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
+        lbl_ref_tag.setProperty("class", "subText")
         table_grid.addWidget(lbl_ref_tag, 2, 0)
 
         self.badge_ref_status = QLabel("Referência FFT")
         self.badge_ref_status.setProperty("class", "badgeNeutral")
-        self.badge_ref_status.setFixedWidth(120)
+        self.badge_ref_status.setMinimumWidth(80)
         table_grid.addWidget(self.badge_ref_status, 2, 1)
 
         self.combo_ref_audio = QComboBox()
@@ -319,7 +338,7 @@ class UnifiedDropZone(QFrame):
 
         chip_ref_act = QLabel("Copy")
         chip_ref_act.setProperty("class", "systemChip")
-        chip_ref_act.setFixedWidth(54)
+        chip_ref_act.setMinimumWidth(44)
         table_grid.addWidget(chip_ref_act, 2, 3)
 
         rf_layout.addLayout(table_grid)
@@ -335,7 +354,7 @@ class UnifiedDropZone(QFrame):
         audit_layout.setSpacing(10)
 
         lbl_audit_title = QLabel("Auditoria de Canais:")
-        lbl_audit_title.setStyleSheet("background: transparent; font-weight: 700; font-size: 11px; color: #c1c6cd; border: none;")
+        lbl_audit_title.setProperty("class", "eyebrowText")
         audit_layout.addWidget(lbl_audit_title)
 
         self.lbl_audit_origin = QLabel("")
@@ -347,9 +366,7 @@ class UnifiedDropZone(QFrame):
         audit_layout.addWidget(self.badge_audit_layout)
 
         self.lbl_audit_specs = QLabel("")
-        self.lbl_audit_specs.setStyleSheet(
-            "background: transparent; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; font-weight: 600; color: #eef0f2; border: none;"
-        )
+        self.lbl_audit_specs.setProperty("class", "monoValue")
         audit_layout.addWidget(self.lbl_audit_specs)
 
         audit_layout.addStretch()
@@ -357,13 +374,11 @@ class UnifiedDropZone(QFrame):
 
         # Contextual Channel Difference Alert
         self.frame_channel_alert = QFrame()
-        self.frame_channel_alert.setStyleSheet(
-            "background-color: rgba(231, 199, 131, 0.08); border: 1px solid rgba(231, 199, 131, 0.3); border-radius: 6px; padding: 6px 10px;"
-        )
+        self.frame_channel_alert.setProperty("class", "subCard")
         alert_layout = QHBoxLayout(self.frame_channel_alert)
-        alert_layout.setContentsMargins(0, 0, 0, 0)
+        alert_layout.setContentsMargins(8, 8, 8, 8)
         self.lbl_channel_alert = QLabel("")
-        self.lbl_channel_alert.setStyleSheet("background: transparent; color: #e7c783; font-size: 11px; font-weight: 600; border: none;")
+        self.lbl_channel_alert.setProperty("class", "diagnosisBanner")
         alert_layout.addWidget(self.lbl_channel_alert)
         self.frame_channel_alert.setVisible(False)
         confirm_layout.addWidget(self.frame_channel_alert)
@@ -376,12 +391,11 @@ class UnifiedDropZone(QFrame):
         check_row.addWidget(self.check_keep_original)
 
         self.check_pal_pitch = QCheckBox("Restauração Tonal PAL (25fps -> 24fps)")
-        self.check_pal_pitch.setStyleSheet("background: transparent; font-size: 11px; font-weight: 600; color: #c1c6cd; border: none;")
         self.check_pal_pitch.setToolTip("Aplica desaceleração natural com correção de tom (asetrate+aresample soxr) para dublagens originadas de masters PAL (25 fps).")
         check_row.addWidget(self.check_pal_pitch)
 
         lbl_codec = QLabel("Codec Re-encode:")
-        lbl_codec.setStyleSheet("background: transparent; font-size: 11px; font-weight: 600; color: #7e8792; border: none;")
+        lbl_codec.setProperty("class", "subText")
         check_row.addWidget(lbl_codec)
 
         self.combo_audio_codec = QComboBox()
@@ -421,18 +435,18 @@ class UnifiedDropZone(QFrame):
             event.acceptProposedAction()
             self.page_empty.setStyleSheet("""
                 QFrame#dropFrameEmpty {
-                    border: 2px dashed #d9f56b;
+                    border: 2px dashed #ffffff;
                     border-radius: 11px;
-                    background-color: #15181d;
+                    background-color: #1c1c1c;
                 }
             """)
 
     def dragLeaveEvent(self, event):
         self.page_empty.setStyleSheet("""
             QFrame#dropFrameEmpty {
-                border: 1px dashed #3b424c;
+                border: 1px dashed #383838;
                 border-radius: 11px;
-                background-color: #0e1013;
+                background-color: #141414;
             }
         """)
 
@@ -514,6 +528,17 @@ class UnifiedDropZone(QFrame):
             self.frame_ambiguity.setVisible(True)
         else:
             self.frame_ambiguity.setVisible(False)
+
+        # Stream arbitration decision
+        if verdict.arbitration_result and (verdict.arbitration_result.is_replacement or "já possui fidelidade técnica superior" in verdict.arbitration_result.reason):
+            self.lbl_arbitration.setText(verdict.arbitration_result.reason)
+            self.check_revert_arbitration.blockSignals(True)
+            self.check_revert_arbitration.setChecked(False)
+            self.check_revert_arbitration.setVisible(verdict.arbitration_result.is_replacement)
+            self.check_revert_arbitration.blockSignals(False)
+            self.frame_arbitration.setVisible(True)
+        else:
+            self.frame_arbitration.setVisible(False)
 
         # Video combo
         self.combo_video.blockSignals(True)
@@ -624,6 +649,37 @@ class UnifiedDropZone(QFrame):
 
         if chosen_video and chosen_target:
             self.confirmation_confirmed.emit(chosen_video, chosen_target, chosen_ref, keep_orig)
+
+    def _on_revert_arbitration_toggled(self, checked: bool):
+        if not self.current_verdict or not self.current_verdict.arbitration_result:
+            return
+        if checked:
+            # Revert target audio combo to internal base video audio stream if available
+            base_file = self.current_verdict.recommended_video.file_path
+            target_idx = None
+            for i in range(self.combo_target_audio.count()):
+                cand = self.combo_target_audio.itemData(i)
+                if cand and cand.file_path == base_file and cand.stream.track_type == "audio":
+                    lang = (cand.stream.language or "").lower()
+                    if lang in PORTUGUESE_TAGS or any(kw in (cand.stream.title or "").lower() for kw in PORTUGUESE_KEYWORDS):
+                        target_idx = i
+                        break
+            if target_idx is not None:
+                self.combo_target_audio.setCurrentIndex(target_idx)
+        else:
+            # Restore recommended external target
+            if self.current_verdict.recommended_target_audio:
+                idx = self.combo_target_audio.findData(self.current_verdict.recommended_target_audio)
+                if idx >= 0:
+                    self.combo_target_audio.setCurrentIndex(idx)
+
+    def get_discarded_audio_ids(self) -> List[int]:
+        """Returns list of stream IDs from base video file to discard during remuxing."""
+        if not self.current_verdict or not self.current_verdict.arbitration_result:
+            return []
+        if self.check_revert_arbitration.isChecked():
+            return []
+        return list(self.current_verdict.arbitration_result.discarded_audio_ids)
 
     def reset(self):
         """Resets the drop zone to initial standby state."""
