@@ -21,7 +21,7 @@ from ...core.models import SyncMetrics
 class SyncControls(QFrame):
     """
     Panel providing manual offset adjustments (large monospace display, slider, nudge buttons)
-    and metric status badges (drift ratio, confidence, FPS diagnostic) adhering to Precision Bench.
+    and metric status badges (drift ratio, confidence, FPS diagnostic) adhering to One UI 8.5.
     """
     offset_changed = Signal(float)
     analyze_requested = Signal()
@@ -29,7 +29,7 @@ class SyncControls(QFrame):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("bentoCard")
-        self.setProperty("class", "bentoCard")
+        self.setProperty("class", "card")
 
         self.algorithmic_offset: float = 0.0
         self.current_offset: float = 0.0
@@ -38,41 +38,41 @@ class SyncControls(QFrame):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(14)
+        layout.setSpacing(10)
         layout.setContentsMargins(18, 16, 18, 16)
 
-        # Header with Title and Section Index
+        # Header with Title and Track Tag
         header_layout = QHBoxLayout()
-        header_layout.setSpacing(8)
+        header_layout.setSpacing(10)
 
-        idx_badge = QLabel("03A")
-        idx_badge.setProperty("class", "sectionIndex")
-        header_layout.addWidget(idx_badge)
+        self.idx_badge = QLabel("03A")
+        self.idx_badge.setVisible(False)
+        header_layout.addWidget(self.idx_badge)
 
-        title = QLabel("Alinhamento Temporal & Métricas")
-        title.setProperty("class", "cardTitle")
+        title = QLabel("Alinhamento temporal")
+        title.setProperty("class", "cardHeaderTitle")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        self.chip_track = QLabel("TRACK A02")
-        self.chip_track.setProperty("class", "badgeSignal")
+        self.chip_track = QLabel("Faixa A02")
+        self.chip_track.setProperty("class", "tag")
         header_layout.addWidget(self.chip_track)
         layout.addLayout(header_layout)
 
-        # Large Monospace Offset Display Area wrapped in offsetCallout frame
+        # Large Offset Display Area wrapped in offBox frame (.off)
         offset_callout_frame = QFrame()
-        offset_callout_frame.setProperty("class", "offsetCallout")
+        offset_callout_frame.setProperty("class", "offBox")
         disp_box = QHBoxLayout(offset_callout_frame)
-        disp_box.setContentsMargins(12, 10, 12, 10)
+        disp_box.setContentsMargins(18, 10, 14, 10)
         disp_box.setSpacing(12)
 
         disp_sub = QVBoxLayout()
-        disp_sub.setSpacing(2)
-        lbl_sub = QLabel("AUDIO OFFSET / STATIC SYNC")
-        lbl_sub.setProperty("class", "eyebrowText")
+        disp_sub.setSpacing(4)
+        lbl_sub = QLabel("Offset de áudio · sincronia estática")
+        lbl_sub.setProperty("class", "hint")
         disp_sub.addWidget(lbl_sub)
 
-        self.lbl_offset_val = QLabel("+0.0 ms")
+        self.lbl_offset_val = QLabel("+0,0 ms")
         self.lbl_offset_val.setProperty("class", "largeOffsetDisplay")
         disp_sub.addWidget(self.lbl_offset_val)
         disp_box.addLayout(disp_sub)
@@ -80,17 +80,17 @@ class SyncControls(QFrame):
         disp_box.addStretch()
 
         self.btn_reset = QPushButton("Resetar")
-        self.btn_reset.setProperty("class", "btnSecondary")
+        self.btn_reset.setProperty("class", "btn")
         self.btn_reset.clicked.connect(self.reset_to_calculated)
         disp_box.addWidget(self.btn_reset, alignment=Qt.AlignVCenter)
         layout.addWidget(offset_callout_frame)
 
-        # Interactive Slider with range labels wrapped in harmonized container
+        # Interactive Slider with range labels (.sl)
         self.frame_slider = QFrame()
         self.frame_slider.setObjectName("frameSlider")
         self.frame_slider.setProperty("class", "sliderContainer")
         slider_box = QVBoxLayout(self.frame_slider)
-        slider_box.setContentsMargins(12, 10, 12, 10)
+        slider_box.setContentsMargins(4, 12, 4, 4)
         slider_box.setSpacing(6)
 
         self.slider = QSlider(Qt.Horizontal)
@@ -101,12 +101,12 @@ class SyncControls(QFrame):
         slider_box.addWidget(self.slider)
 
         lbl_row = QHBoxLayout()
-        lbl_left = QLabel("-5000 ms")
-        lbl_left.setProperty("class", "subText")
+        lbl_left = QLabel("−5000 ms")
+        lbl_left.setProperty("class", "hint")
         lbl_mid = QLabel("0")
-        lbl_mid.setProperty("class", "subText")
+        lbl_mid.setProperty("class", "hint")
         lbl_right = QLabel("+5000 ms")
-        lbl_right.setProperty("class", "subText")
+        lbl_right.setProperty("class", "hint")
         lbl_row.addWidget(lbl_left)
         lbl_row.addStretch()
         lbl_row.addWidget(lbl_mid)
@@ -115,26 +115,28 @@ class SyncControls(QFrame):
         slider_box.addLayout(lbl_row)
         layout.addWidget(self.frame_slider)
 
-        # Precision Nudge Grid (±1, ±10, ±50, ±250 ms)
-        nudge_layout = QHBoxLayout()
-        nudge_layout.setSpacing(6)
+        # Precision Nudge Grid: 2 rows of 4 buttons (.steps)
+        grid_steps = QGridLayout()
+        grid_steps.setSpacing(6)
 
-        for val, txt in [
-            (-250.0, "-250 ms"),
-            (-50.0, "-50 ms"),
-            (-10.0, "-10 ms"),
-            (-1.0, "-1 ms"),
-            (1.0, "+1 ms"),
-            (10.0, "+10 ms"),
-            (50.0, "+50 ms"),
-            (250.0, "+250 ms"),
-        ]:
+        step_values = [
+            (-250.0, "−250 ms", 0, 0),
+            (-50.0, "−50 ms", 0, 1),
+            (-10.0, "−10 ms", 0, 2),
+            (-1.0, "−1 ms", 0, 3),
+            (1.0, "+1 ms", 1, 0),
+            (10.0, "+10 ms", 1, 1),
+            (50.0, "+50 ms", 1, 2),
+            (250.0, "+250 ms", 1, 3),
+        ]
+
+        for val, txt, r, c in step_values:
             btn = QPushButton(txt)
-            btn.setProperty("class", "btnNudge")
+            btn.setProperty("class", "stepBtn")
             btn.clicked.connect(lambda _, d=val: self.add_offset(d))
-            nudge_layout.addWidget(btn)
+            grid_steps.addWidget(btn, r, c)
 
-        layout.addLayout(nudge_layout)
+        layout.addLayout(grid_steps)
 
         # Hidden Spinbox for compatibility with unit tests
         self.spin_offset = QDoubleSpinBox()
@@ -146,71 +148,81 @@ class SyncControls(QFrame):
         self.spin_offset.setVisible(False)
         layout.addWidget(self.spin_offset)
 
-        # Separator Line
-        sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
-        sep.setProperty("class", "dividerLine")
-        layout.addWidget(sep)
-
-        # Metrics Display Grid
-        grid = QGridLayout()
-        grid.setSpacing(8)
+        # Metrics Display Grid (.mets: 2 rounded boxes side-by-side)
+        row_mets = QHBoxLayout()
+        row_mets.setSpacing(8)
 
         # Metric: Drift Ratio
         box_drift = QFrame()
-        box_drift.setProperty("class", "metricCallout")
+        box_drift.setProperty("class", "metBox")
         bd_layout = QVBoxLayout(box_drift)
-        bd_layout.setContentsMargins(10, 8, 10, 8)
-        lbl_drift_title = QLabel("DERIVA TEMPORAL")
-        lbl_drift_title.setProperty("class", "eyebrowText")
+        bd_layout.setContentsMargins(18, 14, 18, 14)
+        bd_layout.setSpacing(4)
+        lbl_drift_title = QLabel("Deriva temporal")
+        lbl_drift_title.setProperty("class", "hint")
         bd_layout.addWidget(lbl_drift_title)
-        self.lbl_drift_val = QLabel("1.000000x")
-        self.lbl_drift_val.setProperty("class", "monoValue")
+        self.lbl_drift_val = QLabel("1,000000x")
+        self.lbl_drift_val.setProperty("class", "metVal")
         bd_layout.addWidget(self.lbl_drift_val)
-        grid.addWidget(box_drift, 0, 0)
+        row_mets.addWidget(box_drift, 1)
 
         # Metric: Confidence & PSLR
         box_conf = QFrame()
-        box_conf.setProperty("class", "metricCallout")
+        box_conf.setProperty("class", "metBox")
         bc_layout = QVBoxLayout(box_conf)
-        bc_layout.setContentsMargins(10, 8, 10, 8)
-        lbl_conf_title = QLabel("CONFIANCA FFT / PSLR")
-        lbl_conf_title.setProperty("class", "eyebrowText")
+        bc_layout.setContentsMargins(18, 14, 18, 14)
+        bc_layout.setSpacing(4)
+        lbl_conf_title = QLabel("Confiança FFT / PSLR")
+        lbl_conf_title.setProperty("class", "hint")
         bc_layout.addWidget(lbl_conf_title)
-        self.lbl_confidence = QLabel("Nao analisado")
-        self.lbl_confidence.setProperty("class", "badgeAmber")
+        self.lbl_confidence = QLabel("Não analisado")
+        self.lbl_confidence.setProperty("class", "metVal")
         bc_layout.addWidget(self.lbl_confidence)
-        grid.addWidget(box_conf, 0, 1)
+        row_mets.addWidget(box_conf, 1)
 
-        layout.addLayout(grid)
+        layout.addLayout(row_mets)
 
         # Discontinuity Warning Banner (Cuts/Step Discontinuities)
         self.frame_discont = QFrame()
-        self.frame_discont.setProperty("class", "subCard")
+        self.frame_discont.setProperty("class", "dubBox")
         fd_layout = QVBoxLayout(self.frame_discont)
-        fd_layout.setContentsMargins(10, 8, 10, 8)
+        fd_layout.setContentsMargins(14, 10, 14, 10)
         self.lbl_discont_title = QLabel("AVISO: DESCONTINUIDADE EM DEGRAU (CORTE/LOGO)")
-        self.lbl_discont_title.setProperty("class", "eyebrowText")
+        self.lbl_discont_title.setProperty("class", "dubTitle")
         fd_layout.addWidget(self.lbl_discont_title)
         self.lbl_discont_msg = QLabel("")
-        self.lbl_discont_msg.setProperty("class", "subText")
+        self.lbl_discont_msg.setProperty("class", "dubDesc")
         self.lbl_discont_msg.setWordWrap(True)
         fd_layout.addWidget(self.lbl_discont_msg)
         self.frame_discont.setVisible(False)
         layout.addWidget(self.frame_discont)
 
-        # FPS Diagnostic banner
+        # Note pill (.note)
+        self.frame_note = QFrame()
+        self.frame_note.setProperty("class", "notePill")
+        fn_layout = QHBoxLayout(self.frame_note)
+        fn_layout.setContentsMargins(18, 10, 18, 10)
+        fn_layout.setSpacing(8)
+
+        dot = QLabel()
+        dot.setProperty("class", "greenDot")
+        dot.setFixedSize(8, 8)
+        fn_layout.addWidget(dot)
+
         self.lbl_diagnosis = QLabel("Taxas de quadros congruentes (sem deriva contínua)")
-        self.lbl_diagnosis.setProperty("class", "diagnosisBanner")
-        layout.addWidget(self.lbl_diagnosis)
+        self.lbl_diagnosis.setProperty("class", "hint")
+        fn_layout.addWidget(self.lbl_diagnosis)
+        fn_layout.addStretch()
+        layout.addWidget(self.frame_note)
 
     def set_metrics(self, metrics: SyncMetrics):
         self.algorithmic_offset = metrics.static_offset_ms
         self.current_offset = metrics.static_offset_ms
 
-        sign = "+" if metrics.static_offset_ms >= 0 else ""
-        self.lbl_offset_val.setText(f"{sign}{metrics.static_offset_ms:.1f} ms")
-        self.lbl_drift_val.setText(f"{metrics.drift_ratio:.6f}x")
+        sign = "+" if metrics.static_offset_ms >= 0 else "−"
+        val_str = f"{abs(metrics.static_offset_ms):.1f}".replace(".", ",")
+        self.lbl_offset_val.setText(f"{sign}{val_str} ms")
+        self.lbl_drift_val.setText(f"{metrics.drift_ratio:.6f}x".replace(".", ","))
         self.lbl_diagnosis.setText(metrics.fps_diagnosis)
 
         # Check for non-linear step cuts
@@ -221,65 +233,86 @@ class SyncControls(QFrame):
             self.frame_discont.setVisible(False)
 
         pct = metrics.confidence_score * 100.0
-        pslr_tag = f" • PSLR {metrics.pslr_score:.1f}" if metrics.pslr_score > 0 else ""
+        pslr_tag = f" • PSLR {metrics.pslr_score:.1f}".replace(".", ",") if metrics.pslr_score > 0 else ""
         if metrics.is_confident:
-            self.lbl_confidence.setText(f"Alta ({pct:.1f}%{pslr_tag})")
-            self.lbl_confidence.setProperty("class", "badgeGreen")
+            self.lbl_confidence.setText(f"Alta ({pct:.1f}%{pslr_tag})".replace(".", ","))
         else:
-            self.lbl_confidence.setText(f"Baixa ({pct:.1f}%{pslr_tag}) — Manual")
-            self.lbl_confidence.setProperty("class", "badgeAmber")
-        self.lbl_confidence.setStyle(self.lbl_confidence.style())
-
-        self.spin_offset.blockSignals(True)
-        self.spin_offset.setValue(metrics.static_offset_ms)
-        self.spin_offset.blockSignals(False)
+            self.lbl_confidence.setText(f"Baixa ({pct:.1f}%{pslr_tag}) — Manual".replace(".", ","))
 
         self.slider.blockSignals(True)
-        clamped_val = int(max(-5000, min(5000, round(metrics.static_offset_ms))))
-        self.slider.setValue(clamped_val)
+        self.slider.setValue(int(round(metrics.static_offset_ms)))
         self.slider.blockSignals(False)
 
-    def _on_spin_changed(self, val: float):
-        self.current_offset = val
-        sign = "+" if val >= 0 else ""
-        self.lbl_offset_val.setText(f"{sign}{val:.1f} ms")
-        self.slider.blockSignals(True)
-        self.slider.setValue(int(max(-5000, min(5000, round(val)))))
-        self.slider.blockSignals(False)
-        self.offset_changed.emit(val)
+    def _on_slider_changed(self, value: int):
+        self.current_offset = float(value)
+        sign = "+" if self.current_offset >= 0 else "−"
+        val_str = f"{abs(self.current_offset):.1f}".replace(".", ",")
+        self.lbl_offset_val.setText(f"{sign}{val_str} ms")
 
-    def _on_slider_changed(self, val: int):
-        self.current_offset = float(val)
-        sign = "+" if val >= 0 else ""
-        self.lbl_offset_val.setText(f"{sign}{float(val):.1f} ms")
         self.spin_offset.blockSignals(True)
-        self.spin_offset.setValue(float(val))
+        self.spin_offset.setValue(self.current_offset)
         self.spin_offset.blockSignals(False)
-        self.offset_changed.emit(float(val))
+
+        self.offset_changed.emit(self.current_offset)
+
+    def _on_spin_changed(self, value: float):
+        self.current_offset = value
+        sign = "+" if self.current_offset >= 0 else "−"
+        val_str = f"{abs(self.current_offset):.1f}".replace(".", ",")
+        self.lbl_offset_val.setText(f"{sign}{val_str} ms")
+
+        self.slider.blockSignals(True)
+        self.slider.setValue(int(round(value)))
+        self.slider.blockSignals(False)
+
+        self.offset_changed.emit(self.current_offset)
 
     def add_offset(self, delta_ms: float):
         new_val = self.current_offset + delta_ms
+        new_val = max(-60000.0, min(60000.0, new_val))
+        self.current_offset = new_val
+
+        sign = "+" if self.current_offset >= 0 else "−"
+        val_str = f"{abs(self.current_offset):.1f}".replace(".", ",")
+        self.lbl_offset_val.setText(f"{sign}{val_str} ms")
+
+        self.slider.blockSignals(True)
+        self.slider.setValue(int(round(new_val)))
+        self.slider.blockSignals(False)
+
+        self.spin_offset.blockSignals(True)
         self.spin_offset.setValue(new_val)
+        self.spin_offset.blockSignals(False)
+
+        self.offset_changed.emit(self.current_offset)
 
     def reset_to_calculated(self):
+        self.current_offset = self.algorithmic_offset
+        sign = "+" if self.current_offset >= 0 else "−"
+        val_str = f"{abs(self.current_offset):.1f}".replace(".", ",")
+        self.lbl_offset_val.setText(f"{sign}{val_str} ms")
+
+        self.slider.blockSignals(True)
+        self.slider.setValue(int(round(self.algorithmic_offset)))
+        self.slider.blockSignals(False)
+
+        self.spin_offset.blockSignals(True)
         self.spin_offset.setValue(self.algorithmic_offset)
+        self.spin_offset.blockSignals(False)
+
+        self.offset_changed.emit(self.current_offset)
 
     def reset(self):
-        """Resets all metrics and adjustment inputs to initial state."""
         self.algorithmic_offset = 0.0
         self.current_offset = 0.0
-        self.lbl_offset_val.setText("+0.0 ms")
-        self.lbl_drift_val.setText("1.000000x")
-        self.lbl_confidence.setText("Nao analisado")
-        self.lbl_confidence.setProperty("class", "badgeAmber")
-        self.lbl_confidence.setStyle(self.lbl_confidence.style())
-        self.lbl_diagnosis.setText("Taxas de quadros congruentes (sem deriva contínua)")
-        self.spin_offset.blockSignals(True)
-        self.spin_offset.setValue(0.0)
-        self.spin_offset.blockSignals(False)
+        self.lbl_offset_val.setText("+0,0 ms")
+        self.lbl_drift_val.setText("1,000000x")
+        self.lbl_confidence.setText("Não analisado")
         self.slider.blockSignals(True)
         self.slider.setValue(0)
         self.slider.blockSignals(False)
+        self.spin_offset.blockSignals(True)
+        self.spin_offset.setValue(0.0)
+        self.spin_offset.blockSignals(False)
+        self.offset_changed.emit(0.0)
 
-    def get_offset_ms(self) -> float:
-        return self.spin_offset.value()

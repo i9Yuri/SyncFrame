@@ -97,58 +97,55 @@ class SyncFrameMainWindow(QWidget):
         root_layout.setContentsMargins(0, 0, 0, 0)
 
         # ======================================================================
-        # 1. Fixed Technical Topbar
+        # 1. Spacious One UI Header
         # ======================================================================
         self.topbar = QWidget()
-        self.topbar.setObjectName("workbenchTopbar")
+        self.topbar.setObjectName("topHeader")
         tb_layout = QHBoxLayout(self.topbar)
-        tb_layout.setContentsMargins(20, 10, 20, 10)
-        tb_layout.setSpacing(14)
+        tb_layout.setContentsMargins(28, 14, 28, 6)
+        tb_layout.setSpacing(16)
 
         # Brand mark & Title in integrated transparent block
-        brand_box = QHBoxLayout()
-        brand_box.setSpacing(12)
-        brand_box.setContentsMargins(0, 0, 0, 0)
-
         brand_texts = QVBoxLayout()
-        brand_texts.setSpacing(1)
+        brand_texts.setSpacing(3)
         brand_texts.setContentsMargins(0, 0, 0, 0)
         self.lbl_brand_title = QLabel("SyncFrame")
-        self.lbl_brand_title.setObjectName("brandTitle")
+        self.lbl_brand_title.setObjectName("appTitle")
         brand_texts.addWidget(self.lbl_brand_title)
 
-        self.lbl_brand_sub = QLabel("MEDIA ALIGNMENT WORKBENCH")
-        self.lbl_brand_sub.setObjectName("brandSubtitle")
+        self.lbl_brand_sub = QLabel("Bancada de alinhamento de mídia · Sessão 01")
+        self.lbl_brand_sub.setObjectName("appSubtitle")
         brand_texts.addWidget(self.lbl_brand_sub)
-        brand_box.addLayout(brand_texts)
+        tb_layout.addLayout(brand_texts)
 
-        # Subtle vertical separator
-        crumb_sep = QFrame()
-        crumb_sep.setObjectName("crumbSep")
-        crumb_sep.setFrameShape(QFrame.VLine)
-        crumb_sep.setProperty("class", "verticalDivider")
-        brand_box.addWidget(crumb_sep)
-
-        self.lbl_crumb = QLabel("Workspace / <strong>Session 01</strong>")
-        self.lbl_crumb.setObjectName("topCrumb")
-        brand_box.addWidget(self.lbl_crumb)
-        tb_layout.addLayout(brand_box)
+        # Retain crumb label for compatibility
+        self.lbl_crumb = QLabel("")
+        self.lbl_crumb.setVisible(False)
 
         tb_layout.addStretch()
 
-        # Right actions: Local workspace chip, theme switcher
-        self.chip_workspace = QLabel("● LOCAL WORKSPACE")
-        self.chip_workspace.setProperty("class", "systemChip")
-        tb_layout.addWidget(self.chip_workspace)
+        # Right actions: Local workspace pill with green dot, theme switcher pill, version pill
+        self.pill_workspace = QFrame()
+        self.pill_workspace.setProperty("class", "pill")
+        pw_layout = QHBoxLayout(self.pill_workspace)
+        pw_layout.setContentsMargins(14, 6, 14, 6)
+        pw_layout.setSpacing(8)
+        dot_ws = QLabel()
+        dot_ws.setProperty("class", "greenDot")
+        pw_layout.addWidget(dot_ws)
+        self.chip_workspace = QLabel("Espaço de trabalho local")
+        self.chip_workspace.setStyleSheet("font-weight: 600; font-size: 13px; border: none; background: transparent;")
+        pw_layout.addWidget(self.chip_workspace)
+        tb_layout.addWidget(self.pill_workspace)
 
         self.btn_theme = QPushButton("Modo Claro")
-        self.btn_theme.setProperty("class", "btnSecondary")
+        self.btn_theme.setProperty("class", "pill")
         self.btn_theme.setToolTip("Alternar entre Dark e Light Mode")
         self.btn_theme.clicked.connect(self.toggle_theme_mode)
         tb_layout.addWidget(self.btn_theme)
 
-        badge_v = QLabel("v1.0.0")
-        badge_v.setProperty("class", "badgeNeutral")
+        badge_v = QLabel("v1.2.0")
+        badge_v.setProperty("class", "pillSoft")
         tb_layout.addWidget(badge_v)
 
         root_layout.addWidget(self.topbar)
@@ -174,14 +171,14 @@ class SyncFrameMainWindow(QWidget):
         body_container = QWidget()
         body_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.body_layout = QHBoxLayout(body_container)
-        self.body_layout.setSpacing(14)
-        self.body_layout.setContentsMargins(18, 6, 18, 14)
+        self.body_layout.setSpacing(12)
+        self.body_layout.setContentsMargins(18, 0, 18, 10)
 
         # ----------------------------------------------------------------------
         # LEFT COLUMN (Stack 1: Operational & Decision Gate)
         # ----------------------------------------------------------------------
         col_left = QVBoxLayout()
-        col_left.setSpacing(16)
+        col_left.setSpacing(12)
 
         # Card 01 & 02: Unified Drop Zone & Review Gate
         self.drop_zone = UnifiedDropZone()
@@ -198,65 +195,61 @@ class SyncFrameMainWindow(QWidget):
         self.card_remux_exec.setProperty("class", "panelCard")
         cre_layout = QVBoxLayout(self.card_remux_exec)
         cre_layout.setContentsMargins(18, 16, 18, 16)
-        cre_layout.setSpacing(12)
+        cre_layout.setSpacing(10)
 
         cre_head = QHBoxLayout()
-        cre_head.setSpacing(8)
-        idx_c04 = QLabel("04")
-        idx_c04.setProperty("class", "sectionIndex")
-        cre_head.addWidget(idx_c04)
-        cre_title = QLabel("Lossless Remux (Saída & Execução)")
+        cre_head.setSpacing(10)
+        cre_title = QLabel("Saída do remux")
         cre_title.setProperty("class", "cardTitle")
         cre_head.addWidget(cre_title)
         cre_head.addStretch()
-        badge_passthrough = QLabel("ZERO RE-ENCODE")
-        badge_passthrough.setProperty("class", "badgeGreen")
+        badge_passthrough = QLabel("Zero re-encode")
+        badge_passthrough.setProperty("class", "tagGreen")
         cre_head.addWidget(badge_passthrough)
         cre_layout.addLayout(cre_head)
 
-        # Destination Path selector
-        path_box = QVBoxLayout()
-        path_box.setSpacing(6)
-        lbl_dest_desc = QLabel("ARQUIVO DE SAIDA (DESTINO)")
-        lbl_dest_desc.setProperty("class", "eyebrowText")
-        path_box.addWidget(lbl_dest_desc)
-
-        path_row = QHBoxLayout()
+        # Destination Path selector (.out container)
+        self.frame_out_path = QFrame()
+        self.frame_out_path.setProperty("class", "outPill")
+        path_row = QHBoxLayout(self.frame_out_path)
+        path_row.setContentsMargins(18, 4, 6, 4)
         path_row.setSpacing(8)
+
         self.txt_output_path = QLineEdit()
         self.txt_output_path.setPlaceholderText("Defina o caminho de destino do arquivo MKV sincronizado...")
         path_row.addWidget(self.txt_output_path, 1)
 
-        btn_browse_dest = QPushButton("Procurar...")
-        btn_browse_dest.setProperty("class", "btnSecondary")
+        btn_browse_dest = QPushButton("Procurar…")
+        btn_browse_dest.setProperty("class", "btnSm")
         btn_browse_dest.clicked.connect(self._browse_destination)
         path_row.addWidget(btn_browse_dest)
-        path_box.addLayout(path_row)
-        cre_layout.addLayout(path_box)
+        cre_layout.addWidget(self.frame_out_path)
 
-        # Progress bar & Cancel action
-        prog_box = QVBoxLayout()
-        prog_box.setSpacing(6)
-        action_row = QHBoxLayout()
-        action_row.setSpacing(10)
+        # Progress bar (.prog container), percentage, & Cancel action
+        prog_row = QHBoxLayout()
+        prog_row.setSpacing(12)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setTextVisible(True)
-        action_row.addWidget(self.progress_bar, 1)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(14)
+        prog_row.addWidget(self.progress_bar, 1)
+
+        self.lbl_progress_pct = QLabel("0%")
+        self.lbl_progress_pct.setStyleSheet("font-weight: 700; font-size: 14px; min-width: 38px;")
+        prog_row.addWidget(self.lbl_progress_pct)
 
         self.btn_cancel = QPushButton("Cancelar")
-        self.btn_cancel.setProperty("class", "btnDanger")
+        self.btn_cancel.setProperty("class", "btnSm")
         self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self.cancel_active_operation)
-        action_row.addWidget(self.btn_cancel)
-        prog_box.addLayout(action_row)
+        prog_row.addWidget(self.btn_cancel)
+        cre_layout.addLayout(prog_row)
 
         self.lbl_progress_status = QLabel("Pronto para operação.")
-        self.lbl_progress_status.setProperty("class", "subText")
-        prog_box.addWidget(self.lbl_progress_status)
-        cre_layout.addLayout(prog_box)
+        self.lbl_progress_status.setProperty("class", "hint")
+        cre_layout.addWidget(self.lbl_progress_status)
 
         col_left.addWidget(self.card_remux_exec)
         self.body_layout.addLayout(col_left, 6)
@@ -265,26 +258,23 @@ class SyncFrameMainWindow(QWidget):
         # RIGHT COLUMN (Stack 2: Acoustic Audit & Instrumentation)
         # ----------------------------------------------------------------------
         col_right = QVBoxLayout()
-        col_right.setSpacing(16)
+        col_right.setSpacing(12)
 
         # Card 03: Acoustic Audit (FFT & Drift Diagnosis)
         card_acoustic = QFrame()
         card_acoustic.setProperty("class", "panelCard")
         ca_layout = QVBoxLayout(card_acoustic)
         ca_layout.setContentsMargins(18, 16, 18, 16)
-        ca_layout.setSpacing(12)
+        ca_layout.setSpacing(10)
 
         ca_head = QHBoxLayout()
-        ca_head.setSpacing(8)
-        idx_c03 = QLabel("03")
-        idx_c03.setProperty("class", "sectionIndex")
-        ca_head.addWidget(idx_c03)
-        ca_title = QLabel("Acoustic Audit & Correlação FFT")
+        ca_head.setSpacing(10)
+        ca_title = QLabel("Auditoria acústica e correlação FFT")
         ca_title.setProperty("class", "cardTitle")
         ca_head.addWidget(ca_title)
         ca_head.addStretch()
-        chip_fft = QLabel("FFT READY")
-        chip_fft.setProperty("class", "badgeSignal")
+        chip_fft = QLabel("FFT pronta")
+        chip_fft.setProperty("class", "tag")
         ca_head.addWidget(chip_fft)
         ca_layout.addLayout(ca_head)
 
@@ -534,6 +524,7 @@ class SyncFrameMainWindow(QWidget):
         self.preview_player.set_media_sources(None, None, 0.0, 0.0)
         self.txt_output_path.clear()
         self.progress_bar.setValue(0)
+        self.lbl_progress_pct.setText("0%")
         self.lbl_progress_status.setText("Pronto para operação.")
         self.btn_cancel.setEnabled(False)
 
@@ -627,6 +618,8 @@ class SyncFrameMainWindow(QWidget):
 
     def _on_step_progress(self, msg: str, pct: float):
         self.progress_bar.setValue(int(pct))
+        if hasattr(self, "lbl_progress_pct"):
+            self.lbl_progress_pct.setText(f"{int(pct)}%")
         self.lbl_progress_status.setText(msg)
 
     def _on_correlation_ready(self, telemetry: dict):
@@ -654,6 +647,8 @@ class SyncFrameMainWindow(QWidget):
 
     def _on_worker_progress(self, pct: int, status_str: str):
         self.progress_bar.setValue(int(pct))
+        if hasattr(self, "lbl_progress_pct"):
+            self.lbl_progress_pct.setText(f"{int(pct)}%")
         self.lbl_progress_status.setText(status_str)
 
     def _on_metrics_ready(self, metrics: SyncMetrics):
@@ -670,6 +665,8 @@ class SyncFrameMainWindow(QWidget):
         self._restore_action_button()
         self.btn_cancel.setEnabled(False)
         self.progress_bar.setValue(100 if success else 0)
+        if hasattr(self, "lbl_progress_pct"):
+            self.lbl_progress_pct.setText("100%" if success else "0%")
         self.lbl_progress_status.setText(msg)
 
         if success:
