@@ -283,9 +283,10 @@ class UnifiedDropZone(QFrame):
 
         # File Card: Video Reference (.file)
         self.card_file_v = QFrame()
+        self.card_file_v.setObjectName("cardFileV")
         self.card_file_v.setProperty("class", "fileBox")
         cf_v_layout = QVBoxLayout(self.card_file_v)
-        cf_v_layout.setContentsMargins(12, 8, 12, 8)
+        cf_v_layout.setContentsMargins(14, 10, 14, 10)
         cf_v_layout.setSpacing(4)
 
         head_v = QHBoxLayout()
@@ -294,7 +295,8 @@ class UnifiedDropZone(QFrame):
         head_v.addWidget(lbl_v_role)
         head_v.addStretch()
         self.badge_v_fmt = QLabel("MKV")
-        self.badge_v_fmt.setProperty("class", "tag")
+        self.badge_v_fmt.setObjectName("badgeVFmt")
+        self.badge_v_fmt.setProperty("class", "formatChip")
         head_v.addWidget(self.badge_v_fmt)
         cf_v_layout.addLayout(head_v)
 
@@ -310,9 +312,10 @@ class UnifiedDropZone(QFrame):
 
         # File Card: Dubbed Audio Source (.file)
         self.card_file_a = QFrame()
+        self.card_file_a.setObjectName("cardFileA")
         self.card_file_a.setProperty("class", "fileBox")
         cf_a_layout = QVBoxLayout(self.card_file_a)
-        cf_a_layout.setContentsMargins(12, 8, 12, 8)
+        cf_a_layout.setContentsMargins(14, 10, 14, 10)
         cf_a_layout.setSpacing(4)
 
         head_a = QHBoxLayout()
@@ -321,7 +324,8 @@ class UnifiedDropZone(QFrame):
         head_a.addWidget(lbl_a_role)
         head_a.addStretch()
         self.badge_a_fmt = QLabel("MP4")
-        self.badge_a_fmt.setProperty("class", "tag")
+        self.badge_a_fmt.setObjectName("badgeAFmt")
+        self.badge_a_fmt.setProperty("class", "formatChip")
         head_a.addWidget(self.badge_a_fmt)
         cf_a_layout.addLayout(head_a)
 
@@ -401,7 +405,8 @@ class UnifiedDropZone(QFrame):
         rf_head.addStretch()
 
         self.btn_restore_recommendation = QPushButton("Restaurar Recomendação")
-        self.btn_restore_recommendation.setProperty("class", "btnSm")
+        self.btn_restore_recommendation.setObjectName("btnRestore")
+        self.btn_restore_recommendation.setProperty("class", "btnRestore")
         self.btn_restore_recommendation.setToolTip("Restaura a combinação ótima original calculada pelo probing inicial.")
         self.btn_restore_recommendation.clicked.connect(self.reset_to_recommended_state)
         rf_head.addWidget(self.btn_restore_recommendation)
@@ -956,6 +961,13 @@ class UnifiedDropZone(QFrame):
         chosen_ref = self.combo_ref_audio.currentData()
         keep_orig = self.check_keep_original.isChecked()
 
+        if not chosen_video and self.current_verdict:
+            chosen_video = self.current_verdict.recommended_video
+        if not chosen_target and self.current_verdict:
+            chosen_target = self.current_verdict.recommended_target_audio
+        if not chosen_ref and self.current_verdict:
+            chosen_ref = self.current_verdict.reference_audio
+
         if chosen_video and chosen_target:
             self.confirmation_confirmed.emit(chosen_video, chosen_target, chosen_ref, keep_orig)
 
@@ -1126,6 +1138,15 @@ class UnifiedDropZone(QFrame):
             self.target_audio_changed.emit(target_track_id)
         if ref_track_id >= 0:
             self.ref_audio_changed.emit(ref_track_id)
+
+    def reset_to_recommended(self) -> None:
+        """Alias for reset_to_recommended_state for public contract compliance."""
+        self.reset_to_recommended_state()
+
+    @property
+    def btn_run(self) -> QPushButton:
+        """Primary action trigger alias."""
+        return self.btn_confirm
 
     def get_review_state(self) -> StreamReviewState:
         """Constructs a snapshot contract representing the user-configured stream selection state."""

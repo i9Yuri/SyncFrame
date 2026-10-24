@@ -245,6 +245,54 @@ class TestStreamReviewGate(unittest.TestCase):
         self.assertTrue(hasattr(worker, "remux_progress"))
         self.assertTrue(hasattr(worker, "remux_completed"))
 
+    def test_stream_review_gate_reset_to_recommended(self):
+        """Ensures reset_to_recommended() method exists and functions."""
+        dz = StreamReviewGate()
+        try:
+            self.assertTrue(hasattr(dz, "reset_to_recommended"))
+            self.assertTrue(callable(dz.reset_to_recommended))
+            dz.reset_to_recommended()
+        finally:
+            dz.deleteLater()
+
+    def test_style_engine_apply_universal_rounded_tokens(self):
+        """Validates StyleEngine and functional export for dark and light themes."""
+        from src.ui.style import StyleEngine, apply_universal_rounded_tokens
+        dark_qss = StyleEngine.apply_universal_rounded_tokens("dark")
+        self.assertIn("border-radius: 999px", dark_qss)
+        self.assertIn("border-radius: 16px", dark_qss)
+        self.assertIn("#btnTheme", dark_qss)
+        self.assertIn("#cardFileV", dark_qss)
+
+        light_qss = apply_universal_rounded_tokens("light")
+        self.assertIn("border-radius: 999px", light_qss)
+        self.assertIn("border-radius: 16px", light_qss)
+        self.assertIn("#btnTheme", light_qss)
+        self.assertIn("#cardFileV", light_qss)
+
+    def test_main_window_wire_pipeline_signals_and_run_contract(self):
+        """Validates MainWindow.wire_pipeline_signals and on_run_clicked interface."""
+        from src.ui.main_window import SyncFrameMainWindow
+        window = SyncFrameMainWindow()
+        try:
+            self.assertTrue(hasattr(window, "wire_pipeline_signals"))
+            self.assertTrue(hasattr(window, "on_run_clicked"))
+            self.assertTrue(hasattr(window, "btn_run"))
+
+            job = RemuxJob(
+                output_path="/tmp/out.mkv",
+                video_file="/tmp/v.mkv",
+                target_audio_file="/tmp/a.mkv",
+                offset_ms=0.0,
+                stretch_ratio=1.0,
+                keep_original_audio=True
+            )
+            worker = UnifiedPipelineWorker(job)
+            window.wire_pipeline_signals(worker)
+        finally:
+            window.deleteLater()
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -60,11 +60,13 @@ class PreviewPlayer(QFrame):
         header.addStretch()
 
         badge_backend = QLabel("Backend MPV")
-        badge_backend.setProperty("class", "tagNeutral")
+        badge_backend.setObjectName("badgeBackendMpv")
+        badge_backend.setProperty("class", "pillSoft")
         header.addWidget(badge_backend)
 
         self.btn_stop = QPushButton("Parar")
-        self.btn_stop.setProperty("class", "btnSm")
+        self.btn_stop.setObjectName("btnStopPreview")
+        self.btn_stop.setProperty("class", "pill")
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_preview)
         header.addWidget(self.btn_stop)

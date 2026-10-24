@@ -71,6 +71,7 @@ class SyncFrameMainWindow(QWidget):
         self.latest_metrics: Optional[SyncMetrics] = None
         self.pipeline_worker: Optional[UnifiedPipelineWorker] = None
         self.active_worker: Optional[UnifiedPipelineWorker] = None
+        self.current_worker: Optional[UnifiedPipelineWorker] = None
         self.analyze_worker: Optional[AnalyzeWorker] = None
         self.remux_worker: Optional[RemuxWorker] = None
         self.ref_audio_file: Optional[str] = None
@@ -91,6 +92,11 @@ class SyncFrameMainWindow(QWidget):
 
     @property
     def btn_remux(self):
+        """Forwarding property pointing to the unified primary action button."""
+        return self.drop_zone.btn_confirm
+
+    @property
+    def btn_run(self):
         """Forwarding property pointing to the unified primary action button."""
         return self.drop_zone.btn_confirm
 
@@ -142,6 +148,7 @@ class SyncFrameMainWindow(QWidget):
         tb_layout.addWidget(self.pill_workspace)
 
         self.btn_theme = QPushButton("Modo Claro")
+        self.btn_theme.setObjectName("btnTheme")
         self.btn_theme.setProperty("class", "pill")
         self.btn_theme.setToolTip("Alternar entre Dark e Light Mode")
         self.btn_theme.clicked.connect(self.toggle_theme_mode)
@@ -213,16 +220,20 @@ class SyncFrameMainWindow(QWidget):
 
         # Destination Path selector (.out container)
         self.frame_out_path = QFrame()
+        self.frame_out_path.setObjectName("frameOutPath")
         self.frame_out_path.setProperty("class", "outPill")
         path_row = QHBoxLayout(self.frame_out_path)
         path_row.setContentsMargins(18, 4, 6, 4)
         path_row.setSpacing(8)
 
         self.txt_output_path = QLineEdit()
+        self.txt_output_path.setObjectName("txtOutputPath")
+        self.txt_output_path.setProperty("class", "outPath")
         self.txt_output_path.setPlaceholderText("Defina o caminho de destino do arquivo MKV sincronizado...")
         path_row.addWidget(self.txt_output_path, 1)
 
         btn_browse_dest = QPushButton("Procurar…")
+        btn_browse_dest.setObjectName("btnBrowse")
         btn_browse_dest.setProperty("class", "btnSm")
         btn_browse_dest.clicked.connect(self._browse_destination)
         path_row.addWidget(btn_browse_dest)
@@ -277,7 +288,8 @@ class SyncFrameMainWindow(QWidget):
         ca_head.addWidget(ca_title)
         ca_head.addStretch()
         chip_fft = QLabel("FFT pronta")
-        chip_fft.setProperty("class", "tag")
+        chip_fft.setObjectName("chipFFT")
+        chip_fft.setProperty("class", "statusPill")
         ca_head.addWidget(chip_fft)
         ca_layout.addLayout(ca_head)
 
@@ -518,9 +530,8 @@ class SyncFrameMainWindow(QWidget):
 
         # Set default output path if not yet populated
         if not self.txt_output_path.text().strip():
-            base_dir = os.path.dirname(self.video_path) or "."
-            base_name = os.path.splitext(os.path.basename(self.video_path))[0]
-            self.txt_output_path.setText(os.path.join(base_dir, f"{base_name}_synced.mkv"))
+            base, _ = os.path.splitext(self.video_path)
+            self.txt_output_path.setText(f"{base}_synced.mkv")
 
         self.auto_chain_remux = True
         self.start_analysis()
@@ -558,21 +569,64 @@ class SyncFrameMainWindow(QWidget):
         if f:
             self.txt_output_path.setText(f)
 
-    def start_analysis(self):
-        if not self.video_path or not self.audio_path:
+    def on_run_clicked(self) -> None:
+        """
+        Validates pre-flight conditions with explicit logging, updates UI to processing state,
+        and dispatches the unified asynchronous pipeline worker.
+        """
+        # Guard against concurrent dispatches
+        if (self.active_worker and self.active_worker.isRunning()) or (self.pipeline_worker and self.pipeline_worker.isRunning()):
             return
+
+        # Ensure video_path and audio_path are populated
+        if not self.video_path or not self.audio_path:
+            v_cand = self.drop_zone.combo_video.currentData() if hasattr(self.drop_zone, "combo_video") else None
+            t_cand = self.drop_zone.combo_target_audio.currentData() if hasattr(self.drop_zone, "combo_target_audio") else None
+            r_cand = self.drop_zone.combo_ref_audio.currentData() if hasattr(self.drop_zone, "combo_ref_audio") else None
+            if not v_cand and getattr(self.drop_zone, "current_verdict", None):
+                v_cand = self.drop_zone.current_verdict.recommended_video
+            if not t_cand and getattr(self.drop_zone, "current_verdict", None):
+                t_cand = self.drop_zone.current_verdict.recommended_target_audio
+            if not r_cand and getattr(self.drop_zone, "current_verdict", None):
+                r_cand = self.drop_zone.current_verdict.reference_audio
+
+            if v_cand and t_cand:
+                self.video_path = v_cand.file_path
+                self.audio_path = t_cand.file_path
+                self.selected_video_track_id = v_cand.stream.id
+                self.selected_target_audio_id = t_cand.stream.id
+                self.ref_audio_file = r_cand.file_path if r_cand else self.video_path
+                self.selected_ref_audio_id = r_cand.stream.id if r_cand else 1
+            else:
+                msg = "Fontes de vídeo e áudio não selecionadas para sincronização."
+                self.log_drawer.append_log(f"[AVISO] {msg}")
+                QMessageBox.warning(self, "Aviso", msg)
+                self._restore_action_button()
+                return
 
         out_path = self.txt_output_path.text().strip()
         if not out_path:
-            QMessageBox.warning(self, "Aviso", "Por favor, defina o arquivo de saída.")
+            base, _ = os.path.splitext(self.video_path)
+            out_path = f"{base}_synced.mkv"
+            self.txt_output_path.setText(out_path)
+
+        # Pre-flight disk space validation with correct signature: (out_path, video_path, audio_path)
+        is_sufficient, free_bytes, required_bytes = check_disk_space(
+            destination_path=out_path,
+            video_source_path=self.video_path,
+            audio_source_path=self.audio_path
+        )
+        if not is_sufficient:
+            err_msg = (
+                f"Espaço insuficiente no disco de destino. "
+                f"Disponível: {format_bytes(free_bytes)} | Necessário estimado: {format_bytes(required_bytes)}"
+            )
+            self.log_drawer.append_log(f"[ERRO CRÍTICO] {err_msg}")
+            QMessageBox.critical(self, "Espaço Insuficiente", err_msg)
+            self._restore_action_button()
             return
 
-        ok, msg = check_disk_space(os.path.dirname(out_path) or ".", 2 * 1024 * 1024 * 1024)
-        if not ok:
-            QMessageBox.critical(self, "Espaço Insuficiente", msg)
-            return
-
-        keep_orig = self.drop_zone.check_keep_original.isChecked()
+        keep_orig = self.drop_zone.check_keep_original.isChecked() if hasattr(self.drop_zone, "check_keep_original") else True
         pal_pitch = getattr(self.drop_zone, "check_pal_pitch", None) and self.drop_zone.check_pal_pitch.isChecked()
         codec = self.drop_zone.combo_audio_codec.currentData() if hasattr(self.drop_zone, "combo_audio_codec") else "flac"
         discarded_ids = self.drop_zone.get_discarded_audio_ids() if hasattr(self.drop_zone, "get_discarded_audio_ids") else []
@@ -595,18 +649,22 @@ class SyncFrameMainWindow(QWidget):
 
         self.job = job
 
+        # Visual update: disable button, set label, set wait cursor
         if hasattr(self, "drop_zone") and hasattr(self.drop_zone, "btn_confirm"):
             self.drop_zone.btn_confirm.setEnabled(False)
-            self.drop_zone.btn_confirm.setText("Processando sincronização...")
+            self.drop_zone.btn_confirm.setText("Processando...")
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
         self._completion_modal_shown = False
         self.btn_cancel.setEnabled(True)
         self.lbl_progress_status.setText("Iniciando esteira unificada de processamento...")
         self.progress_bar.setValue(5)
+        if hasattr(self, "lbl_progress_pct"):
+            self.lbl_progress_pct.setText("5%")
         self.log_drawer.append_log("Disparando UnifiedPipelineWorker...")
-        self.correlation_view.set_status("Extraindo amostras acústicas e calculando FFT...")
+        self.correlation_view.set_status("Calculando correlação espectral...")
 
+        # Worker instantiation and explicit instance binding
         worker = UnifiedPipelineWorker(
             job,
             manual_offset_override=self.manual_offset_override,
@@ -614,7 +672,14 @@ class SyncFrameMainWindow(QWidget):
         )
         self.pipeline_worker = worker
         self.active_worker = worker
+        self.current_worker = worker
 
+        self.wire_pipeline_signals(worker)
+        worker.start()
+
+    def wire_pipeline_signals(self, worker: PipelineWorker) -> None:
+        """Explicitly connects all telemetry and progress signals from the worker to GUI components."""
+        worker.started.connect(self._on_worker_started)
         worker.analysis_started.connect(self._on_analysis_started)
         worker.step_progress.connect(self._on_step_progress)
         worker.correlation_ready.connect(self._on_correlation_ready)
@@ -630,7 +695,14 @@ class SyncFrameMainWindow(QWidget):
         worker.log_message.connect(self.log_drawer.append_log)
         worker.metrics_ready.connect(self._on_metrics_ready)
         worker.completed.connect(self._on_pipeline_completed)
-        worker.start()
+
+    def _on_worker_started(self):
+        self.correlation_view.set_status("Calculando correlação espectral...")
+        self.lbl_progress_status.setText("Calculando correlação espectral...")
+
+    def start_analysis(self):
+        """Backwards-compatible alias for on_run_clicked."""
+        self.on_run_clicked()
 
     def _restore_action_button(self):
         """Restores the primary action button and normal mouse cursor."""

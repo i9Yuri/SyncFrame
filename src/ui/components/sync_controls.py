@@ -55,7 +55,8 @@ class SyncControls(QFrame):
         header_layout.addStretch()
 
         self.chip_track = QLabel("Faixa A02")
-        self.chip_track.setProperty("class", "tag")
+        self.chip_track.setObjectName("chipTrack")
+        self.chip_track.setProperty("class", "statusPill")
         header_layout.addWidget(self.chip_track)
         layout.addLayout(header_layout)
 
@@ -90,7 +91,7 @@ class SyncControls(QFrame):
         self.frame_slider.setObjectName("frameSlider")
         self.frame_slider.setProperty("class", "sliderContainer")
         slider_box = QVBoxLayout(self.frame_slider)
-        slider_box.setContentsMargins(4, 12, 4, 4)
+        slider_box.setContentsMargins(14, 10, 14, 10)
         slider_box.setSpacing(6)
 
         self.slider = QSlider(Qt.Horizontal)

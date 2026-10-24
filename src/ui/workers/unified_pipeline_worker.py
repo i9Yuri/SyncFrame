@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 import threading
 import traceback
 from typing import Optional
@@ -205,8 +206,12 @@ class UnifiedPipelineWorker(QThread):
                     self.completed.emit(False, err)
 
         except Exception as exc:
+            tb = traceback.format_exc()
             err_msg = f"Falha na execução do pipeline: {exc}"
-            logger.error("UnifiedPipelineWorker failed: %s\n%s", exc, traceback.format_exc())
+            logger.error("UnifiedPipelineWorker failed: %s\n%s", exc, tb)
+            sys.stderr.write(f"[SyncFrame ERROR] {err_msg}\n{tb}\n")
+            sys.stderr.flush()
+            self.log_message.emit(f"[ERRO CRÍTICO] {err_msg}")
             self.execution_failed.emit(err_msg)
             self.error.emit(str(exc))
             self.completed.emit(False, err_msg)

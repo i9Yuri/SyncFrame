@@ -8,6 +8,14 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [1.2.0] - 2026-10-24
 
 ### Corrigido
+- **Padronização Universal de Cantos Arredondados e Eliminação de Retângulos Rígidos:**
+  - Aplicação estrita de geometria curva contínua e pílulas ovais (`border-radius: 999px`) em 100% dos botões, chips, badges e pseudo-estados (`:hover`, `:pressed`, `:disabled`, `:focus`), impedindo a regressão do Qt QSS para cantos de 90 graus durante interações com o mouse.
+  - Padronização do botão de alternância de tema (`#btnTheme`), badges de formato (`#badgeVFmt`, `#badgeAFmt`, `formatChip`), badges de status (`#chipFFT`, `#chipTrack`), botão "Restaurar Recomendação" (`#btnRestore`), campo de texto e container de saída (`#frameOutPath`, `#txtOutputPath`), caixas de seleção (`QComboBox`), chip de timecode (`#lblTimecodeChip`), botões de salto/step e dock flutuante.
+  - Ajuste ergonômico da área de arquivos selecionados (`cardFileV`, `cardFileA`, `fileBox`) com cantos de 16px e do container do slider de alinhamento (`frameSlider`) com 16px, groove de 6px (raio 3px) e manípulo circular de 20x20px (raio 10px).
+  - Implementação da classe `StyleEngine` com método utilitário estático `apply_universal_rounded_tokens(theme_mode)` e exportação a nível de módulo.
+- **Resolução da Inércia de Execução do Botão Primário ("Sincronizar e Concluir"):**
+  - Correção de chamada com divergência de assinatura na verificação pré-voo de armazenamento (`check_disk_space`), fornecendo os três caminhos obrigatórios (`destination_path`, `video_source_path`, `audio_source_path`) e prevenindo o lançamento de exceção não tratada no despachador de eventos do Qt.
+  - Implementação formal dos contratos de execução da janela principal: `MainWindow.on_run_clicked()` com auditoria pré-voo e ancoragem determinística da thread trabalhadora (`self.current_worker = worker`), `MainWindow.wire_pipeline_signals()` conectando todos os sinais de telemetria, progresso e conclusão, e `StreamReviewGate.reset_to_recommended()` para restauração dos seletores.
 - **Contorno Recortado na Área de Drop (Dropzone Corner Clipping):**
   - Isolamento estrito da borda pontilhada no `#dropFrameEmpty` e neutralização do contorno recortado no container raiz (`UnifiedDropZone`), eliminando o vazamento de borda interna sob a linha tracejada com cantos arredondados (`border-radius: 24px`).
   - Configuração de fundo transparente em `QStackedWidget` nas folhas de estilo de ambos os temas para evitar artefatos de herança de estilo sobre os componentes filhos.
