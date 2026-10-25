@@ -16,8 +16,9 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Padronização geométrica e cromática do modal de seleção de trilhas (`StreamSelectorModal`) com cantos de 28px no diálogo, 24px nos cards internos, pílulas ovais nos controles e paleta monocromática neutra (`badgeNeutral`).
   - Implementação da classe `StyleEngine` com método utilitário estático `apply_universal_rounded_tokens(theme_mode)` e exportação de helpers modulares para geração determinística de estilos curvos.
 - **Depuração e Higienização da Topbar e Expurgo de Elementos Inoperantes:**
-  - Padronização determinística dos botões e pills do cabeçalho via `MainWindow.setup_topbar_actions()`: altura uniforme e compacta de 34px, geometria em pílula contínua (`border-radius: 999px;`), dimensionamento dinâmico via `QFontMetrics` acrescido de padding lateral simétrico (`padding: 0 14px;`) e espaçamento horizontal de 8px.
-  - Eliminação total de truncamento de texto nos botões superiores, garantindo a exibição integral de "Modo Claro", "Modo Escuro" e "Espaço de trabalho local".
+  - Padronização determinística dos botões e pills do cabeçalho via `MainWindow.setup_topbar_actions()`: altura uniforme e compacta de 34px, geometria em pílula semicircular matematicamente exata (`border-radius: 17px;` proporcional à meia-altura de 34px) sanando a falha do Qt QSS que revertia `border-radius: 999px` para retângulos rígidos de 90 graus.
+  - Eliminação de truncamento no badge de versão (`v1.2.0`), com centralização explícita (`qproperty-alignment: AlignCenter;`), alinhamento `Qt.AlignCenter` e dimensionamento com margem generosa de segurança (`max(76, text_w + 38)`).
+  - Prevenção de duplicidade de padding em `pillWorkspace` (`padding: 0px;` no QSS delegando espaçamentos internos ao layout), exibindo integralmente "Espaço de trabalho" e "Modo Claro" / "Modo Escuro".
   - Expurgo sumário do botão inoperante "Modo Edição" da Topbar visível, consolidando o layout estático proporcional e sem elementos residuais.
   - Confinamento estrito do grid técnico de cruzes ortogonais (+) do `paintEvent` à área útil de conteúdo abaixo da Topbar (`start_y >= topbar_bottom + 24px`), impedindo que cruzamentos decorativos vazem ou sobreponham elementos de navegação do cabeçalho.
 - **Refatoração do Seletor de Sensibilidade e Botões em Pílula Orgânica:**

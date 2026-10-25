@@ -416,7 +416,7 @@ class SyncFrameMainWindow(QWidget):
             dot_ws = QLabel()
             dot_ws.setProperty("class", "greenDot")
             pw_layout.addWidget(dot_ws)
-            self.chip_workspace = QLabel("Espaço de trabalho local")
+            self.chip_workspace = QLabel("Espaço de trabalho")
             self.chip_workspace.setStyleSheet("font-weight: 600; font-size: 13px; border: none; background: transparent;")
             pw_layout.addWidget(self.chip_workspace)
             tb_layout.addWidget(self.pill_workspace)
@@ -450,11 +450,13 @@ class SyncFrameMainWindow(QWidget):
         # 4. Version badge
         if not hasattr(self, "badge_v") or self.badge_v is None:
             self.badge_v = QLabel("v1.2.0")
+            self.badge_v.setAlignment(Qt.AlignCenter)
             tb_layout.addWidget(self.badge_v)
 
         self.badge_v.setObjectName("badgeVersion")
         self.badge_v.setProperty("class", "pillSoft")
         self.badge_v.setFixedHeight(34)
+        self.badge_v.setAlignment(Qt.AlignCenter)
 
         self._update_topbar_pill_sizes()
 
@@ -480,21 +482,21 @@ class SyncFrameMainWindow(QWidget):
         self._update_topbar_pill_sizes()
 
     def _update_topbar_pill_sizes(self) -> None:
-        """Dynamically sizes topbar pill tags and buttons based on QFontMetrics + 28px lateral padding."""
+        """Dynamically sizes topbar pill tags and buttons based on QFontMetrics with generous margins."""
         if hasattr(self, "pill_workspace") and hasattr(self, "chip_workspace") and self.pill_workspace:
             fm_ws = self.chip_workspace.fontMetrics()
             text_w = fm_ws.horizontalAdvance(self.chip_workspace.text())
-            self.pill_workspace.setFixedWidth(text_w + 44)
+            self.pill_workspace.setFixedWidth(max(text_w + 52, 160))
             self.pill_workspace.setFixedHeight(34)
 
         if hasattr(self, "btn_theme") and self.btn_theme and self.btn_theme.text():
             fm_theme = self.btn_theme.fontMetrics()
-            self.btn_theme.setFixedWidth(fm_theme.horizontalAdvance(self.btn_theme.text()) + 28)
+            self.btn_theme.setFixedWidth(fm_theme.horizontalAdvance(self.btn_theme.text()) + 34)
             self.btn_theme.setFixedHeight(34)
 
         if hasattr(self, "badge_v") and self.badge_v and self.badge_v.text():
             fm_v = self.badge_v.fontMetrics()
-            self.badge_v.setFixedWidth(fm_v.horizontalAdvance(self.badge_v.text()) + 28)
+            self.badge_v.setFixedWidth(max(76, fm_v.horizontalAdvance(self.badge_v.text()) + 38))
             self.badge_v.setFixedHeight(34)
 
         if hasattr(self, "btn_edit_mode") and self.btn_edit_mode and self.btn_edit_mode.text():

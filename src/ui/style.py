@@ -206,7 +206,7 @@ QLabel#topCrumb {
 
 /* Header Pills (One UI Status & Actions) */
 QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnResetOffset, QPushButton#btn_reset {
-    border-radius: 999px;
+    border-radius: 17px;
     height: 34px;
     min-height: 34px;
     max-height: 34px;
@@ -218,18 +218,33 @@ QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#bt
     border: none;
 }
 
+QFrame#pillWorkspace {
+    padding: 0px;
+}
+
 QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
     background-color: #26272d;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
 QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
     background-color: #33343b;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
-QFrame.pillSoft, QLabel.pillSoft, QLabel#badgeBackendMpv, QLabel#badgeVersion {
-    border-radius: 999px;
+QFrame.pillSoft {
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    background-color: #26272d;
+    color: #9a9eac;
+    padding: 0 14px;
+    border: none;
+}
+
+QLabel.pillSoft, QLabel#badgeBackendMpv, QLabel#badgeVersion {
+    border-radius: 17px;
     height: 34px;
     min-height: 34px;
     max-height: 34px;
@@ -239,6 +254,7 @@ QFrame.pillSoft, QLabel.pillSoft, QLabel#badgeBackendMpv, QLabel#badgeVersion {
     font-weight: 600;
     font-size: 13px;
     border: none;
+    qproperty-alignment: AlignCenter;
 }
 
 QLabel.greenDot {
@@ -1079,7 +1095,7 @@ QLabel#topCrumb {
 
 /* Header Pills (One UI Status & Actions) */
 QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnResetOffset, QPushButton#btn_reset {
-    border-radius: 999px;
+    border-radius: 17px;
     height: 34px;
     min-height: 34px;
     max-height: 34px;
@@ -1091,18 +1107,33 @@ QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#bt
     border: none;
 }
 
+QFrame#pillWorkspace {
+    padding: 0px;
+}
+
 QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
     background-color: #eceef4;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
 QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
     background-color: #e1e4ed;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
-QFrame.pillSoft, QLabel.pillSoft, QLabel#badgeBackendMpv, QLabel#badgeVersion {
-    border-radius: 999px;
+QFrame.pillSoft {
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    background-color: #eceef4;
+    color: #6a7080;
+    padding: 0 14px;
+    border: none;
+}
+
+QLabel.pillSoft, QLabel#badgeBackendMpv, QLabel#badgeVersion {
+    border-radius: 17px;
     height: 34px;
     min-height: 34px;
     max-height: 34px;
@@ -1112,6 +1143,7 @@ QFrame.pillSoft, QLabel.pillSoft, QLabel#badgeBackendMpv, QLabel#badgeVersion {
     font-weight: 600;
     font-size: 13px;
     border: none;
+    qproperty-alignment: AlignCenter;
 }
 
 QLabel.greenDot {
