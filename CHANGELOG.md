@@ -46,7 +46,11 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Ajuste do raio de curvatura da doca inferior (`#floatingDock`) de `34px` para `border-radius: 28px;`, eliminando a falha do Qt QSS que descartava o raio por exceder a meia-altura de 56px (56 / 2 = 28px) e revertia para um retângulo de cantos retos.
   - Padronização do badge de contagem de eventos (`#badgeEventCount`) com altura fixa de 28px, alinhamento centralizado e `border-radius: 14px;`, eliminando arestas rígidas retangulares.
   - Transformação dos botões "Limpar" (`#btnDockClear`) e "Expandir" / "Recolher" (`#btnDockToggle`) em botões de pílula contínua de 34px de altura (`border-radius: 17px; height: 34px; padding: 0 14px; border: none;`) em ambos os temas Dark e Light.
-  - Padronização dos botões seletores do player de inspeção (`#btnMarkerP05`, `#btnMarkerP50`, `#btnMarkerP90`) com altura fixa de 40px e `border-radius: 20px;`, chip de timecode (`#lblTimecodeChip`) em 26px com `border-radius: 13px;` e botões retráteis em 36px com `border-radius: 18px;`.
+  - Padronização da doca flutuante em 28px de curvatura contínua e botões retráteis em 36px com `border-radius: 18px;`.
+- **Erradicação de Quinas Vivas e Geometria Orgânica no Player de Inspeção Labial (`PreviewPlayer`):**
+  - Padronização dos botões seletores de marcos temporais (`#btnMarkerP05`, `#btnMarkerP50`, `#btnMarkerP90`) em cápsulas pílula contínuas de 40px com `border-radius: 20px;`, altura fixa explícita e tratamento completo de estados (`:hover`, `:pressed`, `:checked`, `:disabled`).
+  - Formatação do chip de timecode (`#lblTimecodeChip`) como cápsula semicircular de 26px (`border-radius: 13px; height: 26px; border: none;`), eliminando caixas retangulares duras no visor do monitor.
+  - Fixação da altura de 34px no botão "Parar" (`#btnStopPreview`) e badge de backend (`#badgeBackendMpv`), com contorno pílula visível no estado desativado (`border-radius: 17px; background: #222329` em Dark, `#f1f2f6` em Light).
 
 ## [1.2.0] - 2026-10-24
 

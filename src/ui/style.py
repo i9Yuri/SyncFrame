@@ -1041,6 +1041,29 @@ QPushButton.markerBtn:checked, QPushButton.markerBtn.on, QPushButton.markerBtn[o
     border-radius: 20px;
 }
 
+QPushButton.markerBtn:pressed {
+    background-color: #40424c;
+    border-radius: 20px;
+}
+
+QPushButton.markerBtn:disabled {
+    background-color: #1b1c20;
+    color: #555864;
+    border-radius: 20px;
+    border: none;
+}
+
+QPushButton#btnStopPreview:disabled {
+    background-color: #222329;
+    color: #555864;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 14px;
+    border: none;
+}
+
 /* Floating Dock (.dock) */
 QFrame.floatingDock, QFrame#floatingDock, QFrame#eventLogDrawer {
     background-color: #1b1c20;
@@ -2132,6 +2155,29 @@ QPushButton.markerBtn:checked, QPushButton.markerBtn.on, QPushButton.markerBtn[o
     background-color: #16181d;
     color: #ffffff;
     border-radius: 20px;
+}
+
+QPushButton.markerBtn:pressed {
+    background-color: #d3d6e0;
+    border-radius: 20px;
+}
+
+QPushButton.markerBtn:disabled {
+    background-color: #f1f2f6;
+    color: #9a9eac;
+    border-radius: 20px;
+    border: none;
+}
+
+QPushButton#btnStopPreview:disabled {
+    background-color: #f1f2f6;
+    color: #a0a4b0;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 14px;
+    border: none;
 }
 
 /* Floating Dock (.dock) */

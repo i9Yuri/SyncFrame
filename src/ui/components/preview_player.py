@@ -181,11 +181,15 @@ class PreviewPlayer(QFrame):
         badge_backend = QLabel("Backend MPV")
         badge_backend.setObjectName("badgeBackendMpv")
         badge_backend.setProperty("class", "pillSoft")
+        badge_backend.setFixedHeight(34)
+        badge_backend.setAlignment(Qt.AlignCenter)
         header.addWidget(badge_backend)
 
         self.btn_stop = QPushButton("Parar")
         self.btn_stop.setObjectName("btnStopPreview")
         self.btn_stop.setProperty("class", "pill")
+        self.btn_stop.setFixedHeight(34)
+        self.btn_stop.setCursor(Qt.PointingHandCursor)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_preview)
         header.addWidget(self.btn_stop)
@@ -194,6 +198,7 @@ class PreviewPlayer(QFrame):
 
         # Monitor visor display
         self.monitor_screen = QFrame()
+        self.monitor_screen.setObjectName("monitorScreen")
         self.monitor_screen.setProperty("class", "viewBox")
         self.monitor_screen.setMinimumHeight(160)
         ms_layout = QVBoxLayout(self.monitor_screen)
