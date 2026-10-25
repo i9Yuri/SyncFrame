@@ -41,17 +41,20 @@ class TestUILayoutResponsiveness(unittest.TestCase):
     def test_theme_switcher(self):
         """Theme toggle must switch between dark and light themes dynamically."""
         self.assertEqual(self.window.current_theme, "dark")
-        self.assertIn("Modo Claro", self.window.btn_theme.text())
+        self.assertIn("Modo Claro", self.window.btn_theme.toolTip())
+        self.assertFalse(self.window.btn_theme.icon().isNull())
 
         # Toggle to light theme
         self.window.btn_theme.click()
         self.assertEqual(self.window.current_theme, "light")
-        self.assertIn("Modo Escuro", self.window.btn_theme.text())
+        self.assertIn("Modo Escuro", self.window.btn_theme.toolTip())
+        self.assertFalse(self.window.btn_theme.icon().isNull())
 
         # Toggle back to dark theme
         self.window.btn_theme.click()
         self.assertEqual(self.window.current_theme, "dark")
-        self.assertIn("Modo Claro", self.window.btn_theme.text())
+        self.assertIn("Modo Claro", self.window.btn_theme.toolTip())
+        self.assertFalse(self.window.btn_theme.icon().isNull())
 
     def test_windowed_mode_resizing(self):
         """Verifies that window resizes gracefully without overlapping or raising layout errors."""

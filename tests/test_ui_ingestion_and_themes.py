@@ -109,7 +109,8 @@ class TestUIIngestionAndThemes(unittest.TestCase):
         # Test dark theme
         self.window.apply_application_theme("dark")
         self.assertEqual(self.window.current_theme, "dark")
-        self.assertEqual(self.window.btn_theme.text(), "Modo Claro")
+        self.assertEqual(self.window.btn_theme.toolTip(), "Modo Claro")
+        self.assertFalse(self.window.btn_theme.icon().isNull())
 
         dark_qss = get_theme_stylesheet("dark")
         self.assertIn("#0a0b0d", dark_qss)
@@ -119,7 +120,8 @@ class TestUIIngestionAndThemes(unittest.TestCase):
         # Test light theme
         self.window.apply_application_theme("light")
         self.assertEqual(self.window.current_theme, "light")
-        self.assertEqual(self.window.btn_theme.text(), "Modo Escuro")
+        self.assertEqual(self.window.btn_theme.toolTip(), "Modo Escuro")
+        self.assertFalse(self.window.btn_theme.icon().isNull())
 
         light_qss = get_theme_stylesheet("light")
         self.assertIn("#f2f3f1", light_qss)

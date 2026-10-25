@@ -6,6 +6,56 @@ from PySide6.QtWidgets import QApplication
 
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 CHECK_GLYPH_PATH = os.path.join(ASSETS_DIR, "check_glyph.png")
+ICON_SUN_PATH = os.path.join(ASSETS_DIR, "icon_sun.svg")
+ICON_MOON_PATH = os.path.join(ASSETS_DIR, "icon_moon.svg")
+
+SUN_SVG_CONTENT = """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f2f3f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="4.5"/>
+  <line x1="12" y1="1" x2="12" y2="3.5"/>
+  <line x1="12" y1="20.5" x2="12" y2="23"/>
+  <line x1="1" y1="12" x2="3.5" y2="12"/>
+  <line x1="20.5" y1="12" x2="23" y2="12"/>
+  <line x1="4.22" y1="4.22" x2="5.99" y2="5.99"/>
+  <line x1="18.01" y1="18.01" x2="19.78" y2="19.78"/>
+  <line x1="4.22" y1="19.78" x2="5.99" y2="18.01"/>
+  <line x1="18.01" y1="5.99" x2="19.78" y2="4.22"/>
+</svg>"""
+
+MOON_SVG_CONTENT = """<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16181d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+</svg>"""
+
+
+def get_sun_icon_path() -> str:
+    """Returns the absolute file path to the sun SVG asset, generating if missing."""
+    os.makedirs(ASSETS_DIR, exist_ok=True)
+    if not os.path.isfile(ICON_SUN_PATH):
+        try:
+            with open(ICON_SUN_PATH, "w", encoding="utf-8") as f:
+                f.write(SUN_SVG_CONTENT)
+        except Exception:
+            pass
+    return ICON_SUN_PATH.replace("\\", "/")
+
+
+def get_moon_icon_path() -> str:
+    """Returns the absolute file path to the moon SVG asset, generating if missing."""
+    os.makedirs(ASSETS_DIR, exist_ok=True)
+    if not os.path.isfile(ICON_MOON_PATH):
+        try:
+            with open(ICON_MOON_PATH, "w", encoding="utf-8") as f:
+                f.write(MOON_SVG_CONTENT)
+        except Exception:
+            pass
+    return ICON_MOON_PATH.replace("\\", "/")
+
+
+def get_theme_icon(theme_mode: Literal["dark", "light"]):
+    """Returns the QIcon for the theme toggle button: sun when dark (to activate light), moon when light (to activate dark)."""
+    from PySide6.QtGui import QIcon
+    if theme_mode == "dark":
+        return QIcon(get_sun_icon_path())
+    return QIcon(get_moon_icon_path())
 
 
 def get_check_icon_path() -> str:
@@ -205,7 +255,7 @@ QLabel#topCrumb {
 }
 
 /* Header Pills (One UI Status & Actions) */
-QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnCheckUpdates, QPushButton#btnResetOffset, QPushButton#btn_reset {
+QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnCheckUpdates, QPushButton#btnResetOffset, QPushButton#btn_reset {
     border-radius: 17px;
     height: 34px;
     min-height: 34px;
@@ -218,16 +268,41 @@ QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#bt
     border: none;
 }
 
+QPushButton#btnTheme {
+    border-radius: 17px;
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    background-color: #1b1c20;
+    color: #f2f3f7;
+    padding: 0px;
+    qproperty-iconSize: 18px 18px;
+    border: none;
+}
+
 QFrame#pillWorkspace {
     padding: 0px;
 }
 
-QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnCheckUpdates:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
+QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnCheckUpdates:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
     background-color: #26272d;
     border-radius: 17px;
 }
 
-QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnCheckUpdates:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
+QPushButton#btnTheme:hover {
+    background-color: #26272d;
+    border-radius: 17px;
+}
+
+QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnCheckUpdates:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
+    background-color: #33343b;
+    border-radius: 17px;
+}
+
+QPushButton#btnTheme:pressed {
     background-color: #33343b;
     border-radius: 17px;
 }
@@ -1106,7 +1181,7 @@ QLabel#topCrumb {
 }
 
 /* Header Pills (One UI Status & Actions) */
-QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnCheckUpdates, QPushButton#btnResetOffset, QPushButton#btn_reset {
+QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnCheckUpdates, QPushButton#btnResetOffset, QPushButton#btn_reset {
     border-radius: 17px;
     height: 34px;
     min-height: 34px;
@@ -1119,16 +1194,41 @@ QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#bt
     border: none;
 }
 
+QPushButton#btnTheme {
+    border-radius: 17px;
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    background-color: #ffffff;
+    color: #16181d;
+    padding: 0px;
+    qproperty-iconSize: 18px 18px;
+    border: none;
+}
+
 QFrame#pillWorkspace {
     padding: 0px;
 }
 
-QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnCheckUpdates:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
+QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnCheckUpdates:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
     background-color: #eceef4;
     border-radius: 17px;
 }
 
-QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnCheckUpdates:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
+QPushButton#btnTheme:hover {
+    background-color: #eceef4;
+    border-radius: 17px;
+}
+
+QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnCheckUpdates:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
+    background-color: #e1e4ed;
+    border-radius: 17px;
+}
+
+QPushButton#btnTheme:pressed {
     background-color: #e1e4ed;
     border-radius: 17px;
 }

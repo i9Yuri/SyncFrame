@@ -33,7 +33,7 @@ from .components.preview_player import PreviewPlayer
 from .components.sync_controls import SyncControls
 from .components.stream_selector_modal import StreamSelectorModal
 from .components.unified_drop_zone import UnifiedDropZone
-from .style import apply_workbench_theme, get_theme_stylesheet, apply_one_ui_monochrome_theme, get_theme_tokens
+from .style import apply_workbench_theme, get_theme_stylesheet, apply_one_ui_monochrome_theme, get_theme_tokens, get_theme_icon
 from .workspace_layout import WorkspaceLayoutManager
 from .workers.analyze_worker import AnalyzeWorker
 from .workers.dependency_update_worker import DependencyUpdateWorker
@@ -352,10 +352,15 @@ class SyncFrameMainWindow(QWidget):
     def apply_application_theme(self, theme_mode: Literal["dark", "light"]) -> None:
         """Applies the application theme atomically across the window and all child widgets."""
         self.current_theme = theme_mode
-        if self.current_theme == "light":
-            self.btn_theme.setText("Modo Escuro")
-        else:
-            self.btn_theme.setText("Modo Claro")
+        if hasattr(self, "btn_theme") and self.btn_theme:
+            self.btn_theme.setText("")
+            self.btn_theme.setIcon(get_theme_icon(self.current_theme))
+            self.btn_theme.setIconSize(QSize(18, 18))
+            if self.current_theme == "light":
+                self.btn_theme.setToolTip("Modo Escuro")
+            else:
+                self.btn_theme.setToolTip("Modo Claro")
+            self.btn_theme.setFixedSize(34, 34)
 
         theme_qss = get_theme_stylesheet(self.current_theme)
         app = QApplication.instance()
@@ -486,14 +491,17 @@ class SyncFrameMainWindow(QWidget):
 
         # 3. Theme toggle button
         if not hasattr(self, "btn_theme") or self.btn_theme is None:
-            self.btn_theme = QPushButton("Modo Claro")
-            self.btn_theme.setToolTip("Alternar entre Dark e Light Mode")
+            self.btn_theme = QPushButton()
+            self.btn_theme.setToolTip("Modo Claro" if self.current_theme == "dark" else "Modo Escuro")
+            self.btn_theme.setIcon(get_theme_icon(self.current_theme))
+            self.btn_theme.setIconSize(QSize(18, 18))
             self.btn_theme.clicked.connect(self.toggle_theme_mode)
             tb_layout.addWidget(self.btn_theme)
 
         self.btn_theme.setObjectName("btnTheme")
         self.btn_theme.setProperty("class", "pill")
-        self.btn_theme.setFixedHeight(34)
+        self.btn_theme.setFixedSize(34, 34)
+        self.btn_theme.setIconSize(QSize(18, 18))
         self.btn_theme.setCursor(Qt.PointingHandCursor)
 
         # 4. Check updates button (silent/interactive updater)
@@ -550,10 +558,8 @@ class SyncFrameMainWindow(QWidget):
             self.pill_workspace.setFixedWidth(max(text_w + 52, 160))
             self.pill_workspace.setFixedHeight(34)
 
-        if hasattr(self, "btn_theme") and self.btn_theme and self.btn_theme.text():
-            fm_theme = self.btn_theme.fontMetrics()
-            self.btn_theme.setFixedWidth(fm_theme.horizontalAdvance(self.btn_theme.text()) + 34)
-            self.btn_theme.setFixedHeight(34)
+        if hasattr(self, "btn_theme") and self.btn_theme:
+            self.btn_theme.setFixedSize(34, 34)
 
         if hasattr(self, "btn_check_updates") and self.btn_check_updates and self.btn_check_updates.text():
             fm_up = self.btn_check_updates.fontMetrics()

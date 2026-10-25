@@ -210,6 +210,7 @@ class TestAllRoundedCorners(unittest.TestCase):
         # Topbar pills must have fixed 34px height
         self.assertEqual(win.pill_workspace.height(), 34)
         self.assertEqual(win.btn_theme.height(), 34)
+        self.assertEqual(win.btn_theme.width(), 34)
         self.assertEqual(win.badge_v.height(), 34)
 
         # Pill workspace must be wider than text alone due to green dot and padding

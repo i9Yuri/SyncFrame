@@ -22,6 +22,11 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Disparo de marcadores segmentados (5% · Abertura, 50% · Meio, 90% · Ato final) calculados dinamicamente com base na duração total da mídia e botão "Parar" sincronizado com o ciclo de vida do processo.
   - Atualização em tempo real de timecodes e mensagens de status sem emojis.
 
+### Alterado
+- **Comutador de Tema com Ícones Vetoriais de Sol e Lua na Topbar (`#btnTheme`):**
+  - Substituição dos rótulos de texto estáticos ("Modo Claro" / "Modo Escuro") por botão em pílula circular perfeita de 34x34px (`border-radius: 17px`) com ícones vetoriais SVG nítidos e centralizados (`icon_sun.svg` no tema Dark para transição à luz, `icon_moon.svg` no tema Light para transição ao escuro).
+  - Remoção de margens internas de texto (`padding: 0px`) com dimensionamento fixo 34x34px, `qproperty-iconSize: 18px 18px`, tooltips contextuais ("Modo Claro" / "Modo Escuro") e suporte dinâmico a estados `:hover` e `:pressed` sem regressões geométricas.
+
 ### Corrigido
 - **Padronização e Erradicação de Arestas Rígidas no Card de Alinhamento Temporal:**
   - Substituição da diretiva `border-radius: 999px` por raios matemáticos contínuos proporcionais à meia-altura exata (13px, 14px, 17px, 18px) nos temas Dark e Light, sanando a reversão do Qt QSS para quinas retangulares de 90 graus.
