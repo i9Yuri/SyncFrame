@@ -194,7 +194,10 @@ class SyncFrameMainWindow(QWidget):
         cre_head.addWidget(cre_title)
         cre_head.addStretch()
         badge_passthrough = QLabel("Zero re-encode")
+        badge_passthrough.setObjectName("badgePassthrough")
         badge_passthrough.setProperty("class", "tagGreen")
+        badge_passthrough.setFixedHeight(28)
+        badge_passthrough.setAlignment(Qt.AlignCenter)
         cre_head.addWidget(badge_passthrough, alignment=Qt.AlignVCenter)
         cre_layout.addLayout(cre_head)
 
@@ -202,8 +205,9 @@ class SyncFrameMainWindow(QWidget):
         self.frame_out_path = QFrame()
         self.frame_out_path.setObjectName("frameOutPath")
         self.frame_out_path.setProperty("class", "outPill")
+        self.frame_out_path.setFixedHeight(44)
         path_row = QHBoxLayout(self.frame_out_path)
-        path_row.setContentsMargins(18, 4, 6, 4)
+        path_row.setContentsMargins(16, 4, 6, 4)
         path_row.setSpacing(8)
 
         self.txt_output_path = QLineEdit()
@@ -213,9 +217,12 @@ class SyncFrameMainWindow(QWidget):
         path_row.addWidget(self.txt_output_path, 1)
 
         btn_browse_dest = QPushButton("Procurar…")
-        btn_browse_dest.setObjectName("btnBrowse")
+        btn_browse_dest.setObjectName("btnBrowseDest")
         btn_browse_dest.setProperty("class", "btnSm")
+        btn_browse_dest.setFixedHeight(34)
+        btn_browse_dest.setCursor(Qt.PointingHandCursor)
         btn_browse_dest.clicked.connect(self._browse_destination)
+        self.btn_browse_dest = btn_browse_dest
         path_row.addWidget(btn_browse_dest)
         cre_layout.addWidget(self.frame_out_path)
 
@@ -235,7 +242,10 @@ class SyncFrameMainWindow(QWidget):
         prog_row.addWidget(self.lbl_progress_pct)
 
         self.btn_cancel = QPushButton("Cancelar")
+        self.btn_cancel.setObjectName("btnCancel")
         self.btn_cancel.setProperty("class", "btnSm")
+        self.btn_cancel.setFixedHeight(34)
+        self.btn_cancel.setCursor(Qt.PointingHandCursor)
         self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self.cancel_active_operation)
         prog_row.addWidget(self.btn_cancel)
@@ -244,6 +254,7 @@ class SyncFrameMainWindow(QWidget):
         self.lbl_progress_status = QLabel("Pronto para operação.")
         self.lbl_progress_status.setProperty("class", "hint")
         cre_layout.addWidget(self.lbl_progress_status)
+        cre_layout.addStretch()
 
         col_left.addWidget(self.card_remux_exec)
         self.body_layout.addLayout(col_left, 6)

@@ -660,29 +660,102 @@ QCheckBox::indicator:checked {
 /* Output Path Pill (.out) */
 QFrame.outPill, QFrame#frameOutPath {
     background-color: #26272d;
-    border-radius: 999px;
+    border-radius: 22px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
     border: none;
 }
 
-QLineEdit.outPath, QLineEdit#txtOutputPath, QLineEdit, QLineEdit#outputBoxMonospace {
+QLineEdit.outPath, QLineEdit#txtOutputPath {
+    background: transparent;
+    border: none;
+    color: #f2f3f7;
+    font-size: 13px;
+    padding: 0 4px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+}
+
+QLineEdit, QLineEdit#outputBoxMonospace {
     background-color: #26272d;
     color: #f2f3f7;
     font-size: 13px;
     border: 1px solid #33343b;
-    padding: 6px 16px;
-    border-radius: 999px;
+    padding: 0 16px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    border-radius: 18px;
 }
 
-QLineEdit:focus, QLineEdit#txtOutputPath:focus, QLineEdit#outputBoxMonospace:focus {
+QLineEdit:focus, QLineEdit#outputBoxMonospace:focus {
     border: 1px solid #50535e;
-    border-radius: 999px;
+    border-radius: 18px;
+}
+
+QPushButton#btnBrowseDest {
+    background-color: #ffffff;
+    color: #000000;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 16px;
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+}
+
+QPushButton#btnBrowseDest:hover {
+    background-color: #e5e5e5;
+    border-radius: 17px;
+}
+
+QPushButton#btnBrowseDest:pressed {
+    background-color: #cccccc;
+    border-radius: 17px;
+}
+
+QPushButton#btnCancel {
+    background-color: #26272d;
+    color: #f2f3f7;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+}
+
+QPushButton#btnCancel:hover {
+    background-color: #33343b;
+    border-radius: 17px;
+}
+
+QPushButton#btnCancel:pressed {
+    background-color: #40424c;
+    border-radius: 17px;
+}
+
+QPushButton#btnCancel:disabled {
+    background-color: #1b1c20;
+    color: #555864;
+    border-radius: 17px;
+    border: none;
 }
 
 QComboBox {
     background-color: #1b1c20;
     color: #f2f3f7;
-    border-radius: 999px;
-    padding: 6px 14px;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 14px;
     font-weight: 600;
     font-size: 13px;
     border: 1px solid #33343b;
@@ -690,7 +763,7 @@ QComboBox {
 
 QComboBox:hover {
     background-color: #26272d;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
 QComboBox::drop-down {
@@ -724,6 +797,8 @@ QComboBox QAbstractItemView::item:hover, QComboBox QAbstractItemView::item:selec
 QProgressBar {
     background-color: #33343b;
     border-radius: 7px;
+    height: 14px;
+    min-height: 14px;
     max-height: 14px;
     text-align: center;
     color: transparent;
@@ -1610,29 +1685,102 @@ QCheckBox::indicator:checked {
 /* Output Path Pill (.out) */
 QFrame.outPill, QFrame#frameOutPath {
     background-color: #eceef4;
-    border-radius: 999px;
+    border-radius: 22px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
     border: none;
 }
 
-QLineEdit.outPath, QLineEdit#txtOutputPath, QLineEdit, QLineEdit#outputBoxMonospace {
-    background-color: #eceef4;
+QLineEdit.outPath, QLineEdit#txtOutputPath {
+    background: transparent;
+    border: none;
+    color: #16181d;
+    font-size: 13px;
+    padding: 0 4px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+}
+
+QLineEdit, QLineEdit#outputBoxMonospace {
+    background-color: #ffffff;
     color: #16181d;
     font-size: 13px;
     border: 1px solid #dcdfe8;
-    padding: 6px 16px;
-    border-radius: 999px;
+    padding: 0 16px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    border-radius: 18px;
 }
 
-QLineEdit:focus, QLineEdit#txtOutputPath:focus, QLineEdit#outputBoxMonospace:focus {
-    border: 1px solid #16181d;
-    border-radius: 999px;
+QLineEdit:focus, QLineEdit#outputBoxMonospace:focus {
+    border: 1px solid #aeb3c2;
+    border-radius: 18px;
+}
+
+QPushButton#btnBrowseDest {
+    background-color: #16181d;
+    color: #ffffff;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 16px;
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+}
+
+QPushButton#btnBrowseDest:hover {
+    background-color: #2b2e36;
+    border-radius: 17px;
+}
+
+QPushButton#btnBrowseDest:pressed {
+    background-color: #3f424c;
+    border-radius: 17px;
+}
+
+QPushButton#btnCancel {
+    background-color: #eceef4;
+    color: #16181d;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+}
+
+QPushButton#btnCancel:hover {
+    background-color: #e1e4ed;
+    border-radius: 17px;
+}
+
+QPushButton#btnCancel:pressed {
+    background-color: #dcdfe8;
+    border-radius: 17px;
+}
+
+QPushButton#btnCancel:disabled {
+    background-color: #eceef4;
+    color: #9a9eac;
+    border-radius: 17px;
+    border: none;
 }
 
 QComboBox {
     background-color: #ffffff;
     color: #16181d;
-    border-radius: 999px;
-    padding: 6px 14px;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 14px;
     font-weight: 600;
     font-size: 13px;
     border: 1px solid #dcdfe8;
@@ -1640,7 +1788,7 @@ QComboBox {
 
 QComboBox:hover {
     background-color: #eceef4;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
 QComboBox::drop-down {
@@ -1674,6 +1822,8 @@ QComboBox QAbstractItemView::item:hover, QComboBox QAbstractItemView::item:selec
 QProgressBar {
     background-color: #e1e4ed;
     border-radius: 7px;
+    height: 14px;
+    min-height: 14px;
     max-height: 14px;
     text-align: center;
     color: transparent;

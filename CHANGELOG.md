@@ -36,6 +36,12 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Substituição da diretiva `border-radius: 999px` por raios matemáticos contínuos proporcionais à meia-altura exata (13px, 14px, 17px, 18px) nos temas Dark e Light, sanando a reversão do Qt QSS para quinas retangulares de 90 graus.
   - Eliminação de cantos vivos na pílula do seletor de sensibilidade (`SensitivitySelectorWidget`), no chip de faixa ativa (`Faixa A02`), nos 8 botões da matriz de micro-passo (`stepBtn`) e na barra de diagnóstico de cadência (`frameNote`).
   - Ativação visual nítida do botão de sensibilidade ativo (`QPushButton.pillSegmentBtn[active="true"]`) em contraste alto e adição de pseudo-estados `:pressed` e `:disabled` com bordas curvas contínuas.
+- **Erradicação de Quinas Vivas e Estiramento Vertical no Card de Saída do Remux:**
+  - Fixação determinística de altura de 44px e raio contínuo de meia-altura (`border-radius: 22px; height: 44px;`) no seletor de caminho de destino (`#frameOutPath`), eliminando o estiramento vertical indesejado de 160px e revertendo quinas retangulares vivas.
+  - Integração transparente do campo de texto (`#txtOutputPath`, `background: transparent; border: none; padding: 0 4px;`) sem molduras retangulares internas colidindo com o contorno da pílula.
+  - Transformação dos botões "Procurar..." (`#btnBrowseDest`) e "Cancelar" (`#btnCancel`) em botões de pílula contínua de 34px de altura (`border-radius: 17px; height: 34px; min-height: 34px; max-height: 34px; padding: 0 16px;`).
+  - Arredondamento contínuo da barra de progresso (`QProgressBar` e `QProgressBar::chunk`) com altura fixa de 14px e `border-radius: 7px;`.
+  - Inserção de espaçador vertical (`cre_layout.addStretch()`) preservando a proporção orgânica compacta dos controles sem distorções geométricas.
 
 ## [1.2.0] - 2026-10-24
 

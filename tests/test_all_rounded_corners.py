@@ -217,6 +217,12 @@ class TestAllRoundedCorners(unittest.TestCase):
         fm_ws = win.chip_workspace.fontMetrics()
         min_expected = fm_ws.horizontalAdvance(win.chip_workspace.text()) + 28
         self.assertGreaterEqual(win.pill_workspace.width(), min_expected)
+
+        # Remux Output Card pill geometry
+        self.assertEqual(win.frame_out_path.height(), 44)
+        self.assertEqual(win.btn_browse_dest.height(), 34)
+        self.assertEqual(win.btn_cancel.height(), 34)
+        self.assertEqual(win.progress_bar.height(), 14)
         win.close()
 
 
