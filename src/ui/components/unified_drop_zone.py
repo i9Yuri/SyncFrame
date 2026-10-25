@@ -282,13 +282,19 @@ class UnifiedDropZone(QFrame):
         conf_header.addStretch()
 
         self.chip_sources_count = QLabel("2 / 2 fontes")
+        self.chip_sources_count.setObjectName("chipSourcesCount")
         self.chip_sources_count.setProperty("class", "tagNeutral")
+        self.chip_sources_count.setFixedHeight(28)
+        self.chip_sources_count.setAlignment(Qt.AlignCenter)
         conf_header.addWidget(self.chip_sources_count)
 
-        btn_change_files = QPushButton("Trocar arquivos")
-        btn_change_files.setProperty("class", "btnSm")
-        btn_change_files.clicked.connect(self.reset)
-        conf_header.addWidget(btn_change_files)
+        self.btn_change_files = QPushButton("Trocar arquivos")
+        self.btn_change_files.setObjectName("btnChangeFiles")
+        self.btn_change_files.setProperty("class", "btnSm")
+        self.btn_change_files.setFixedHeight(28)
+        self.btn_change_files.setCursor(Qt.PointingHandCursor)
+        self.btn_change_files.clicked.connect(self.reset)
+        conf_header.addWidget(self.btn_change_files)
         bs_layout.addLayout(conf_header)
 
         # Paired Horizontal File Cards (.pair)
@@ -311,6 +317,8 @@ class UnifiedDropZone(QFrame):
         self.badge_v_fmt = QLabel("MKV")
         self.badge_v_fmt.setObjectName("badgeVFmt")
         self.badge_v_fmt.setProperty("class", "formatChip")
+        self.badge_v_fmt.setFixedHeight(24)
+        self.badge_v_fmt.setAlignment(Qt.AlignCenter)
         head_v.addWidget(self.badge_v_fmt)
         cf_v_layout.addLayout(head_v)
 
@@ -340,6 +348,8 @@ class UnifiedDropZone(QFrame):
         self.badge_a_fmt = QLabel("MP4")
         self.badge_a_fmt.setObjectName("badgeAFmt")
         self.badge_a_fmt.setProperty("class", "formatChip")
+        self.badge_a_fmt.setFixedHeight(24)
+        self.badge_a_fmt.setAlignment(Qt.AlignCenter)
         head_a.addWidget(self.badge_a_fmt)
         cf_a_layout.addLayout(head_a)
 

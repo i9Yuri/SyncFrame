@@ -366,14 +366,46 @@ QLabel.sectionIndex {
 }
 
 /* One UI Tags and Pills */
-QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.statusPill, QLabel#chipFFT, QLabel#chipTrack {
-    border-radius: 17px;
+QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip {
+    border-radius: 12px;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
     background-color: #26272d;
     color: #f2f3f7;
     border: 1px solid #33343b;
-    padding: 4px 14px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+    qproperty-alignment: AlignCenter;
+}
+
+QLabel.statusPill, QLabel#chipFFT, QLabel.tag {
+    border-radius: 14px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    background-color: #26272d;
+    color: #f2f3f7;
+    border: 1px solid #33343b;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
+    qproperty-alignment: AlignCenter;
+}
+
+QLabel#chipTrack {
+    border-radius: 17px;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    background-color: #26272d;
+    color: #f2f3f7;
+    border: 1px solid #33343b;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 700;
+    qproperty-alignment: AlignCenter;
 }
 
 QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip, QLabel#tagIngest {
@@ -387,6 +419,21 @@ QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.sy
     font-size: 12px;
     font-weight: 600;
     border: none;
+    qproperty-alignment: AlignCenter;
+}
+
+QLabel#chipSourcesCount {
+    border-radius: 14px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    background-color: #1b1c20;
+    color: #9a9eac;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #33343b;
+    qproperty-alignment: AlignCenter;
 }
 
 QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
@@ -508,6 +555,36 @@ QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRe
     background-color: #1b1c20;
     color: #555864;
     border-radius: 17px;
+    border: none;
+}
+
+QPushButton#btnChangeFiles {
+    border-radius: 14px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    background-color: #222329;
+    color: #f2f3f7;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #33343b;
+}
+
+QPushButton#btnChangeFiles:hover {
+    background-color: #33343b;
+    border-radius: 14px;
+}
+
+QPushButton#btnChangeFiles:pressed {
+    background-color: #40424c;
+    border-radius: 14px;
+}
+
+QPushButton#btnChangeFiles:disabled {
+    background-color: #1b1c20;
+    color: #555864;
+    border-radius: 14px;
     border: none;
 }
 
@@ -1482,14 +1559,46 @@ QLabel.sectionIndex {
 }
 
 /* One UI Tags and Pills */
-QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.statusPill, QLabel#chipFFT, QLabel#chipTrack {
-    border-radius: 17px;
+QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip {
+    border-radius: 12px;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
     background-color: #eceef4;
     color: #16181d;
     border: 1px solid #dcdfe8;
-    padding: 4px 14px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+    qproperty-alignment: AlignCenter;
+}
+
+QLabel.statusPill, QLabel#chipFFT, QLabel.tag {
+    border-radius: 14px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    background-color: #eceef4;
+    color: #16181d;
+    border: 1px solid #dcdfe8;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
+    qproperty-alignment: AlignCenter;
+}
+
+QLabel#chipTrack {
+    border-radius: 17px;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    background-color: #eceef4;
+    color: #16181d;
+    border: 1px solid #dcdfe8;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 700;
+    qproperty-alignment: AlignCenter;
 }
 
 QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip, QLabel#tagIngest {
@@ -1503,6 +1612,21 @@ QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.sy
     font-size: 12px;
     font-weight: 600;
     border: none;
+    qproperty-alignment: AlignCenter;
+}
+
+QLabel#chipSourcesCount {
+    border-radius: 14px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    background-color: #ffffff;
+    color: #6a7080;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #dcdfe8;
+    qproperty-alignment: AlignCenter;
 }
 
 QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
@@ -1624,6 +1748,36 @@ QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRe
     background-color: #eceef4;
     color: #9a9eac;
     border-radius: 17px;
+    border: none;
+}
+
+QPushButton#btnChangeFiles {
+    border-radius: 14px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    background-color: #eceef4;
+    color: #16181d;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #dcdfe8;
+}
+
+QPushButton#btnChangeFiles:hover {
+    background-color: #dcdfe8;
+    border-radius: 14px;
+}
+
+QPushButton#btnChangeFiles:pressed {
+    background-color: #d3d6e0;
+    border-radius: 14px;
+}
+
+QPushButton#btnChangeFiles:disabled {
+    background-color: #f1f2f6;
+    color: #9a9eac;
+    border-radius: 14px;
     border: none;
 }
 

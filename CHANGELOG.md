@@ -51,6 +51,10 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Padronização dos botões seletores de marcos temporais (`#btnMarkerP05`, `#btnMarkerP50`, `#btnMarkerP90`) em cápsulas pílula contínuas de 40px com `border-radius: 20px;`, altura fixa explícita e tratamento completo de estados (`:hover`, `:pressed`, `:checked`, `:disabled`).
   - Formatação do chip de timecode (`#lblTimecodeChip`) como cápsula semicircular de 26px (`border-radius: 13px; height: 26px; border: none;`), eliminando caixas retangulares duras no visor do monitor.
   - Fixação da altura de 34px no botão "Parar" (`#btnStopPreview`) e badge de backend (`#badgeBackendMpv`), com contorno pílula visível no estado desativado (`border-radius: 17px; background: #222329` em Dark, `#f1f2f6` em Light).
+- **Erradicação de Quinas Vivas nas Fontes Ingeridas e Auditoria Acústica FFT:**
+  - Padronização dos badges de formato de contêiner (`#badgeVFmt`, `#badgeAFmt`, `formatChip`) como cápsulas pílula de 24px com `border-radius: 12px; height: 22px; min-height: 22px; max-height: 22px; border: 1px solid`, eliminando as caixas retangulares duras de 90 graus nos cartões de vídeo de referência e áudio dublado.
+  - Correção da geometria do chip de status FFT (`#chipFFT`, `statusPill`) com altura física de 28px e `border-radius: 14px; height: 26px; min-height: 26px; max-height: 26px; border: 1px solid`, sanando o descarte de raio do Qt QSS que revertia para um retângulo pontiagudo.
+  - Padronização do indicador de fontes (`#chipSourcesCount`) em pílula de 28px de altura (`border-radius: 14px;`) e botão de ação secundária "Trocar arquivos" (`#btnChangeFiles`) com altura fixa de 28px (`border-radius: 14px;`) e cursor de mão nos temas Dark e Light.
 
 ## [1.2.0] - 2026-10-24
 

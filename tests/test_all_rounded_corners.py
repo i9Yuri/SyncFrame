@@ -237,6 +237,13 @@ class TestAllRoundedCorners(unittest.TestCase):
         self.assertEqual(win.preview_player.btn_p05.height(), 40)
         self.assertEqual(win.preview_player.btn_p50.height(), 40)
         self.assertEqual(win.preview_player.btn_p90.height(), 40)
+
+        # Ingestion sources & Acoustic Audit header pills geometry
+        self.assertEqual(win.chip_fft.height(), 28)
+        self.assertEqual(win.drop_zone.chip_sources_count.height(), 28)
+        self.assertEqual(win.drop_zone.btn_change_files.height(), 28)
+        self.assertEqual(win.drop_zone.badge_v_fmt.height(), 24)
+        self.assertEqual(win.drop_zone.badge_a_fmt.height(), 24)
         win.close()
 
 
