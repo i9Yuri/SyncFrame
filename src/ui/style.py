@@ -292,7 +292,7 @@ QLabel.sectionIndex {
 
 /* One UI Tags and Pills */
 QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.statusPill, QLabel#chipFFT, QLabel#chipTrack {
-    border-radius: 999px;
+    border-radius: 17px;
     background-color: #26272d;
     color: #f2f3f7;
     border: 1px solid #33343b;
@@ -302,7 +302,7 @@ QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.status
 }
 
 QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: #26272d;
     color: #9a9eac;
     padding: 4px 14px;
@@ -311,7 +311,7 @@ QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.sy
 }
 
 QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: rgba(47, 177, 107, 0.16);
     color: #2fb16b;
     padding: 4px 14px;
@@ -320,7 +320,7 @@ QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
 }
 
 QLabel.tagWarn, QLabel.badgeAmber {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: rgba(232, 150, 58, 0.16);
     color: #e8963a;
     padding: 4px 14px;
@@ -329,7 +329,7 @@ QLabel.tagWarn, QLabel.badgeAmber {
 }
 
 QLabel.badgeRecommended, QLabel#badgeRecommended {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: #33343b;
     color: #ffffff;
     border: 1px solid #50535e;
@@ -642,32 +642,53 @@ QLabel.progPct {
     color: #f2f3f7;
 }
 
-/* Stepper Granularity Control */
-QFrame#stepperGroup {
-    background-color: #1b1c20;
-    border-radius: 999px;
+/* Stepper Granularity Control & Sensitivity Stepper Pill Group */
+QFrame#sensitivitySelector, QFrame#stepperGroup {
+    background-color: #26272d;
+    border-radius: 17px;
     border: 1px solid #33343b;
+    padding: 2px 4px;
+    min-height: 28px;
+    max-height: 34px;
 }
 
-QFrame#stepperGroup QPushButton {
+QFrame#sensitivitySelector QPushButton,
+QFrame#stepperGroup QPushButton,
+QPushButton.pillSegmentBtn {
+    border-radius: 13px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 12px;
+    border: none;
     background-color: transparent;
     color: #9a9eac;
-    border-radius: 999px;
-    padding: 3px 10px;
-    font-size: 11px;
-    font-weight: 600;
-    border: none;
+    min-height: 24px;
+    max-height: 26px;
 }
 
-QFrame#stepperGroup QPushButton:hover {
-    background-color: #26272d;
+QFrame#sensitivitySelector QPushButton:hover,
+QFrame#stepperGroup QPushButton:hover,
+QPushButton.pillSegmentBtn:hover {
+    background-color: #33343b;
     color: #f2f3f7;
+    border-radius: 13px;
 }
 
-QFrame#stepperGroup QPushButton[active="true"] {
+QFrame#sensitivitySelector QPushButton:pressed,
+QFrame#stepperGroup QPushButton:pressed,
+QPushButton.pillSegmentBtn:pressed {
+    background-color: #40424c;
+    color: #f2f3f7;
+    border-radius: 13px;
+}
+
+QFrame#sensitivitySelector QPushButton[active="true"],
+QFrame#stepperGroup QPushButton[active="true"],
+QPushButton.pillSegmentBtn[active="true"] {
     background-color: #ffffff;
     color: #000000;
     font-weight: 700;
+    border-radius: 13px;
 }
 
 /* Offset Display Box (.off) */
@@ -689,30 +710,6 @@ QLabel.largeOffsetDisplay {
 /* Check glyph compatibility: __CHECK_GLYPH_PATH__ */
 QCheckBox.checkGlyph::indicator:checked {
     image: url("__CHECK_GLYPH_PATH__");
-}
-
-/* Sensitivity Stepper Pill Group */
-QFrame#sensitivitySelector, QFrame#stepperGroup {
-    background-color: #26272d;
-    border-radius: 999px;
-    border: 1px solid #33343b;
-    padding: 2px;
-}
-
-QPushButton.pillSegmentBtn {
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 3px 12px;
-    border: none;
-    background-color: transparent;
-    color: #9a9eac;
-}
-
-QPushButton.pillSegmentBtn:hover {
-    background-color: #33343b;
-    color: #f2f3f7;
-    border-radius: 999px;
 }
 
 /* Linear Rail Slider (.sl) */
@@ -757,17 +754,31 @@ QSlider::handle:horizontal {
 /* Step Nudge Buttons (.steps) */
 QPushButton.stepBtn, QPushButton.btnNudge {
     background-color: #26272d;
-    border-radius: 999px;
-    padding: 10px 0;
+    border-radius: 18px;
+    padding: 8px 0;
     font-size: 13px;
     font-weight: 600;
     color: #f2f3f7;
-    border: none;
+    border: 1px solid #33343b;
+    min-height: 36px;
 }
 
 QPushButton.stepBtn:hover, QPushButton.btnNudge:hover {
     background-color: #33343b;
-    border-radius: 999px;
+    border-color: #50535e;
+    border-radius: 18px;
+}
+
+QPushButton.stepBtn:pressed, QPushButton.btnNudge:pressed {
+    background-color: #40424c;
+    border-radius: 18px;
+}
+
+QPushButton.stepBtn:disabled, QPushButton.btnNudge:disabled {
+    background-color: #1b1c20;
+    color: #555864;
+    border-color: transparent;
+    border-radius: 18px;
 }
 
 /* Metrics Grid (.mets) */
@@ -784,10 +795,11 @@ QLabel.metVal, QLabel.monoValue {
 }
 
 /* Note Pill (.note) */
-QFrame.notePill {
-    background-color: #26272d;
-    border-radius: 20px;
-    border: none;
+QFrame.notePill, QFrame#frameNote {
+    background-color: #1b1c20;
+    border-radius: 18px;
+    border: 1px solid #26272d;
+    min-height: 36px;
 }
 
 /* Viewport Monitor (.view) */
@@ -1181,7 +1193,7 @@ QLabel.sectionIndex {
 
 /* One UI Tags and Pills */
 QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.statusPill, QLabel#chipFFT, QLabel#chipTrack {
-    border-radius: 999px;
+    border-radius: 17px;
     background-color: #eceef4;
     color: #16181d;
     border: 1px solid #dcdfe8;
@@ -1191,7 +1203,7 @@ QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.status
 }
 
 QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: #eceef4;
     color: #6a7080;
     padding: 4px 14px;
@@ -1200,7 +1212,7 @@ QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.sy
 }
 
 QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: rgba(47, 177, 107, 0.16);
     color: #2fb16b;
     padding: 4px 14px;
@@ -1209,7 +1221,7 @@ QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
 }
 
 QLabel.tagWarn, QLabel.badgeAmber {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: rgba(232, 150, 58, 0.16);
     color: #e8963a;
     padding: 4px 14px;
@@ -1218,7 +1230,7 @@ QLabel.tagWarn, QLabel.badgeAmber {
 }
 
 QLabel.badgeRecommended, QLabel#badgeRecommended {
-    border-radius: 999px;
+    border-radius: 14px;
     background-color: #e1e4ed;
     color: #16181d;
     border: 1px solid #dcdfe8;
@@ -1531,32 +1543,53 @@ QLabel.progPct {
     color: #16181d;
 }
 
-/* Stepper Granularity Control */
-QFrame#stepperGroup {
-    background-color: #ffffff;
-    border-radius: 999px;
+/* Stepper Granularity Control & Sensitivity Stepper Pill Group */
+QFrame#sensitivitySelector, QFrame#stepperGroup {
+    background-color: #eceef4;
+    border-radius: 17px;
     border: 1px solid #dcdfe8;
+    padding: 2px 4px;
+    min-height: 28px;
+    max-height: 34px;
 }
 
-QFrame#stepperGroup QPushButton {
+QFrame#sensitivitySelector QPushButton,
+QFrame#stepperGroup QPushButton,
+QPushButton.pillSegmentBtn {
+    border-radius: 13px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 12px;
+    border: none;
     background-color: transparent;
     color: #6a7080;
-    border-radius: 999px;
-    padding: 3px 10px;
-    font-size: 11px;
-    font-weight: 600;
-    border: none;
+    min-height: 24px;
+    max-height: 26px;
 }
 
-QFrame#stepperGroup QPushButton:hover {
-    background-color: #eceef4;
+QFrame#sensitivitySelector QPushButton:hover,
+QFrame#stepperGroup QPushButton:hover,
+QPushButton.pillSegmentBtn:hover {
+    background-color: #e1e4ed;
     color: #16181d;
+    border-radius: 13px;
 }
 
-QFrame#stepperGroup QPushButton[active="true"] {
+QFrame#sensitivitySelector QPushButton:pressed,
+QFrame#stepperGroup QPushButton:pressed,
+QPushButton.pillSegmentBtn:pressed {
+    background-color: #d2d6e3;
+    color: #16181d;
+    border-radius: 13px;
+}
+
+QFrame#sensitivitySelector QPushButton[active="true"],
+QFrame#stepperGroup QPushButton[active="true"],
+QPushButton.pillSegmentBtn[active="true"] {
     background-color: #16181d;
     color: #ffffff;
     font-weight: 700;
+    border-radius: 13px;
 }
 
 /* Offset Display Box (.off) */
@@ -1578,30 +1611,6 @@ QLabel.largeOffsetDisplay {
 /* Check glyph compatibility: __CHECK_GLYPH_PATH__ */
 QCheckBox.checkGlyph::indicator:checked {
     image: url("__CHECK_GLYPH_PATH__");
-}
-
-/* Sensitivity Stepper Pill Group */
-QFrame#sensitivitySelector, QFrame#stepperGroup {
-    background-color: #eceef4;
-    border-radius: 999px;
-    border: 1px solid #dcdfe8;
-    padding: 2px;
-}
-
-QPushButton.pillSegmentBtn {
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 3px 12px;
-    border: none;
-    background-color: transparent;
-    color: #6a7080;
-}
-
-QPushButton.pillSegmentBtn:hover {
-    background-color: #e1e4ed;
-    color: #16181d;
-    border-radius: 999px;
 }
 
 /* Linear Rail Slider (.sl) */
@@ -1645,18 +1654,32 @@ QSlider::handle:horizontal {
 
 /* Step Nudge Buttons (.steps) */
 QPushButton.stepBtn, QPushButton.btnNudge {
-    background-color: #eceef4;
-    border-radius: 999px;
-    padding: 10px 0;
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 8px 0;
     font-size: 13px;
     font-weight: 600;
     color: #16181d;
-    border: none;
+    border: 1px solid #dcdfe8;
+    min-height: 36px;
 }
 
 QPushButton.stepBtn:hover, QPushButton.btnNudge:hover {
-    background-color: #e1e4ed;
-    border-radius: 999px;
+    background-color: #f1f2f6;
+    border-color: #b0b5c4;
+    border-radius: 18px;
+}
+
+QPushButton.stepBtn:pressed, QPushButton.btnNudge:pressed {
+    background-color: #e5e8f0;
+    border-radius: 18px;
+}
+
+QPushButton.stepBtn:disabled, QPushButton.btnNudge:disabled {
+    background-color: #f8f9fc;
+    color: #9a9eac;
+    border-color: #eceef4;
+    border-radius: 18px;
 }
 
 /* Metrics Grid (.mets) */
@@ -1673,10 +1696,11 @@ QLabel.metVal, QLabel.monoValue {
 }
 
 /* Note Pill (.note) */
-QFrame.notePill {
+QFrame.notePill, QFrame#frameNote {
     background-color: #eceef4;
-    border-radius: 20px;
-    border: none;
+    border-radius: 18px;
+    border: 1px solid #dcdfe8;
+    min-height: 36px;
 }
 
 /* Viewport Monitor (.view) */

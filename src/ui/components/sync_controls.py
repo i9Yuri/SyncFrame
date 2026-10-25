@@ -128,9 +128,11 @@ class SensitivitySelectorWidget(QFrame):
         for btn, step in [(self.btn_1ms, 1), (self.btn_10ms, 10), (self.btn_50ms, 50)]:
             btn.setProperty("class", "pillSegmentBtn")
             btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(26)
             btn.clicked.connect(lambda _, s=step: self.set_sensitivity_step(s))
             layout.addWidget(btn)
 
+        self.setFixedHeight(34)
         self._refresh_buttons()
 
     def set_sensitivity_step(self, step_ms: int) -> None:
@@ -197,6 +199,8 @@ class SyncControls(QFrame):
         self.chip_track = QLabel("Faixa A02")
         self.chip_track.setObjectName("chipTrack")
         self.chip_track.setProperty("class", "statusPill")
+        self.chip_track.setAlignment(Qt.AlignCenter)
+        self.chip_track.setFixedHeight(34)
         header_layout.addWidget(self.chip_track)
         layout.addLayout(header_layout)
 
@@ -224,6 +228,7 @@ class SyncControls(QFrame):
         self.btn_reset.setObjectName("btnResetOffset")
         self.btn_reset.setProperty("class", "pill")
         self.btn_reset.setCursor(Qt.PointingHandCursor)
+        self.btn_reset.setFixedHeight(34)
         self.btn_reset.clicked.connect(self.reset_to_calculated)
         disp_box.addWidget(self.btn_reset, alignment=Qt.AlignVCenter)
         layout.addWidget(offset_callout_frame)
@@ -278,6 +283,7 @@ class SyncControls(QFrame):
         for val, txt, r, c in step_values:
             btn = QPushButton(txt)
             btn.setProperty("class", "stepBtn")
+            btn.setFixedHeight(36)
             btn.clicked.connect(lambda _, d=val: self.add_offset(d))
             grid_steps.addWidget(btn, r, c)
 
@@ -344,9 +350,11 @@ class SyncControls(QFrame):
 
         # Note pill (.note)
         self.frame_note = QFrame()
+        self.frame_note.setObjectName("frameNote")
         self.frame_note.setProperty("class", "notePill")
+        self.frame_note.setFixedHeight(36)
         fn_layout = QHBoxLayout(self.frame_note)
-        fn_layout.setContentsMargins(18, 10, 18, 10)
+        fn_layout.setContentsMargins(18, 0, 18, 0)
         fn_layout.setSpacing(8)
 
         dot = QLabel()

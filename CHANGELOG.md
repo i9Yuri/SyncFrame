@@ -22,6 +22,12 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Disparo de marcadores segmentados (5% · Abertura, 50% · Meio, 90% · Ato final) calculados dinamicamente com base na duração total da mídia e botão "Parar" sincronizado com o ciclo de vida do processo.
   - Atualização em tempo real de timecodes e mensagens de status sem emojis.
 
+### Corrigido
+- **Padronização e Erradicação de Arestas Rígidas no Card de Alinhamento Temporal:**
+  - Substituição da diretiva `border-radius: 999px` por raios matemáticos contínuos proporcionais à meia-altura exata (13px, 14px, 17px, 18px) nos temas Dark e Light, sanando a reversão do Qt QSS para quinas retangulares de 90 graus.
+  - Eliminação de cantos vivos na pílula do seletor de sensibilidade (`SensitivitySelectorWidget`), no chip de faixa ativa (`Faixa A02`), nos 8 botões da matriz de micro-passo (`stepBtn`) e na barra de diagnóstico de cadência (`frameNote`).
+  - Ativação visual nítida do botão de sensibilidade ativo (`QPushButton.pillSegmentBtn[active="true"]`) em contraste alto e adição de pseudo-estados `:pressed` e `:disabled` com bordas curvas contínuas.
+
 ## [1.2.0] - 2026-10-24
 
 ### Corrigido
