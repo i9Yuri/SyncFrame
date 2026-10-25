@@ -223,6 +223,20 @@ class TestAllRoundedCorners(unittest.TestCase):
         self.assertEqual(win.btn_browse_dest.height(), 34)
         self.assertEqual(win.btn_cancel.height(), 34)
         self.assertEqual(win.progress_bar.height(), 14)
+
+        # Floating Bottom Dock pill geometry
+        self.assertEqual(win.log_drawer.height(), 56)
+        self.assertEqual(win.log_drawer.badge_count.height(), 28)
+        self.assertEqual(win.log_drawer.btn_clear.height(), 34)
+        self.assertEqual(win.log_drawer.btn_clear.objectName(), "btnDockClear")
+        self.assertEqual(win.log_drawer.btn_toggle.height(), 34)
+        self.assertEqual(win.log_drawer.btn_toggle.objectName(), "btnDockToggle")
+
+        # Preview Player controls geometry
+        self.assertEqual(win.preview_player.lbl_timecode.height(), 26)
+        self.assertEqual(win.preview_player.btn_p05.height(), 40)
+        self.assertEqual(win.preview_player.btn_p50.height(), 40)
+        self.assertEqual(win.preview_player.btn_p90.height(), 40)
         win.close()
 
 

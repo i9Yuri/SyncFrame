@@ -56,24 +56,34 @@ class FloatingDockWidget(QFrame):
         header.addWidget(self.dot_indicator)
 
         self.title_lbl = QLabel("Registro de eventos")
+        self.title_lbl.setObjectName("dockTitle")
         self.title_lbl.setProperty("class", "logTitle")
         header.addWidget(self.title_lbl)
 
         self.badge_count = QLabel("00 EVENTOS")
+        self.badge_count.setObjectName("badgeEventCount")
         self.badge_count.setProperty("class", "systemChip")
+        self.badge_count.setFixedHeight(28)
+        self.badge_count.setAlignment(Qt.AlignCenter)
         header.addWidget(self.badge_count)
 
         header.addStretch()
 
         self.btn_clear = QPushButton("Limpar")
+        self.btn_clear.setObjectName("btnDockClear")
         self.btn_clear.setProperty("class", "btnSecondary")
+        self.btn_clear.setFixedHeight(34)
         self.btn_clear.setFixedWidth(78)
+        self.btn_clear.setCursor(Qt.PointingHandCursor)
         self.btn_clear.clicked.connect(self.clear_logs)
         header.addWidget(self.btn_clear)
 
         self.btn_toggle = QPushButton("Expandir")
+        self.btn_toggle.setObjectName("btnDockToggle")
         self.btn_toggle.setProperty("class", "btnSecondary")
+        self.btn_toggle.setFixedHeight(34)
         self.btn_toggle.setFixedWidth(100)
+        self.btn_toggle.setCursor(Qt.PointingHandCursor)
         self.btn_toggle.clicked.connect(lambda: self.toggle_expansion())
         header.addWidget(self.btn_toggle)
 
@@ -81,6 +91,7 @@ class FloatingDockWidget(QFrame):
 
         # Expandable log text viewer
         self.text_edit = QPlainTextEdit()
+        self.text_edit.setObjectName("dockTextEdit")
         self.text_edit.setReadOnly(True)
         self.text_edit.setMaximumHeight(150)
         self.text_edit.setVisible(False)

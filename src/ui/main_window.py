@@ -314,6 +314,7 @@ class SyncFrameMainWindow(QWidget):
         # 4. Floating Bottom Dock Container
         # ======================================================================
         self.dock_container = QWidget()
+        self.dock_container.setObjectName("dockContainer")
         dock_bar = QHBoxLayout(self.dock_container)
         dock_bar.setContentsMargins(24, 0, 24, 14)
         dock_bar.setAlignment(Qt.AlignCenter)

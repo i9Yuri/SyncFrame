@@ -205,6 +205,8 @@ class PreviewPlayer(QFrame):
         self.lbl_timecode = QLabel("00:00:00.000")
         self.lbl_timecode.setObjectName("lblTimecodeChip")
         self.lbl_timecode.setProperty("class", "tc")
+        self.lbl_timecode.setFixedHeight(26)
+        self.lbl_timecode.setAlignment(Qt.AlignCenter)
         overlay_row.addWidget(self.lbl_timecode)
         ms_layout.addLayout(overlay_row)
 
@@ -231,17 +233,26 @@ class PreviewPlayer(QFrame):
         marker_row.setSpacing(8)
 
         self.btn_p05 = QPushButton("5% · Abertura")
+        self.btn_p05.setObjectName("btnMarkerP05")
         self.btn_p05.setProperty("class", "markerBtn")
+        self.btn_p05.setFixedHeight(40)
+        self.btn_p05.setCursor(Qt.PointingHandCursor)
         self.btn_p05.clicked.connect(lambda: self.play_marker(5))
         marker_row.addWidget(self.btn_p05)
 
         self.btn_p50 = QPushButton("50% · Meio")
+        self.btn_p50.setObjectName("btnMarkerP50")
         self.btn_p50.setProperty("class", "markerBtn")
+        self.btn_p50.setFixedHeight(40)
+        self.btn_p50.setCursor(Qt.PointingHandCursor)
         self.btn_p50.clicked.connect(lambda: self.play_marker(50))
         marker_row.addWidget(self.btn_p50)
 
         self.btn_p90 = QPushButton("90% · Ato final")
+        self.btn_p90.setObjectName("btnMarkerP90")
         self.btn_p90.setProperty("class", "markerBtn")
+        self.btn_p90.setFixedHeight(40)
+        self.btn_p90.setCursor(Qt.PointingHandCursor)
         self.btn_p90.clicked.connect(lambda: self.play_marker(90))
         marker_row.addWidget(self.btn_p90)
 

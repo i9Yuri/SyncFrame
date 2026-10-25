@@ -42,6 +42,11 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Transformação dos botões "Procurar..." (`#btnBrowseDest`) e "Cancelar" (`#btnCancel`) em botões de pílula contínua de 34px de altura (`border-radius: 17px; height: 34px; min-height: 34px; max-height: 34px; padding: 0 16px;`).
   - Arredondamento contínuo da barra de progresso (`QProgressBar` e `QProgressBar::chunk`) com altura fixa de 14px e `border-radius: 7px;`.
   - Inserção de espaçador vertical (`cre_layout.addStretch()`) preservando a proporção orgânica compacta dos controles sem distorções geométricas.
+- **Erradicação de Quinas Vivas e Padronização da Doca Flutuante de Eventos (`FloatingDockWidget`):**
+  - Ajuste do raio de curvatura da doca inferior (`#floatingDock`) de `34px` para `border-radius: 28px;`, eliminando a falha do Qt QSS que descartava o raio por exceder a meia-altura de 56px (56 / 2 = 28px) e revertia para um retângulo de cantos retos.
+  - Padronização do badge de contagem de eventos (`#badgeEventCount`) com altura fixa de 28px, alinhamento centralizado e `border-radius: 14px;`, eliminando arestas rígidas retangulares.
+  - Transformação dos botões "Limpar" (`#btnDockClear`) e "Expandir" / "Recolher" (`#btnDockToggle`) em botões de pílula contínua de 34px de altura (`border-radius: 17px; height: 34px; padding: 0 14px; border: none;`) em ambos os temas Dark e Light.
+  - Padronização dos botões seletores do player de inspeção (`#btnMarkerP05`, `#btnMarkerP50`, `#btnMarkerP90`) com altura fixa de 40px e `border-radius: 20px;`, chip de timecode (`#lblTimecodeChip`) em 26px com `border-radius: 13px;` e botões retráteis em 36px com `border-radius: 18px;`.
 
 ## [1.2.0] - 2026-10-24
 

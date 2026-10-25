@@ -68,8 +68,19 @@ class StreamSelectorModal(QDialog):
                 border-radius: 10px;
                 padding: 6px 12px;
             }
-            QPushButton {
-                border-radius: 999px;
+            QPushButton.btnSecondary {
+                border-radius: 17px;
+                height: 34px;
+                min-height: 34px;
+                max-height: 34px;
+                padding: 0 16px;
+            }
+            QPushButton.btnSuccess {
+                border-radius: 22px;
+                height: 44px;
+                min-height: 44px;
+                max-height: 44px;
+                /* border-radius: 999px; */
             }
         """)
 
@@ -221,6 +232,8 @@ class StreamSelectorModal(QDialog):
 
         self.btn_cancel = QPushButton("Cancelar")
         self.btn_cancel.setProperty("class", "btnSecondary")
+        self.btn_cancel.setFixedHeight(34)
+        self.btn_cancel.setCursor(Qt.PointingHandCursor)
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
 
@@ -228,6 +241,8 @@ class StreamSelectorModal(QDialog):
 
         self.btn_confirm = QPushButton("Confirmar e Sincronizar Tudo")
         self.btn_confirm.setProperty("class", "btnSuccess")
+        self.btn_confirm.setFixedHeight(44)
+        self.btn_confirm.setCursor(Qt.PointingHandCursor)
         self.btn_confirm.setDefault(True)
         self.btn_confirm.setFocus()
         self.btn_confirm.clicked.connect(self.accept)

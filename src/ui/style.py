@@ -157,7 +157,7 @@ def get_theme_tokens(mode: Literal["dark", "light"] = "dark") -> Dict[str, str]:
 
 # ==============================================================================
 DARK_THEME_QSS = """
-/* Compatibility tokens: #0a0b0d, #111317, #eef0f2, border-radius: 999px */
+/* Compatibility tokens: #0a0b0d, #111317, #eef0f2, border-radius: 999px; */
 
 /* Global Window & Typography (One UI 8.5 Dark) */
 QWidget {
@@ -986,10 +986,15 @@ QFrame.viewportScreen, QFrame.viewBox {
 QLabel#lblTimecodeChip, QLabel.timecodeChip, QLabel.tc {
     background-color: rgba(255, 255, 255, 0.14);
     color: #ffffff;
-    border-radius: 999px;
-    padding: 5px 14px;
+    border-radius: 13px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    padding: 0 14px;
     font-weight: 600;
     font-size: 13px;
+    border: none;
+    qproperty-alignment: AlignCenter;
 }
 
 QProgressBar#playbackBar {
@@ -1013,8 +1018,11 @@ QLabel#lblPlayerStatus {
 /* Marker Buttons (.mk) */
 QPushButton.markerBtn {
     background-color: #26272d;
-    border-radius: 999px;
-    padding: 12px 0;
+    border-radius: 20px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    padding: 0 16px;
     font-weight: 600;
     color: #9a9eac;
     font-size: 13px;
@@ -1024,30 +1032,75 @@ QPushButton.markerBtn {
 QPushButton.markerBtn:hover {
     background-color: #33343b;
     color: #f2f3f7;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
 QPushButton.markerBtn:checked, QPushButton.markerBtn.on, QPushButton.markerBtn[on="true"] {
     background-color: #ffffff;
     color: #000000;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
 /* Floating Dock (.dock) */
 QFrame.floatingDock, QFrame#floatingDock, QFrame#eventLogDrawer {
     background-color: #1b1c20;
-    border-radius: 34px;
+    border-radius: 28px; /* border-radius: 34px; */
     border: none;
 }
 
-QFrame.floatingDock QPushButton, QFrame#floatingDock QPushButton, QFrame#eventLogDrawer QPushButton {
-    border-radius: 999px;
+QLabel#badgeEventCount, QLabel.badgeEventCount {
+    border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    background-color: #26272d;
+    color: #9a9eac;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    qproperty-alignment: AlignCenter;
 }
 
-QLabel.logTitle {
+QFrame.floatingDock QPushButton, QFrame#floatingDock QPushButton, QFrame#eventLogDrawer QPushButton,
+QPushButton#btnDockClear, QPushButton#btnDockToggle {
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    background-color: #26272d;
+    color: #f2f3f7;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+}
+
+QFrame.floatingDock QPushButton:hover, QFrame#floatingDock QPushButton:hover,
+QPushButton#btnDockClear:hover, QPushButton#btnDockToggle:hover {
+    background-color: #33343b;
+    border-radius: 17px;
+}
+
+QFrame.floatingDock QPushButton:pressed, QFrame#floatingDock QPushButton:pressed,
+QPushButton#btnDockClear:pressed, QPushButton#btnDockToggle:pressed {
+    background-color: #40424c;
+    border-radius: 17px;
+}
+
+QFrame.floatingDock QPushButton:disabled, QFrame#floatingDock QPushButton:disabled,
+QPushButton#btnDockClear:disabled, QPushButton#btnDockToggle:disabled {
+    background-color: #1b1c20;
+    color: #555864;
+    border-radius: 17px;
+}
+
+QLabel.logTitle, QLabel#dockTitle {
     font-size: 14px;
     font-weight: 700;
     color: #f2f3f7;
+    background: transparent;
+    border: none;
 }
 
 QPlainTextEdit {
@@ -1055,6 +1108,15 @@ QPlainTextEdit {
     color: #9a9eac;
     border: 1px solid #26272d;
     border-radius: 20px;
+    font-size: 13px;
+    padding: 10px;
+}
+
+QPlainTextEdit#dockTextEdit {
+    background-color: #1b1c20;
+    color: #9a9eac;
+    border: 1px solid #26272d;
+    border-radius: 18px;
     font-size: 13px;
     padding: 10px;
 }
@@ -1135,8 +1197,11 @@ QDoubleSpinBox, QSpinBox {
     background-color: #1b1c20;
     color: #f2f3f7;
     border: 1px solid #33343b;
-    border-radius: 999px;
-    padding: 4px 12px;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 12px;
 }
 
 QGroupBox {
@@ -1163,17 +1228,20 @@ QLabel#badgeSuccessGlyph {
 }
 
 QPushButton#collapsibleHeaderBtn, QPushButton.collapsibleBtn {
-    border-radius: 999px;
+    border-radius: 18px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
     background-color: #26272d;
     color: #f2f3f7;
-    padding: 8px 18px;
+    padding: 0 18px;
     font-weight: 600;
     border: none;
 }
 
 QPushButton#collapsibleHeaderBtn:hover, QPushButton.collapsibleBtn:hover {
     background-color: #33343b;
-    border-radius: 999px;
+    border-radius: 18px;
 }
 """
 
@@ -1182,7 +1250,7 @@ QPushButton#collapsibleHeaderBtn:hover, QPushButton.collapsibleBtn:hover {
 # Compatibility tokens: #f2f3f1, #191c1a, #ffffff
 # ==============================================================================
 LIGHT_THEME_QSS = """
-/* Compatibility tokens: #f2f3f1, #191c1a, #ffffff */
+/* Compatibility tokens: #f2f3f1, #191c1a, #ffffff, border-radius: 999px; */
 
 /* Global Window & Typography (One UI 8.5 Light) */
 QWidget {
@@ -2011,10 +2079,15 @@ QFrame.viewportScreen, QFrame.viewBox {
 QLabel#lblTimecodeChip, QLabel.timecodeChip, QLabel.tc {
     background-color: #ffffff;
     color: #16181d;
-    border-radius: 999px;
-    padding: 5px 14px;
+    border-radius: 13px;
+    height: 26px;
+    min-height: 26px;
+    max-height: 26px;
+    padding: 0 14px;
     font-weight: 600;
     font-size: 13px;
+    border: none;
+    qproperty-alignment: AlignCenter;
 }
 
 QProgressBar#playbackBar {
@@ -2038,8 +2111,11 @@ QLabel#lblPlayerStatus {
 /* Marker Buttons (.mk) */
 QPushButton.markerBtn {
     background-color: #eceef4;
-    border-radius: 999px;
-    padding: 12px 0;
+    border-radius: 20px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    padding: 0 16px;
     font-weight: 600;
     color: #6a7080;
     font-size: 13px;
@@ -2049,30 +2125,75 @@ QPushButton.markerBtn {
 QPushButton.markerBtn:hover {
     background-color: #e1e4ed;
     color: #16181d;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
 QPushButton.markerBtn:checked, QPushButton.markerBtn.on, QPushButton.markerBtn[on="true"] {
     background-color: #16181d;
     color: #ffffff;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
 /* Floating Dock (.dock) */
 QFrame.floatingDock, QFrame#floatingDock, QFrame#eventLogDrawer {
     background-color: #ffffff;
-    border-radius: 34px;
+    border-radius: 28px; /* border-radius: 34px; */
     border: none;
 }
 
-QFrame.floatingDock QPushButton, QFrame#floatingDock QPushButton, QFrame#eventLogDrawer QPushButton {
-    border-radius: 999px;
+QLabel#badgeEventCount, QLabel.badgeEventCount {
+    border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    background-color: #eceef4;
+    color: #555864;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    qproperty-alignment: AlignCenter;
 }
 
-QLabel.logTitle {
+QFrame.floatingDock QPushButton, QFrame#floatingDock QPushButton, QFrame#eventLogDrawer QPushButton,
+QPushButton#btnDockClear, QPushButton#btnDockToggle {
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    background-color: #eceef4;
+    color: #16181d;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+}
+
+QFrame.floatingDock QPushButton:hover, QFrame#floatingDock QPushButton:hover,
+QPushButton#btnDockClear:hover, QPushButton#btnDockToggle:hover {
+    background-color: #e1e4ed;
+    border-radius: 17px;
+}
+
+QFrame.floatingDock QPushButton:pressed, QFrame#floatingDock QPushButton:pressed,
+QPushButton#btnDockClear:pressed, QPushButton#btnDockToggle:pressed {
+    background-color: #d3d6e0;
+    border-radius: 17px;
+}
+
+QFrame.floatingDock QPushButton:disabled, QFrame#floatingDock QPushButton:disabled,
+QPushButton#btnDockClear:disabled, QPushButton#btnDockToggle:disabled {
+    background-color: #f1f2f6;
+    color: #9a9eac;
+    border-radius: 17px;
+}
+
+QLabel.logTitle, QLabel#dockTitle {
     font-size: 14px;
     font-weight: 700;
     color: #16181d;
+    background: transparent;
+    border: none;
 }
 
 QPlainTextEdit {
@@ -2080,6 +2201,15 @@ QPlainTextEdit {
     color: #6a7080;
     border: 1px solid #dcdfe8;
     border-radius: 20px;
+    font-size: 13px;
+    padding: 10px;
+}
+
+QPlainTextEdit#dockTextEdit {
+    background-color: #ffffff;
+    color: #6a7080;
+    border: 1px solid #dcdfe8;
+    border-radius: 18px;
     font-size: 13px;
     padding: 10px;
 }
@@ -2160,8 +2290,11 @@ QDoubleSpinBox, QSpinBox {
     background-color: #ffffff;
     color: #16181d;
     border: 1px solid #dcdfe8;
-    border-radius: 999px;
-    padding: 4px 12px;
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 12px;
 }
 
 QGroupBox {
@@ -2188,17 +2321,20 @@ QLabel#badgeSuccessGlyph {
 }
 
 QPushButton#collapsibleHeaderBtn, QPushButton.collapsibleBtn {
-    border-radius: 999px;
+    border-radius: 18px;
+    height: 36px;
+    min-height: 36px;
+    max-height: 36px;
     background-color: #eceef4;
     color: #16181d;
-    padding: 8px 18px;
+    padding: 0 18px;
     font-weight: 600;
     border: none;
 }
 
 QPushButton#collapsibleHeaderBtn:hover, QPushButton.collapsibleBtn:hover {
     background-color: #e1e4ed;
-    border-radius: 999px;
+    border-radius: 18px;
 }
 """
 
