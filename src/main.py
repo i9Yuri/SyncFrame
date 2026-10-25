@@ -29,9 +29,11 @@ _repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _repo_root not in sys.path:
     sys.path.insert(0, _repo_root)
 
+from PySide6.QtWidgets import QDialog
 from src.ui.app import create_application
 from src.ui.main_window import SyncFrameMainWindow
-from src.utils.system_check import check_system_dependencies
+from src.ui.components.preflight_dialog import PreFlightDialog
+from src.utils.system_check import check_system_dependencies, PreFlightChecker, PreFlightReport
 
 logging.basicConfig(
     level=logging.INFO,
@@ -236,12 +238,26 @@ def main() -> int:
         )
         return 1
 
-    if not diag.is_operational:
-        logger.warning("Ferramentas essenciais ausentes no host: %s", ", ".join(diag.missing_required))
-        print(diag.install_instructions(), file=sys.stderr)
+    # Pre-Flight Gate: Verify mandatory system binaries before main window initialization
+    preflight_report = PreFlightChecker.verify_system_binaries()
+    app = create_application()
+
+    if not preflight_report.is_ready:
+        logger.warning(
+            "Dependências obrigatórias ausentes no pré-voo: %s. Abrindo diálogo de provisionamento...",
+            ", ".join(preflight_report.missing_tools)
+        )
+        preflight_dlg = PreFlightDialog(preflight_report)
+        if preflight_dlg.exec() != QDialog.Accepted:
+            logger.info("Inicialização cancelada pelo usuário no diálogo de dependências.")
+            return 0
+        # Re-verify post installation
+        preflight_report = PreFlightChecker.verify_system_binaries()
+        if not preflight_report.is_ready:
+            logger.error("Dependências continuam ausentes após tentativa de provisionamento.")
+            return 1
 
     # Launch desktop GUI
-    app = create_application()
     window = SyncFrameMainWindow()
     window.show()
 

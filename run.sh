@@ -21,7 +21,7 @@ echo -e "${CYAN}[INFO] Inicializando SyncFrame v1.0.0...${NC}"
 # 1. Checagem de ferramentas essenciais do sistema operacional
 MISSING_DEPS=()
 
-for bin in ffmpeg ffprobe mkvmerge; do
+for bin in ffmpeg ffprobe mkvmerge mpv; do
     if ! command -v "$bin" &>/dev/null; then
         MISSING_DEPS+=("$bin")
     fi

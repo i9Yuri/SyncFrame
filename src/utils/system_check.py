@@ -41,6 +41,75 @@ class SystemDiagnostics:
         return "\n".join(lines)
 
 
+@dataclass
+class PreFlightReport:
+    """Diagnostic report from PreFlightChecker inspecting core media binaries."""
+    is_ready: bool = True
+    missing_tools: List[str] = field(default_factory=list)
+    tool_versions: Dict[str, str] = field(default_factory=dict)
+
+
+class PreFlightChecker:
+    """Pre-flight validator checking the presence, executability and version of media binaries."""
+
+    MANDATORY_TOOLS: List[str] = ["ffmpeg", "ffprobe", "mkvmerge", "mpv"]
+
+    @staticmethod
+    def extract_version(tool_name: str) -> str:
+        """Extracts the first line of tool version output or returns fallback string."""
+        path = shutil.which(tool_name)
+        if not path:
+            return ""
+        arg = "-V" if tool_name == "mkvmerge" else "--version" if tool_name == "mpv" else "-version"
+        try:
+            res = subprocess.run([path, arg], capture_output=True, text=True, timeout=2)
+            out = res.stdout.strip() or res.stderr.strip()
+            if out:
+                first_line = out.split("\n")[0].strip()
+                return first_line
+        except Exception:
+            pass
+        return "Disponível"
+
+    @classmethod
+    def verify_system_binaries(cls) -> PreFlightReport:
+        """
+        Verifies presence and accessibility of mandatory tools: ffmpeg, ffprobe, mkvmerge, mpv.
+        Returns a PreFlightReport.
+        """
+        missing: List[str] = []
+        versions: Dict[str, str] = {}
+
+        for tool in cls.MANDATORY_TOOLS:
+            path = shutil.which(tool)
+            if not path or not os.access(path, os.X_OK):
+                missing.append(tool)
+            else:
+                versions[tool] = cls.extract_version(tool)
+
+        return PreFlightReport(
+            is_ready=len(missing) == 0,
+            missing_tools=missing,
+            tool_versions=versions
+        )
+
+    @staticmethod
+    def get_package_names(missing_tools: List[str]) -> List[str]:
+        """Maps missing binary names to standard Linux distribution package names."""
+        pkg_map = {
+            "ffmpeg": "ffmpeg",
+            "ffprobe": "ffmpeg",
+            "mkvmerge": "mkvtoolnix",
+            "mpv": "mpv"
+        }
+        packages: List[str] = []
+        for tool in missing_tools:
+            pkg = pkg_map.get(tool, tool)
+            if pkg not in packages:
+                packages.append(pkg)
+        return packages
+
+
 def check_system_dependencies() -> SystemDiagnostics:
     """
     Checks the availability and absolute paths of external multimedia tools on the host.

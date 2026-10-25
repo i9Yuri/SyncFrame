@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Optional, List, Literal
 
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer, QThread
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,6 +36,7 @@ from .components.unified_drop_zone import UnifiedDropZone
 from .style import apply_workbench_theme, get_theme_stylesheet, apply_one_ui_monochrome_theme, get_theme_tokens
 from .workspace_layout import WorkspaceLayoutManager
 from .workers.analyze_worker import AnalyzeWorker
+from .workers.dependency_update_worker import DependencyUpdateWorker
 from .workers.remux_worker import RemuxWorker
 from .workers.unified_pipeline_worker import UnifiedPipelineWorker
 from ..core.disk_utils import check_disk_space, format_bytes
@@ -72,6 +73,7 @@ class SyncFrameMainWindow(QWidget):
 
         self.latest_metrics: Optional[SyncMetrics] = None
         self.active_pipeline_worker: Optional[UnifiedPipelineWorker] = None
+        self.active_update_worker: Optional[DependencyUpdateWorker] = None
         self.pipeline_worker: Optional[UnifiedPipelineWorker] = None
         self.active_worker: Optional[UnifiedPipelineWorker] = None
         self.current_worker: Optional[UnifiedPipelineWorker] = None
@@ -330,6 +332,9 @@ class SyncFrameMainWindow(QWidget):
             apply_one_ui_monochrome_theme(app, "dark")
         apply_one_ui_monochrome_theme(self, "dark")
 
+        # Silent background audit of tools and versions
+        QTimer.singleShot(1500, lambda: self.check_for_updates(silent=True))
+
     def _set_stepper_active(self, step_idx: int):
         btns = [self.btn_step_01, self.btn_step_02, self.btn_step_03, self.btn_step_04]
         for i, b in enumerate(btns):
@@ -391,6 +396,50 @@ class SyncFrameMainWindow(QWidget):
         self.sync_controls.set_manual_offset(offset_ms)
         self.preview_player.update_offset(offset_ms)
 
+    def check_for_updates(self, silent: bool = False) -> None:
+        """
+        Dispatches background low-priority DependencyUpdateWorker auditing local and remote versions.
+        """
+        if not silent and hasattr(self, "btn_check_updates"):
+            self.btn_check_updates.setText("Verificando...")
+            self.btn_check_updates.setEnabled(False)
+            self._update_topbar_pill_sizes()
+
+        worker = DependencyUpdateWorker(self)
+        worker.status_message.connect(self.log_drawer.append_log)
+        worker.update_available.connect(self._on_update_available)
+        worker.audit_finished.connect(lambda res: self._on_update_audit_finished(res, silent))
+        self.active_update_worker = worker
+        worker.start(QThread.LowPriority)
+
+    def _on_update_available(self, tool_name: str, new_version: str) -> None:
+        """Receives notice of available update and records telemetry."""
+        msg = f"Atualização disponível: {tool_name} ({new_version})"
+        self.log_drawer.append_log(msg)
+        if hasattr(self, "btn_check_updates"):
+            self.btn_check_updates.setToolTip(msg)
+
+    def _on_update_audit_finished(self, audit_result: dict, silent: bool) -> None:
+        """Handles audit completion without disturbing active user workflows."""
+        has_any_update = (
+            audit_result.get("syncframe", {}).get("has_update", False)
+            or any(t.get("has_update") for t in audit_result.get("tools", {}).values())
+        )
+        if not silent and hasattr(self, "btn_check_updates"):
+            if has_any_update:
+                self.btn_check_updates.setText("Atualização disponível")
+            else:
+                self.btn_check_updates.setText("Todas as ferramentas atualizadas")
+            self._update_topbar_pill_sizes()
+            QTimer.singleShot(3500, self._reset_update_button_state)
+
+    def _reset_update_button_state(self) -> None:
+        """Restores default label and enabled state on update button."""
+        if hasattr(self, "btn_check_updates"):
+            self.btn_check_updates.setText("Verificar Atualizações")
+            self.btn_check_updates.setEnabled(True)
+            self._update_topbar_pill_sizes()
+
     def setup_topbar_actions(self) -> None:
         """
         Constructs and configures topbar pill actions deterministically:
@@ -447,7 +496,19 @@ class SyncFrameMainWindow(QWidget):
         self.btn_theme.setFixedHeight(34)
         self.btn_theme.setCursor(Qt.PointingHandCursor)
 
-        # 4. Version badge
+        # 4. Check updates button (silent/interactive updater)
+        if not hasattr(self, "btn_check_updates") or self.btn_check_updates is None:
+            self.btn_check_updates = QPushButton("Verificar Atualizações")
+            self.btn_check_updates.setToolTip("Auditar versões locais e checar releases do sistema")
+            self.btn_check_updates.clicked.connect(lambda: self.check_for_updates(silent=False))
+            tb_layout.addWidget(self.btn_check_updates)
+
+        self.btn_check_updates.setObjectName("btnCheckUpdates")
+        self.btn_check_updates.setProperty("class", "pill")
+        self.btn_check_updates.setFixedHeight(34)
+        self.btn_check_updates.setCursor(Qt.PointingHandCursor)
+
+        # 5. Version badge
         if not hasattr(self, "badge_v") or self.badge_v is None:
             self.badge_v = QLabel("v1.2.0")
             self.badge_v.setAlignment(Qt.AlignCenter)
@@ -493,6 +554,11 @@ class SyncFrameMainWindow(QWidget):
             fm_theme = self.btn_theme.fontMetrics()
             self.btn_theme.setFixedWidth(fm_theme.horizontalAdvance(self.btn_theme.text()) + 34)
             self.btn_theme.setFixedHeight(34)
+
+        if hasattr(self, "btn_check_updates") and self.btn_check_updates and self.btn_check_updates.text():
+            fm_up = self.btn_check_updates.fontMetrics()
+            self.btn_check_updates.setFixedWidth(fm_up.horizontalAdvance(self.btn_check_updates.text()) + 34)
+            self.btn_check_updates.setFixedHeight(34)
 
         if hasattr(self, "badge_v") and self.badge_v and self.badge_v.text():
             fm_v = self.badge_v.fontMetrics()
@@ -620,6 +686,14 @@ class SyncFrameMainWindow(QWidget):
 
         self.update_sources_view(media_sources)
         self.drop_zone.set_verdict(verdict)
+
+        # Arm preview player immediately with nominal duration and sources
+        if verdict.recommended_video:
+            v_path = verdict.recommended_video.file_path
+            a_path = verdict.recommended_target_audio.file_path if verdict.recommended_target_audio else None
+            dur_sec = (verdict.recommended_video.stream.duration_ms or 60000.0) / 1000.0
+            self.preview_player.set_media_sources(v_path, a_path, dur_sec, 0.0)
+            self.preview_player.set_preview_ready("Fontes carregadas: marcadores habilitados para inspeção")
 
         default_out = os.path.join(
             os.path.dirname(verdict.recommended_video.file_path),

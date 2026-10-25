@@ -205,7 +205,7 @@ QLabel#topCrumb {
 }
 
 /* Header Pills (One UI Status & Actions) */
-QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnResetOffset, QPushButton#btn_reset {
+QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnCheckUpdates, QPushButton#btnResetOffset, QPushButton#btn_reset {
     border-radius: 17px;
     height: 34px;
     min-height: 34px;
@@ -222,12 +222,12 @@ QFrame#pillWorkspace {
     padding: 0px;
 }
 
-QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
+QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnCheckUpdates:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
     background-color: #26272d;
     border-radius: 17px;
 }
 
-QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
+QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnCheckUpdates:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
     background-color: #33343b;
     border-radius: 17px;
 }
@@ -405,7 +405,7 @@ QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRest
     border-radius: 999px;
 }
 
-QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnStopPreview:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
+QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnStopPreview:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnCheckUpdates:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
     background-color: #1b1c20;
     color: #555864;
     border-radius: 999px;
@@ -1094,7 +1094,7 @@ QLabel#topCrumb {
 }
 
 /* Header Pills (One UI Status & Actions) */
-QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnResetOffset, QPushButton#btn_reset {
+QFrame#pillWorkspace, QFrame.pill, QLabel.pill, QPushButton.pill, QPushButton#btnTheme, QPushButton#btnCheckUpdates, QPushButton#btnResetOffset, QPushButton#btn_reset {
     border-radius: 17px;
     height: 34px;
     min-height: 34px;
@@ -1111,12 +1111,12 @@ QFrame#pillWorkspace {
     padding: 0px;
 }
 
-QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
+QFrame#pillWorkspace:hover, QFrame.pill:hover, QPushButton.pill:hover, QPushButton#btnTheme:hover, QPushButton#btnCheckUpdates:hover, QPushButton#btnResetOffset:hover, QPushButton#btn_reset:hover {
     background-color: #eceef4;
     border-radius: 17px;
 }
 
-QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
+QFrame#pillWorkspace:pressed, QFrame.pill:pressed, QPushButton.pill:pressed, QPushButton#btnTheme:pressed, QPushButton#btnCheckUpdates:pressed, QPushButton#btnResetOffset:pressed, QPushButton#btn_reset:pressed {
     background-color: #e1e4ed;
     border-radius: 17px;
 }
@@ -1294,7 +1294,7 @@ QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRest
     border-radius: 999px;
 }
 
-QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnStopPreview:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
+QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnStopPreview:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnCheckUpdates:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
     background-color: #eceef4;
     color: #9a9eac;
     border-radius: 999px;

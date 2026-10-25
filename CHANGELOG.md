@@ -5,6 +5,23 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 O formato segue as diretrizes do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.3.0] - 2026-10-25
+
+### Adicionado
+- **Verificação Pré-Voo de Dependências do Sistema (`PreFlightChecker` & `PreFlightDialog`):**
+  - Auditoria estrita pré-inicialização das ferramentas mandatórias de sistema (`ffmpeg`, `ffprobe`, `mkvmerge`, `mpv`) via `PreFlightChecker.verify_system_binaries()`.
+  - Exibição de diálogo modal One UI com cantos arredondados contínuos de 28px (`PreFlightDialog`) suspendendo a inicialização caso algum binário obrigatório esteja ausente, oferecendo instalação guiada com elevação de privilégios (`pkexec`) e opção de saída limpa.
+  - Atualização do script de inicialização `run.sh` incluindo validação explícita de `mpv`.
+- **Auditoria Silenciosa em Background e Botão de Atualização na Topbar (`DependencyUpdateWorker`):**
+  - Worker em thread assíncrona desacoplada (`DependencyUpdateWorker`, `QThread.LowPriority`) para consulta tolerante a falhas e sem bloqueios na GUI das versões locais e lançamentos remotos via GitHub API.
+  - Botão em pílula semicircular de 34px (`#btnCheckUpdates`, `border-radius: 17px`) integrado à barra superior com estados transitórios ("Verificar Atualizações" -> "Verificando..." -> resultado temporizado por 4 segundos).
+  - Tratamento resiliente offline (`Verificação remota ignorada: offline`) sem popups intrusivos.
+- **Controlador Robusto de Inspeção Labial (`LipSyncController` & `PreviewPlayer`):**
+  - Implementação do controlador de reprodução desacoplado `LipSyncController` baseado em `QProcess` com terminação atômica e prevenção estrita de processos órfãos (`mpv` e fallback para `ffplay`).
+  - Suporte a flags de reprodução pontual (`--start`, `--length=12`, `--audio-delay`) e mapeamento determinístico de atraso temporal via `map_offset_to_player_delay`.
+  - Disparo de marcadores segmentados (5% · Abertura, 50% · Meio, 90% · Ato final) calculados dinamicamente com base na duração total da mídia e botão "Parar" sincronizado com o ciclo de vida do processo.
+  - Atualização em tempo real de timecodes e mensagens de status sem emojis.
+
 ## [1.2.0] - 2026-10-24
 
 ### Corrigido
