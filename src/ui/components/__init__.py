@@ -6,6 +6,7 @@ from .log_drawer import LogDrawer
 from .preflight_dialog import PreFlightDialog
 from .preview_player import PreviewPlayer, LipSyncController
 from .sync_controls import SyncControls, SensitivitySelectorWidget
+from .soundbar_audit_badge import SoundbarAuditBadge, SmoothFadeTooltip
 from .stream_selector_modal import StreamSelectorModal
 from .unified_drop_zone import UnifiedDropZone
 
@@ -18,6 +19,8 @@ __all__ = [
     "PreviewPlayer",
     "SyncControls",
     "SensitivitySelectorWidget",
+    "SoundbarAuditBadge",
+    "SmoothFadeTooltip",
     "StreamSelectorModal",
     "UnifiedDropZone",
 ]

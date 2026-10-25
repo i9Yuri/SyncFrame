@@ -31,6 +31,7 @@ from .components.correlation_view import CorrelationView
 from .components.log_drawer import FloatingDockWidget, LogDrawer
 from .components.preview_player import PreviewPlayer
 from .components.sync_controls import SyncControls
+from .components.soundbar_audit_badge import SoundbarAuditBadge
 from .components.stream_selector_modal import StreamSelectorModal
 from .components.unified_drop_zone import UnifiedDropZone
 from .style import apply_workbench_theme, get_theme_stylesheet, apply_one_ui_monochrome_theme, get_theme_tokens, get_theme_icon
@@ -40,8 +41,16 @@ from .workers.dependency_update_worker import DependencyUpdateWorker
 from .workers.remux_worker import RemuxWorker
 from .workers.unified_pipeline_worker import UnifiedPipelineWorker
 from ..core.disk_utils import check_disk_space, format_bytes
-from ..core.inspector import inspect_media, evaluate_media_streams
-from ..core.models import RemuxJob, SyncMetrics, AutoMatchVerdict, StreamCandidate, format_channel_layout_label, MediaSourceInfo
+from ..core.inspector import inspect_media, evaluate_media_streams, audit_immersive_capabilities
+from ..core.models import (
+    RemuxJob,
+    SyncMetrics,
+    AutoMatchVerdict,
+    StreamCandidate,
+    format_channel_layout_label,
+    MediaSourceInfo,
+    ImmersiveAuditResult
+)
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +184,7 @@ class SyncFrameMainWindow(QWidget):
         self.drop_zone.files_ready.connect(self._on_files_ready)
         self.drop_zone.confirmation_confirmed.connect(self._on_confirmation_confirmed)
         self.drop_zone.target_audio_changed.connect(self._on_target_audio_changed)
+        self.drop_zone.primary_audio_changed.connect(self._on_primary_audio_changed)
         self.drop_zone.ref_audio_changed.connect(self._on_ref_audio_changed)
         self.drop_zone.reset_requested.connect(self._on_reset_requested)
         col_left.addWidget(self.drop_zone)
@@ -199,6 +209,10 @@ class SyncFrameMainWindow(QWidget):
         badge_passthrough.setFixedHeight(28)
         badge_passthrough.setAlignment(Qt.AlignCenter)
         cre_head.addWidget(badge_passthrough, alignment=Qt.AlignVCenter)
+
+        self.badge_soundbar = SoundbarAuditBadge(self)
+        self.badge_soundbar.set_theme_mode(self.current_theme)
+        cre_head.addWidget(self.badge_soundbar, alignment=Qt.AlignVCenter)
         cre_layout.addLayout(cre_head)
 
         # Destination Path selector (.out container)
@@ -382,11 +396,12 @@ class SyncFrameMainWindow(QWidget):
             apply_one_ui_monochrome_theme(app, self.current_theme)
         self.setStyleSheet(theme_qss)
 
-        # Notify subcomponents
         if hasattr(self, "correlation_view") and hasattr(self.correlation_view, "set_theme_mode"):
             self.correlation_view.set_theme_mode(self.current_theme)
         if hasattr(self, "preview_player") and hasattr(self.preview_player, "set_theme_mode"):
             self.preview_player.set_theme_mode(self.current_theme)
+        if hasattr(self, "badge_soundbar") and hasattr(self.badge_soundbar, "set_theme_mode"):
+            self.badge_soundbar.set_theme_mode(self.current_theme)
 
         # Recursively unpolish and polish all child widgets to refresh CSS properties
         for child in self.findChildren(QWidget):
@@ -766,6 +781,15 @@ class SyncFrameMainWindow(QWidget):
         if target_cand:
             self.audio_path = target_cand.file_path
 
+    def _on_primary_audio_changed(self, cand_or_stream):
+        """Audits the newly selected primary audio track for 7.1.4 immersive soundbar capabilities."""
+        if hasattr(self, "badge_soundbar") and self.badge_soundbar:
+            if cand_or_stream is None:
+                self.badge_soundbar.set_audit_result(None)
+            else:
+                audit_res = audit_immersive_capabilities(cand_or_stream)
+                self.badge_soundbar.set_audit_result(audit_res)
+
     def _on_ref_audio_changed(self, track_id: int):
         self.selected_ref_audio_id = track_id
 
@@ -777,6 +801,8 @@ class SyncFrameMainWindow(QWidget):
         self.correlation_view.clear()
         self.sync_controls.reset()
         self.preview_player.set_media_sources(None, None, 0.0, 0.0)
+        if hasattr(self, "badge_soundbar") and self.badge_soundbar:
+            self.badge_soundbar.set_audit_result(None)
         self.txt_output_path.clear()
         self.progress_bar.setValue(0)
         self.lbl_progress_pct.setText("0%")

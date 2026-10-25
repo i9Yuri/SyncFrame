@@ -137,6 +137,7 @@ class UnifiedDropZone(QFrame):
     files_ready = Signal(str, str)
     confirmation_confirmed = Signal(object, object, object, bool)  # (video_cand, target_cand, ref_cand, keep_orig)
     target_audio_changed = Signal(int)
+    primary_audio_changed = Signal(object)
     ref_audio_changed = Signal(int)
     reset_requested = Signal()
 
@@ -840,6 +841,7 @@ class UnifiedDropZone(QFrame):
 
         # Update acoustic audit card
         self._update_audio_audit()
+        self.primary_audio_changed.emit(verdict.recommended_target_audio)
 
         # Set focus to confirm button for instant Enter activation
         self.btn_confirm.setFocus()
@@ -894,6 +896,7 @@ class UnifiedDropZone(QFrame):
             self.update_role_badge(self.badge_a_status, "Seleção Manual")
         self._update_audio_audit()
         self.target_audio_changed.emit(selected_track_id)
+        self.primary_audio_changed.emit(target_cand)
 
     def on_user_ref_audio_changed(self, selected_track_id: int) -> None:
         """Handles manual user selection of the reference audio track."""
@@ -1175,6 +1178,8 @@ class UnifiedDropZone(QFrame):
 
         if target_track_id >= 0:
             self.target_audio_changed.emit(target_track_id)
+            if self.current_verdict:
+                self.primary_audio_changed.emit(self.current_verdict.recommended_target_audio)
         if ref_track_id >= 0:
             self.ref_audio_changed.emit(ref_track_id)
 
@@ -1280,5 +1285,6 @@ class UnifiedDropZone(QFrame):
         self.frame_channel_alert.setVisible(False)
         self.update_dropzone_state(False)
         self.stack.setCurrentIndex(0)
+        self.primary_audio_changed.emit(None)
         self.reset_requested.emit()
 

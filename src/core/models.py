@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict, Any, Literal
 
 
 def format_channel_layout_label(channels: int, layout: str = "") -> str:
@@ -311,5 +311,14 @@ class MediaSourceInfo:
     role_label: str = ""
     summary: str = ""
     is_video_source: bool = False
+
+
+@dataclass
+class ImmersiveAuditResult:
+    """Compatibility audit result for immersive 7.1.4 soundbars (e.g. JBL Bar 1000 MK2)."""
+    status: Literal["optimal", "suboptimal"]
+    title: str
+    description: str
+    suggestion: str
 
 

@@ -21,6 +21,12 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Suporte a flags de reprodução pontual (`--start`, `--length=12`, `--audio-delay`) e mapeamento determinístico de atraso temporal via `map_offset_to_player_delay`.
   - Disparo de marcadores segmentados (5% · Abertura, 50% · Meio, 90% · Ato final) calculados dinamicamente com base na duração total da mídia e botão "Parar" sincronizado com o ciclo de vida do processo.
   - Atualização em tempo real de timecodes e mensagens de status sem emojis.
+- **Auditoria Acústica Imersiva e Badge Reativo de Compatibilidade com Soundbars 7.1.4:**
+  - Implementação do motor de auditoria de som imersivo multicanal (`audit_immersive_capabilities` em `src/core/inspector.py`), com calibração de referência para soundbars de 7.1.4 canais com suporte a Dolby Atmos e caixas surround desacopláveis (JBL Bar 1000 MK2).
+  - Classificação determinística em estados `optimal` (círculo verde com visto ✓ para Dolby Atmos, TrueHD Atmos, E-AC-3 JOC, DTS:X, 7.1 discreto) e `suboptimal` (círculo âmbar com exclamação ! para 5.1 convencional, estéreo 2.0 ou transcodificação comprimida).
+  - Implementação do componente visual `SoundbarAuditBadge` com renderização vetorial anti-aliased em 24x24px inserido no cabeçalho do card de saída do remux.
+  - Implementação do `SmoothFadeTooltip` com transição suave em fade de opacidade (120ms, `QEasingCurve.OutQuad`), geometria curva contínua (`border-radius: 12px`), dimensionamento dinâmico via `QFontMetrics` e orientação diagnóstica sucinta em 3 linhas.
+  - Reatividade atômica via sinal `primary_audio_changed` atualizando instantaneamente o status do badge a cada mudança de seleção no Review Gate.
 
 ### Alterado
 - **Comutador de Tema com Ícones Vetoriais de Sol e Lua na Topbar (`#btnTheme`):**

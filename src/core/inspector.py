@@ -17,7 +17,8 @@ from .models import (
     format_channel_layout_label,
     AudioQualityScore,
     StreamArbitrationResult,
-    SmartDefaultsConfig
+    SmartDefaultsConfig,
+    ImmersiveAuditResult
 )
 
 logger = logging.getLogger(__name__)
@@ -174,6 +175,112 @@ def detect_immersive_audio_metadata(stream_info: dict) -> Tuple[str, bool]:
         return "Mono 1.0", False
 
     return format_channel_layout_label(channels, layout), False
+
+
+def audit_immersive_capabilities(stream: Any) -> ImmersiveAuditResult:
+    """
+    Evaluates audio stream compatibility and acoustic exploration for 7.1.4 immersive
+    soundbars (reference calibration: JBL Bar 1000 MK2 with Dolby Atmos and detachable surrounds).
+
+    Contracts:
+        optimal: Full 7.1.4 / Atmos / lossless spatial utilization (7 base + 1 LFE + 4 up-firing height).
+        suboptimal: Conventional 5.1 (virtual upmixing), stereo 2.0 (virtualization), or compressed transcode.
+    """
+    if stream is None:
+        return ImmersiveAuditResult(
+            status="suboptimal",
+            title="JBL Bar 1000: Nenhuma Faixa Selecionada",
+            description="Nenhuma faixa de áudio ativa para auditoria multicanal.",
+            suggestion="Selecione uma faixa de áudio para auditar a compatibilidade 7.1.4."
+        )
+
+    # Unwrap StreamCandidate if passed
+    if hasattr(stream, "stream"):
+        stream = getattr(stream, "stream")
+
+    if isinstance(stream, dict):
+        codec = str(stream.get("codec_name") or stream.get("codec") or "").lower()
+        channels = int(stream.get("channels") or 0)
+        title = str(stream.get("title") or stream.get("tags", {}).get("title") or "").lower()
+        profile = str(stream.get("profile") or "").lower()
+        layout = str(stream.get("channel_layout") or "").lower()
+        is_immersive = bool(stream.get("is_immersive", False))
+        spatial_label = str(stream.get("spatial_label") or "")
+        is_suspicious_transcode = bool(stream.get("is_suspicious_transcode", False))
+    else:
+        codec = str(getattr(stream, "codec", "") or "").lower()
+        channels = int(getattr(stream, "channels", 0) or 0)
+        title = str(getattr(stream, "title", "") or "").lower()
+        profile = str(getattr(stream, "profile", "") or "").lower()
+        layout = str(getattr(stream, "channel_layout", "") or "").lower()
+        is_immersive = bool(getattr(stream, "is_immersive", False))
+        spatial_label = str(getattr(stream, "spatial_label", "") or "")
+        is_suspicious_transcode = bool(getattr(stream, "is_suspicious_transcode", False))
+
+    combined_text = f"{codec} {title} {profile} {layout} {spatial_label}".lower()
+
+    # Detect Dolby Atmos or spatial objects
+    has_atmos = "atmos" in combined_text or "joc" in combined_text or is_immersive
+    has_dtsx = "dts:x" in combined_text or "dts-x" in combined_text
+    is_truehd = "truehd" in codec
+    is_eac3_joc = ("eac3" in codec or "e-ac-3" in codec) and ("joc" in combined_text or "atmos" in combined_text or is_immersive)
+    is_dts_hd_ma_71 = ("dtshd" in codec or "dts-hd" in codec or "dts" in codec) and channels >= 8
+    is_lpcm_71 = any(p in codec for p in ("pcm", "flac")) and channels >= 8
+
+    # 1. OPTIMAL_IMMERSIVE (Check Verde)
+    if has_atmos or has_dtsx or is_truehd or is_eac3_joc or is_dts_hd_ma_71 or is_lpcm_71 or channels >= 8:
+        if has_atmos:
+            title_text = "JBL Bar 1000: Atmos 7.1.4 Ativo"
+        elif has_dtsx:
+            title_text = "JBL Bar 1000: DTS:X 7.1.4 Ativo"
+        elif channels >= 8:
+            title_text = "JBL Bar 1000: Surround 7.1 Discreto"
+        else:
+            title_text = "JBL Bar 1000: Imersivo 7.1.4 Ativo"
+
+        return ImmersiveAuditResult(
+            status="optimal",
+            title=title_text,
+            description="Mixagem original com objetos espaciais e canais de altura ativos.",
+            suggestion="Aproveitamento acústico máximo em soundbars 7.1.4 e home theaters dedicados."
+        )
+
+    # 2. SUBOPTIMAL_ATTENTION (Exclamação Amarela)
+    # Cenário 3: Transcodificação Comprimida
+    if is_suspicious_transcode or (channels >= 6 and any(k in codec for k in ("aac", "mp4a"))):
+        return ImmersiveAuditResult(
+            status="suboptimal",
+            title="JBL Bar 1000: Multicanal Comprimido",
+            description="Transcodificação com compressão de dinâmica e graves atenuados.",
+            suggestion="Priorize faixas originais AC-3/E-AC-3 ou TrueHD sem perda."
+        )
+
+    # Cenário 1: Multicanal Convencional 5.1
+    if channels == 6 or "5.1" in combined_text or any(k in codec for k in ("ac3", "eac3", "dts")):
+        return ImmersiveAuditResult(
+            status="suboptimal",
+            title="JBL Bar 1000: Surround 5.1 Convencional",
+            description="Sem canais de teto dedicados; surround operando por emulação.",
+            suggestion="Selecione faixa TrueHD/Atmos no seletor ou obtenha release WEB-DL/Remux com áudio E-AC-3 Atmos."
+        )
+
+    # Cenário 2: Estéreo / Mono 2.0 ou 1.0
+    if channels <= 2:
+        title_text = "JBL Bar 1000: Estéreo 2.0 Reduzido" if channels == 2 else "JBL Bar 1000: Áudio Mono 1.0"
+        return ImmersiveAuditResult(
+            status="suboptimal",
+            title=title_text,
+            description="Subwoofer e caixas surround operam com emulação estéreo reduzida.",
+            suggestion="Selecione faixa multicanal 5.1/7.1 ou fonte de maior fidelidade."
+        )
+
+    # Fallback seguro para channels < 8
+    return ImmersiveAuditResult(
+        status="suboptimal",
+        title="JBL Bar 1000: Capacidade Subótima",
+        description="Áudio convencional operando sem canais de altura dedicados.",
+        suggestion="Recomenda-se release com áudio Dolby Atmos ou DTS:X."
+    )
 
 
 def probe_audio_channels_fast(file_path: str, stream_index: int) -> Tuple[int, str]:

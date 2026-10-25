@@ -380,6 +380,15 @@ QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip {
     qproperty-alignment: AlignCenter;
 }
 
+QWidget#badgeSoundbarAudit {
+    border-radius: 12px;
+    background: transparent;
+}
+
+QFrame#soundbarTooltipContainer {
+    border-radius: 12px;
+}
+
 QLabel.statusPill, QLabel#chipFFT, QLabel.tag {
     border-radius: 14px;
     height: 26px;
@@ -1571,6 +1580,15 @@ QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip {
     font-size: 11px;
     font-weight: 700;
     qproperty-alignment: AlignCenter;
+}
+
+QWidget#badgeSoundbarAudit {
+    border-radius: 12px;
+    background: transparent;
+}
+
+QFrame#soundbarTooltipContainer {
+    border-radius: 12px;
 }
 
 QLabel.statusPill, QLabel#chipFFT, QLabel.tag {
