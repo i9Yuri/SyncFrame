@@ -41,7 +41,12 @@ from .workers.dependency_update_worker import DependencyUpdateWorker
 from .workers.remux_worker import RemuxWorker
 from .workers.unified_pipeline_worker import UnifiedPipelineWorker
 from ..core.disk_utils import check_disk_space, format_bytes
-from ..core.inspector import inspect_media, evaluate_media_streams, audit_immersive_capabilities
+from ..core.inspector import (
+    inspect_media,
+    evaluate_media_streams,
+    audit_immersive_capabilities,
+    apply_selection_to_remux_job
+)
 from ..core.models import (
     RemuxJob,
     SyncMetrics,
@@ -49,7 +54,9 @@ from ..core.models import (
     StreamCandidate,
     format_channel_layout_label,
     MediaSourceInfo,
-    ImmersiveAuditResult
+    ImmersiveAuditResult,
+    MediaInspectionReport,
+    ConsolidatedStreamSelection
 )
 
 logger = logging.getLogger(__name__)
@@ -186,6 +193,7 @@ class SyncFrameMainWindow(QWidget):
         self.drop_zone.target_audio_changed.connect(self._on_target_audio_changed)
         self.drop_zone.primary_audio_changed.connect(self._on_primary_audio_changed)
         self.drop_zone.ref_audio_changed.connect(self._on_ref_audio_changed)
+        self.drop_zone.single_file_inspected.connect(self._on_single_file_inspected)
         self.drop_zone.reset_requested.connect(self._on_reset_requested)
         col_left.addWidget(self.drop_zone)
 
@@ -402,6 +410,8 @@ class SyncFrameMainWindow(QWidget):
             self.preview_player.set_theme_mode(self.current_theme)
         if hasattr(self, "badge_soundbar") and hasattr(self.badge_soundbar, "set_theme_mode"):
             self.badge_soundbar.set_theme_mode(self.current_theme)
+        if hasattr(self, "drop_zone") and hasattr(self.drop_zone, "set_theme_mode"):
+            self.drop_zone.set_theme_mode(self.current_theme)
 
         # Recursively unpolish and polish all child widgets to refresh CSS properties
         for child in self.findChildren(QWidget):
@@ -665,10 +675,37 @@ class SyncFrameMainWindow(QWidget):
         self.drop_zone.handle_files_ingested(file_paths)
 
     def update_sources_view(self, media_sources: List[MediaSourceInfo]) -> None:
-        """Updates the media source cards and drop zone view with structured source information."""
+        """Delegates updating sources view to the drop zone."""
         self.drop_zone.update_sources_view(media_sources)
 
+    def transition_to_inspector_mode(self, report: MediaInspectionReport) -> None:
+        """Transitions workbench into single-file media inspector mode."""
+        self._set_stepper_active(1)
+        self.log_drawer.append_log(
+            f"Modo Inspeção ativado: {report.file_name} ({report.container_format}) - {format_bytes(report.file_size_bytes)}"
+        )
+        self.card_remux_exec.setEnabled(False)
+        self.card_acoustic.setEnabled(False)
+        self.sync_controls.setEnabled(False)
+        self.preview_player.setEnabled(False)
+
+    def transition_to_sync_mode(self, files: List[str]) -> None:
+        """Transitions workbench into multi-file synchronization and remux mode."""
+        self.card_remux_exec.setEnabled(True)
+        self.card_acoustic.setEnabled(True)
+        self.sync_controls.setEnabled(True)
+        self.preview_player.setEnabled(True)
+        if len(files) >= 2:
+            self._on_files_ready(files[0], files[1])
+
+    def _on_single_file_inspected(self, report: MediaInspectionReport) -> None:
+        self.transition_to_inspector_mode(report)
+
     def _on_files_ready(self, file_a: str, file_b: str):
+        self.card_remux_exec.setEnabled(True)
+        self.card_acoustic.setEnabled(True)
+        self.sync_controls.setEnabled(True)
+        self.preview_player.setEnabled(True)
         self.log_drawer.append_log(f"Fontes recebidas: {os.path.basename(file_a)}, {os.path.basename(file_b)}")
         self._set_stepper_active(1)
 
@@ -719,7 +756,7 @@ class SyncFrameMainWindow(QWidget):
                 )
             )
 
-        self.update_sources_view(media_sources)
+        self.drop_zone.update_sources_view(media_sources)
         self.drop_zone.set_verdict(verdict)
 
         # Arm preview player immediately with nominal duration and sources
@@ -798,6 +835,10 @@ class SyncFrameMainWindow(QWidget):
         self.video_path = None
         self.audio_path = None
         self.latest_metrics = None
+        self.card_remux_exec.setEnabled(True)
+        self.card_acoustic.setEnabled(True)
+        self.sync_controls.setEnabled(True)
+        self.preview_player.setEnabled(True)
         self.correlation_view.clear()
         self.sync_controls.reset()
         self.preview_player.set_media_sources(None, None, 0.0, 0.0)
@@ -896,6 +937,10 @@ class SyncFrameMainWindow(QWidget):
             discarded_audio_ids=discarded_ids,
             ref_audio_file=getattr(self, "ref_audio_file", None) or self.video_path
         )
+
+        if hasattr(self.drop_zone, "get_consolidated_selection"):
+            consolidated = self.drop_zone.get_consolidated_selection()
+            job = apply_selection_to_remux_job(consolidated, job)
 
         self.job = job
 

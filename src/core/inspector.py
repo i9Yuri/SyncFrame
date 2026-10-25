@@ -18,7 +18,13 @@ from .models import (
     AudioQualityScore,
     StreamArbitrationResult,
     SmartDefaultsConfig,
-    ImmersiveAuditResult
+    ImmersiveAuditResult,
+    VideoStreamDetail,
+    AudioStreamDetail,
+    SubtitleDetail,
+    MediaInspectionReport,
+    ConsolidatedStreamSelection,
+    RemuxJob
 )
 
 logger = logging.getLogger(__name__)
@@ -1394,5 +1400,301 @@ def determine_smart_defaults(
         target_codec=selected_codec,
         reason=reason
     )
+
+
+def inspect_single_media(file_path: str) -> MediaInspectionReport:
+    """
+    Performs deterministic deep inspection of a single media file (.mkv, .mp4, .mov,
+    .ac3, .flac, .opus, etc.), extracting container properties, video streams, audio streams,
+    subtitles, and chapters via ffprobe.
+    """
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"Media file not found: {file_path}")
+
+    file_name = os.path.basename(file_path)
+    file_size_bytes = os.path.getsize(file_path)
+    ext = os.path.splitext(file_path)[1].lower().lstrip(".")
+    is_audio_ext = ext in ("ac3", "eac3", "aac", "dts", "flac", "m4a", "mp3", "wav", "opus")
+
+    base_cmd = [
+        "ffprobe",
+        "-v", "quiet",
+        "-print_format", "json",
+        "-show_format",
+        "-show_streams",
+        "-show_chapters",
+        "-analyzeduration", "100M",
+        "-probesize", "50M",
+    ]
+
+    data = None
+    try:
+        cmd = base_cmd + [file_path]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        data = json.loads(res.stdout)
+    except Exception as exc:
+        logger.warning("Standard ffprobe probing failed for %s (%s). Attempting fallback...", file_path, exc)
+        try:
+            cmd = base_cmd + ["-err_detect", "ignore_err", file_path]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            data = json.loads(res.stdout)
+        except Exception as exc2:
+            logger.error("Deep single media inspection failed for %s: %s", file_path, exc2)
+            return MediaInspectionReport(
+                file_path=file_path,
+                file_name=file_name,
+                file_size_bytes=file_size_bytes,
+                duration_sec=0.0,
+                container_format=ext or "unknown",
+                is_audio_only=is_audio_ext,
+                error_message=f"Falha ao inspecionar o arquivo: {exc2}"
+            )
+
+    fmt_info = data.get("format", {})
+    container_fmt = fmt_info.get("format_name", ext or "unknown").split(",")[0].strip()
+    if ext in ("mkv", "mp4", "m4v", "mov", "flac", "ac3", "aac", "mp3", "opus", "wav", "dts"):
+        container_fmt = ext.upper()
+    else:
+        container_fmt = container_fmt.upper()
+
+    try:
+        duration_sec = float(fmt_info.get("duration", 0.0) or 0.0)
+    except (ValueError, TypeError):
+        duration_sec = 0.0
+
+    video_streams: List[VideoStreamDetail] = []
+    audio_streams: List[AudioStreamDetail] = []
+    subtitle_streams: List[SubtitleDetail] = []
+
+    for s in data.get("streams", []):
+        codec_type = s.get("codec_type", "").lower()
+        stream_index = int(s.get("index", 0))
+        codec_name = s.get("codec_name", "")
+        tags = s.get("tags", {})
+        disposition = s.get("disposition", {})
+
+        if codec_type == "video":
+            profile = s.get("profile", "")
+            width = int(s.get("width", 0) or 0)
+            height = int(s.get("height", 0) or 0)
+            aspect_ratio = s.get("display_aspect_ratio", "")
+            if not aspect_ratio and width > 0 and height > 0:
+                aspect_ratio = f"{width}:{height}"
+
+            fps = _parse_fraction(s.get("r_frame_rate", ""))
+            if fps == 0.0:
+                fps = _parse_fraction(s.get("avg_frame_rate", ""))
+
+            # Bit depth determination
+            bit_depth = 8
+            bits_per_raw = s.get("bits_per_raw_sample")
+            if bits_per_raw and str(bits_per_raw).isdigit():
+                bit_depth = int(bits_per_raw)
+            else:
+                pix_fmt = str(s.get("pix_fmt", "")).lower()
+                if "10" in pix_fmt or "p10" in pix_fmt:
+                    bit_depth = 10
+                elif "12" in pix_fmt or "p12" in pix_fmt:
+                    bit_depth = 12
+
+            color_space = s.get("color_space") or s.get("color_primaries") or "bt709"
+            color_transfer = str(s.get("color_transfer", "")).lower()
+            side_data_str = str(s.get("side_data_list", "")).lower()
+
+            # HDR / Dolby Vision determination
+            hdr_format = None
+            is_dovi = "dovi" in side_data_str or "dolby vision" in side_data_str
+            if "smpte2084" in color_transfer or "hdr10" in color_transfer:
+                if "hdr10+" in side_data_str:
+                    hdr_format = "HDR10+"
+                elif is_dovi:
+                    hdr_format = "Dolby Vision / HDR10"
+                else:
+                    hdr_format = "HDR10"
+            elif "arib-std-b67" in color_transfer or "hlg" in color_transfer:
+                hdr_format = "HLG"
+            elif is_dovi:
+                hdr_format = "Dolby Vision"
+
+            video_streams.append(
+                VideoStreamDetail(
+                    stream_id=stream_index,
+                    codec=codec_name,
+                    profile=profile,
+                    width=width,
+                    height=height,
+                    aspect_ratio=aspect_ratio,
+                    fps=fps,
+                    bit_depth=bit_depth,
+                    color_space=color_space,
+                    hdr_format=hdr_format
+                )
+            )
+
+        elif codec_type == "audio":
+            language = tags.get("language", "und")
+            title = tags.get("title", "")
+            channels = int(s.get("channels", 0) or 0)
+            channel_layout = str(s.get("channel_layout", ""))
+            sample_rate = int(s.get("sample_rate", 0) or 0)
+
+            # Bitrate sanitization
+            stream_size = 0
+            for tag_k, tag_v in tags.items():
+                if "NUMBER_OF_BYTES" in tag_k.upper():
+                    try:
+                        stream_size = int(tag_v)
+                        break
+                    except (ValueError, TypeError):
+                        pass
+
+            raw_br = s.get("bit_rate")
+            raw_br_int = int(raw_br) if raw_br and str(raw_br).isdigit() else None
+            bit_rate = sanitize_stream_bitrate(
+                raw_bitrate=raw_br_int,
+                stream_size=stream_size,
+                duration_sec=duration_sec,
+                codec=codec_name,
+                channels=channels
+            )
+
+            spatial_lbl, is_imm = detect_immersive_audio_metadata(s)
+            audio_streams.append(
+                AudioStreamDetail(
+                    stream_id=stream_index,
+                    language=language,
+                    title=title,
+                    codec=codec_name,
+                    channels=channels,
+                    channel_layout=channel_layout,
+                    sample_rate=sample_rate,
+                    bit_rate=bit_rate,
+                    is_immersive=is_imm,
+                    immersive_type=spatial_lbl if is_imm else None
+                )
+            )
+
+        elif codec_type == "subtitle":
+            language = tags.get("language", "und")
+            title = tags.get("title", "")
+            is_forced = bool(disposition.get("forced", 0))
+            is_default = bool(disposition.get("default", 0))
+            subtitle_streams.append(
+                SubtitleDetail(
+                    stream_id=stream_index,
+                    language=language,
+                    title=title,
+                    codec=codec_name,
+                    is_forced=is_forced,
+                    is_default=is_default
+                )
+            )
+
+    chapters = data.get("chapters", [])
+    chapter_count = len(chapters)
+    is_audio_only = (len(video_streams) == 0) or is_audio_ext
+
+    return MediaInspectionReport(
+        file_path=file_path,
+        file_name=file_name,
+        file_size_bytes=file_size_bytes,
+        duration_sec=duration_sec,
+        container_format=container_fmt,
+        video_streams=video_streams,
+        audio_streams=audio_streams,
+        subtitle_streams=subtitle_streams,
+        chapter_count=chapter_count,
+        is_audio_only=is_audio_only,
+        error_message=None
+    )
+
+
+def build_consolidated_selection_state(
+    sources: List[str],
+    verdict: Optional[AutoMatchVerdict] = None
+) -> ConsolidatedStreamSelection:
+    """
+    Computes consolidated selection state mapping primary video, target dubbed audio,
+    and a structured list of secondary audio checkboxes across all ingested sources.
+    """
+    if len(sources) < 2 and not verdict:
+        raise ValueError("build_consolidated_selection_state requires at least 2 sources or a precomputed verdict.")
+
+    if not verdict:
+        verdict = evaluate_media_streams(sources[0], sources[1])
+
+    primary_v_file = verdict.recommended_video.file_path
+    primary_v_id = verdict.recommended_video.stream.id
+
+    target_a_file = verdict.recommended_target_audio.file_path if verdict.recommended_target_audio else sources[0]
+    target_a_id = verdict.recommended_target_audio.stream.id if verdict.recommended_target_audio else 0
+
+    ref_a_file = verdict.reference_audio.file_path if verdict.reference_audio else primary_v_file
+    ref_a_id = verdict.reference_audio.stream.id if verdict.reference_audio else None
+
+    # Aggregate all unique audio candidates across verdict
+    seen_streams = set()
+    all_audio_cands: List[StreamCandidate] = []
+
+    candidates_pool: List[StreamCandidate] = []
+    if verdict.recommended_target_audio:
+        candidates_pool.append(verdict.recommended_target_audio)
+    if verdict.reference_audio:
+        candidates_pool.append(verdict.reference_audio)
+    candidates_pool.extend(verdict.alternative_audios)
+
+    for cand in candidates_pool:
+        key = (cand.file_path, cand.stream.id)
+        if key not in seen_streams:
+            seen_streams.add(key)
+            all_audio_cands.append(cand)
+
+    secondary_selections: List[Tuple[str, int, bool]] = []
+    for cand in all_audio_cands:
+        # If this is the chosen primary dubbed audio, it is not a secondary track
+        if cand.file_path == target_a_file and cand.stream.id == target_a_id:
+            continue
+
+        lang = (cand.stream.language or "und").lower()
+        # Original audio tracks (English or designated reference) checked by default
+        is_original = (
+            "eng" in lang
+            or "en" in lang
+            or (ref_a_file and cand.file_path == ref_a_file and cand.stream.id == ref_a_id)
+        )
+        secondary_selections.append((cand.file_path, cand.stream.id, is_original))
+
+    return ConsolidatedStreamSelection(
+        primary_video_file=primary_v_file,
+        primary_video_track_id=primary_v_id,
+        target_audio_file=target_a_file,
+        target_audio_track_id=target_a_id,
+        secondary_audio_selections=secondary_selections,
+        ref_audio_file=ref_a_file,
+        ref_audio_track_id=ref_a_id
+    )
+
+
+def apply_selection_to_remux_job(
+    selection: ConsolidatedStreamSelection,
+    job: RemuxJob
+) -> RemuxJob:
+    """
+    Applies consolidated user stream selections directly to RemuxJob parameters.
+    """
+    job.video_file = selection.primary_video_file
+    job.video_track_id = selection.primary_video_track_id
+    job.target_audio_file = selection.target_audio_file
+    job.target_track_id = selection.target_audio_track_id
+    job.target_audio_track_id = selection.target_audio_track_id
+    job.ref_audio_file = selection.ref_audio_file or selection.primary_video_file
+    job.ref_audio_track_id = selection.ref_audio_track_id if selection.ref_audio_track_id is not None else 1
+    job.secondary_audio_selections = list(selection.secondary_audio_selections)
+
+    has_enabled_secondary = any(enabled for (_, _, enabled) in selection.secondary_audio_selections)
+    job.keep_original_audio = has_enabled_secondary
+
+    return job
+
 
 

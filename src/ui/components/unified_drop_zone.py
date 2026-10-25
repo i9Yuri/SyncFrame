@@ -27,7 +27,9 @@ from ...core.models import (
     format_channel_layout_label,
     MediaSourceInfo,
     StreamReviewState,
-    SmartDefaultsConfig
+    SmartDefaultsConfig,
+    MediaInspectionReport,
+    ConsolidatedStreamSelection
 )
 from ...core.inspector import (
     PORTUGUESE_TAGS,
@@ -37,7 +39,15 @@ from ...core.inspector import (
     determine_smart_defaults
 )
 from ..style import get_role_badge_style, get_action_chip_style
+from ..workers.single_file_inspection_worker import SingleFileInspectionWorker
 from .audio_preserve_checkbox import AudioPreserveCheckbox
+from .media_inspector_view import MediaInspectorView
+
+SUPPORTED_EXTENSIONS = (
+    ".mkv", ".mp4", ".m4v", ".mov",
+    ".ac3", ".eac3", ".aac", ".dts",
+    ".flac", ".m4a", ".mp3", ".wav", ".opus"
+)
 
 
 class WheelBlockerFilter(QObject):
@@ -140,6 +150,8 @@ class UnifiedDropZone(QFrame):
     primary_audio_changed = Signal(object)
     ref_audio_changed = Signal(int)
     reset_requested = Signal()
+    single_file_inspected = Signal(object)
+    single_file_failed = Signal(str)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -149,6 +161,8 @@ class UnifiedDropZone(QFrame):
 
         self.loaded_files: List[str] = []
         self.current_verdict: Optional[AutoMatchVerdict] = None
+        self.inspection_worker: Optional[SingleFileInspectionWorker] = None
+        self.secondary_checkbox_items: List[Tuple[QCheckBox, str, int]] = []
 
         self.init_ui()
 
@@ -205,54 +219,40 @@ class UnifiedDropZone(QFrame):
         self.stack.addWidget(self.page_empty)
 
         # ======================================================================
-        # Page 1: 1 File Ingested (Awaiting Second File)
+        # Page 1: 1 File Ingested (Single-File Media Inspector Workbench)
         # ======================================================================
         self.page_single = QFrame()
         self.page_single.setObjectName("dropFrameSingle")
-        self.page_single.setMaximumHeight(240)
         single_layout = QVBoxLayout(self.page_single)
-        single_layout.setAlignment(Qt.AlignCenter)
-        single_layout.setSpacing(10)
-        single_layout.setContentsMargins(20, 20, 20, 20)
+        single_layout.setContentsMargins(0, 0, 0, 0)
+        single_layout.setSpacing(0)
 
-        self.badge_waiting = QLabel("1 de 2 arquivos carregados — Aguardando segundo arquivo")
+        # Legacy widgets preserved for test compatibility
+        self.badge_waiting = QLabel("1 de 2 arquivos carregados — Aguardando segundo arquivo", self.page_single)
         self.badge_waiting.setObjectName("badgeWaiting")
         self.badge_waiting.setProperty("class", "badgeAmber")
-        self.badge_waiting.setFixedHeight(28)
-        self.badge_waiting.setAlignment(Qt.AlignCenter)
-        single_layout.addWidget(self.badge_waiting, alignment=Qt.AlignCenter)
+        self.badge_waiting.setVisible(False)
 
-        self.lbl_single_filename = QLabel("")
+        self.lbl_single_filename = QLabel("", self.page_single)
+        self.lbl_single_filename.setObjectName("lblSingleFilename")
         self.lbl_single_filename.setProperty("class", "monoValue")
-        self.lbl_single_filename.setAlignment(Qt.AlignCenter)
-        single_layout.addWidget(self.lbl_single_filename)
+        self.lbl_single_filename.setVisible(False)
 
-        lbl_single_instruction = QLabel("Arraste a segunda fonte aqui ou selecione manualmente:")
-        lbl_single_instruction.setProperty("class", "subText")
-        lbl_single_instruction.setAlignment(Qt.AlignCenter)
-        single_layout.addWidget(lbl_single_instruction)
+        self.btn_browse_second = QPushButton("Adicionar Segundo Arquivo...", self.page_single)
+        self.btn_browse_second.setObjectName("btnBrowseSecond")
+        self.btn_browse_second.clicked.connect(self._open_single_file_dialog)
+        self.btn_browse_second.setVisible(False)
 
-        btn_row = QHBoxLayout()
-        btn_row.setAlignment(Qt.AlignCenter)
-        btn_row.setSpacing(10)
+        self.btn_reset_single = QPushButton("Limpar", self.page_single)
+        self.btn_reset_single.setObjectName("btnResetSingle")
+        self.btn_reset_single.clicked.connect(self.reset)
+        self.btn_reset_single.setVisible(False)
 
-        btn_browse_second = QPushButton("Adicionar Segundo Arquivo...")
-        btn_browse_second.setObjectName("btnBrowseSecond")
-        btn_browse_second.setProperty("class", "btnPrimary")
-        btn_browse_second.setFixedHeight(44)
-        btn_browse_second.setCursor(Qt.PointingHandCursor)
-        btn_browse_second.clicked.connect(self._open_single_file_dialog)
-        btn_row.addWidget(btn_browse_second)
+        self.inspector_view = MediaInspectorView(self.page_single)
+        self.inspector_view.add_second_source_clicked.connect(self._open_single_file_dialog)
+        self.inspector_view.reset_requested.connect(self.reset)
+        single_layout.addWidget(self.inspector_view)
 
-        btn_reset_single = QPushButton("Limpar")
-        btn_reset_single.setObjectName("btnResetSingle")
-        btn_reset_single.setProperty("class", "btnSecondary")
-        btn_reset_single.setFixedHeight(44)
-        btn_reset_single.setCursor(Qt.PointingHandCursor)
-        btn_reset_single.clicked.connect(self.reset)
-        btn_row.addWidget(btn_reset_single)
-
-        single_layout.addLayout(btn_row)
         self.stack.addWidget(self.page_single)
 
         # ======================================================================
@@ -476,6 +476,39 @@ class UnifiedDropZone(QFrame):
         self.chip_ref_act = self.row_ref.chip
         br_layout.addWidget(self.row_ref)
 
+        # Section 3: Secondary Audio Streams Panel (Multi-Select Checkboxes)
+        self.frame_secondary_audio = QFrame()
+        self.frame_secondary_audio.setObjectName("frameSecondaryAudio")
+        self.frame_secondary_audio.setProperty("class", "subCard")
+        fsa_layout = QVBoxLayout(self.frame_secondary_audio)
+        fsa_layout.setContentsMargins(14, 10, 14, 10)
+        fsa_layout.setSpacing(8)
+
+        fsa_head = QHBoxLayout()
+        fsa_head.setSpacing(10)
+        lbl_fsa_title = QLabel("Faixas de áudio secundárias (Multi-Select)")
+        lbl_fsa_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #f2f3f7;")
+        fsa_head.addWidget(lbl_fsa_title)
+        fsa_head.addStretch()
+
+        self.chip_fsa_status = QLabel("Passthrough direto (copy)")
+        self.chip_fsa_status.setObjectName("chipFsaStatus")
+        self.chip_fsa_status.setFixedHeight(24)
+        self.chip_fsa_status.setStyleSheet(
+            "background-color: #222329; color: #2fb16b; border: 1px solid #2fb16b; "
+            "border-radius: 12px; font-weight: 700; font-size: 10px; padding: 0 10px;"
+        )
+        fsa_head.addWidget(self.chip_fsa_status)
+        fsa_layout.addLayout(fsa_head)
+
+        self.secondary_container = QWidget()
+        self.secondary_layout = QVBoxLayout(self.secondary_container)
+        self.secondary_layout.setContentsMargins(0, 2, 0, 2)
+        self.secondary_layout.setSpacing(6)
+        fsa_layout.addWidget(self.secondary_container)
+
+        br_layout.addWidget(self.frame_secondary_audio)
+
         # Acoustic Audit Card & Channel Configuration Badges (.audit)
         self.frame_audio_audit = QFrame()
         self.frame_audio_audit.setObjectName("frameAudioAudit")
@@ -621,9 +654,9 @@ class UnifiedDropZone(QFrame):
     def _open_file_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Selecionar Arquivos (Vídeo + Áudio)",
+            "Selecionar Arquivos (Vídeo / Áudio)",
             "",
-            "Vídeos (*.mkv *.mp4 *.m4v *.mov)"
+            "Mídias Suportadas (*.mkv *.mp4 *.m4v *.mov *.ac3 *.eac3 *.aac *.dts *.flac *.m4a *.mp3 *.wav *.opus);;Vídeos (*.mkv *.mp4 *.m4v *.mov);;Áudios (*.ac3 *.eac3 *.aac *.dts *.flac *.m4a *.mp3 *.wav *.opus);;Todos os Arquivos (*)"
         )
         if files:
             self.handle_files_ingested(files)
@@ -633,7 +666,7 @@ class UnifiedDropZone(QFrame):
             self,
             "Selecionar Segundo Arquivo de Mídia",
             "",
-            "Vídeos (*.mkv *.mp4 *.m4v *.mov)"
+            "Mídias Suportadas (*.mkv *.mp4 *.m4v *.mov *.ac3 *.eac3 *.aac *.dts *.flac *.m4a *.mp3 *.wav *.opus);;Vídeos (*.mkv *.mp4 *.m4v *.mov);;Áudios (*.ac3 *.eac3 *.aac *.dts *.flac *.m4a *.mp3 *.wav *.opus);;Todos os Arquivos (*)"
         )
         if files:
             self.handle_files_ingested(files)
@@ -641,11 +674,10 @@ class UnifiedDropZone(QFrame):
     def handle_files_ingested(self, file_paths: List[str]) -> None:
         """
         Validates incoming files, updates drop zone state machine:
-        - 1 file: displays single file slot on page 1 awaiting second file.
-        - 2 files: emits files_ready signal for inspection and review gate progression.
+        - 1 file: displays single file slot on page 1 and runs async MediaInspectorView.
+        - 2 files: cancels single inspector and emits files_ready signal for multi-file review gate.
         """
-        supported_exts = (".mkv", ".mp4", ".m4v", ".mov")
-        valid_files = [f for f in file_paths if f.lower().endswith(supported_exts) and not os.path.isdir(f)]
+        valid_files = [f for f in file_paths if f.lower().endswith(SUPPORTED_EXTENSIONS) and not os.path.isdir(f)]
 
         if not valid_files:
             return
@@ -657,9 +689,33 @@ class UnifiedDropZone(QFrame):
         if len(self.loaded_files) == 1:
             self.lbl_single_filename.setText(os.path.basename(self.loaded_files[0]))
             self.badge_waiting.setText("1 / 2 fontes carregadas — Aguardando segundo arquivo")
+            self.update_dropzone_state(True)
             self.stack.setCurrentIndex(1)
+            self.start_single_file_inspection(self.loaded_files[0])
         elif len(self.loaded_files) >= 2:
+            if self.inspection_worker and self.inspection_worker.isRunning():
+                self.inspection_worker.cancel()
             self.files_ready.emit(self.loaded_files[0], self.loaded_files[1])
+
+    def start_single_file_inspection(self, file_path: str) -> None:
+        """Dispatches SingleFileInspectionWorker to inspect single media without blocking GUI."""
+        self.inspector_view.set_loading(file_path)
+        if self.inspection_worker and self.inspection_worker.isRunning():
+            self.inspection_worker.cancel()
+            self.inspection_worker.wait()
+
+        self.inspection_worker = SingleFileInspectionWorker(file_path, self)
+        self.inspection_worker.inspection_completed.connect(self._on_single_inspection_completed)
+        self.inspection_worker.inspection_failed.connect(self._on_single_inspection_failed)
+        self.inspection_worker.start()
+
+    def _on_single_inspection_completed(self, report: MediaInspectionReport) -> None:
+        self.inspector_view.set_report(report)
+        self.single_file_inspected.emit(report)
+
+    def _on_single_inspection_failed(self, err_msg: str) -> None:
+        self.inspector_view.set_error(err_msg)
+        self.single_file_failed.emit(err_msg)
 
     def ingest_files(self, file_paths: List[str]) -> None:
         """Backwards-compatible alias for handle_files_ingested."""
@@ -839,12 +895,117 @@ class UnifiedDropZone(QFrame):
             if idx_c >= 0:
                 self.combo_audio_codec.setCurrentIndex(idx_c)
 
+        # Populate Section 3 secondary audio checkboxes
+        self._populate_secondary_checkboxes(all_audio_cands, verdict.recommended_target_audio)
+
         # Update acoustic audit card
         self._update_audio_audit()
         self.primary_audio_changed.emit(verdict.recommended_target_audio)
 
         # Set focus to confirm button for instant Enter activation
         self.btn_confirm.setFocus()
+
+    def _populate_secondary_checkboxes(
+        self,
+        all_audio_cands: List[StreamCandidate],
+        target_cand: Optional[StreamCandidate]
+    ) -> None:
+        """Populates Section 3 of Review Gate with independent checkboxes for secondary audio tracks."""
+        while self.secondary_layout.count():
+            item = self.secondary_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+        self.secondary_checkbox_items = []
+
+        ref_cand = self.current_verdict.reference_audio if self.current_verdict else None
+
+        for cand in all_audio_cands:
+            if target_cand and cand.file_path == target_cand.file_path and cand.stream.id == target_cand.stream.id:
+                continue
+
+            lang = (cand.stream.language or "und").upper()
+            codec = (cand.stream.codec or "audio").upper()
+            channels_lbl = cand.stream.spatial_label or format_channel_layout_label(cand.stream.channels, cand.stream.channel_layout)
+            fname = elide_filename(os.path.basename(cand.file_path), max_chars=28)
+            title = f" ({cand.stream.title})" if cand.stream.title else ""
+            chk_label = f"[{lang}] {codec} · {channels_lbl}{title} — {fname} (Trilha #{cand.stream.id})"
+
+            chk = QCheckBox(chk_label)
+            chk.setObjectName(f"chkSecondary_{cand.stream.id}")
+            chk.setProperty("class", "chkSecondaryAudio")
+            chk.setCursor(Qt.PointingHandCursor)
+
+            chk.setStyleSheet(
+                "QCheckBox { color: #f2f3f7; font-size: 12px; font-weight: 600; spacing: 8px; } "
+                "QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #383942; background-color: #1b1c20; } "
+                "QCheckBox::indicator:hover { border-color: #10b981; } "
+                "QCheckBox::indicator:checked { border-color: #10b981; background-color: #10b981; }"
+            )
+
+            is_orig = (
+                "ENG" in lang
+                or "EN" in lang
+                or (ref_cand and cand.file_path == ref_cand.file_path and cand.stream.id == ref_cand.stream.id)
+            )
+            chk.setChecked(is_orig)
+            chk.toggled.connect(self._on_secondary_checkbox_toggled)
+
+            self.secondary_layout.addWidget(chk)
+            self.secondary_checkbox_items.append((chk, cand.file_path, cand.stream.id))
+
+        if not self.secondary_checkbox_items:
+            lbl_none = QLabel("Nenhuma faixa de áudio secundária detectada nas fontes.")
+            lbl_none.setStyleSheet("font-size: 11px; color: #9a9eac; font-style: italic;")
+            self.secondary_layout.addWidget(lbl_none)
+
+    def _on_secondary_checkbox_toggled(self) -> None:
+        """Syncs check_keep_original when secondary audio checkboxes are toggled."""
+        ref_cand = self.current_verdict.reference_audio if self.current_verdict else None
+        if ref_cand:
+            for chk, f_path, track_id in self.secondary_checkbox_items:
+                if f_path == ref_cand.file_path and track_id == ref_cand.stream.id:
+                    self.check_keep_original.blockSignals(True)
+                    self.check_keep_original.setChecked(chk.isChecked())
+                    self.check_keep_original.blockSignals(False)
+                    break
+
+    def get_consolidated_selection(self) -> ConsolidatedStreamSelection:
+        """Constructs ConsolidatedStreamSelection contract representing the user choices in the Review Gate."""
+        v_cand = self.combo_video.currentData()
+        t_cand = self.combo_target_audio.currentData()
+        r_cand = self.combo_ref_audio.currentData()
+
+        v_file = v_cand.file_path if v_cand else (self.loaded_files[0] if self.loaded_files else "")
+        v_id = v_cand.stream.id if v_cand else 0
+
+        t_file = t_cand.file_path if t_cand else (self.loaded_files[1] if len(self.loaded_files) > 1 else v_file)
+        t_id = t_cand.stream.id if t_cand else 0
+
+        r_file = r_cand.file_path if r_cand else None
+        r_id = r_cand.stream.id if r_cand else None
+
+        secondary_selections: List[Tuple[str, int, bool]] = []
+        for chk, f_path, track_id in self.secondary_checkbox_items:
+            secondary_selections.append((f_path, track_id, chk.isChecked()))
+
+        if not secondary_selections and r_file:
+            secondary_selections.append((r_file, r_id or 1, self.check_keep_original.isChecked()))
+
+        return ConsolidatedStreamSelection(
+            primary_video_file=v_file,
+            primary_video_track_id=v_id,
+            target_audio_file=t_file,
+            target_audio_track_id=t_id,
+            secondary_audio_selections=secondary_selections,
+            ref_audio_file=r_file,
+            ref_audio_track_id=r_id
+        )
+
+    def set_theme_mode(self, mode: str) -> None:
+        """Passes theme mode update to internal components."""
+        if hasattr(self, "inspector_view"):
+            self.inspector_view.set_theme_mode(mode)
 
     def _on_combo_target_changed(self, index: int):
         cand = self.combo_target_audio.currentData()
@@ -880,6 +1041,19 @@ class UnifiedDropZone(QFrame):
             idx_c = self.combo_audio_codec.findData(smart.target_codec)
             if idx_c >= 0:
                 self.combo_audio_codec.setCurrentIndex(idx_c)
+
+        # Refresh secondary checkboxes to exclude the new target and include previous
+        all_cands: List[StreamCandidate] = []
+        for i in range(self.combo_target_audio.count()):
+            c = self.combo_target_audio.itemData(i)
+            if c and c not in all_cands:
+                all_cands.append(c)
+        if hasattr(self, "combo_ref_audio"):
+            for i in range(self.combo_ref_audio.count()):
+                c = self.combo_ref_audio.itemData(i)
+                if c and c not in all_cands:
+                    all_cands.append(c)
+        self._populate_secondary_checkboxes(all_cands, target_cand)
         if target_cand and ref_cand and target_cand.file_path == ref_cand.file_path and target_cand.stream.id == ref_cand.stream.id:
             self.lbl_channel_alert.setText("[AVISO] Seleção conflitante: A faixa alvo de dublagem não pode ser idêntica à faixa de referência.")
             self.frame_channel_alert.setVisible(True)
@@ -1279,6 +1453,15 @@ class UnifiedDropZone(QFrame):
         ]:
             ch.setText(txt)
             ch.setMinimumWidth(max(68, ch.fontMetrics().horizontalAdvance(txt) + 20))
+        if self.inspection_worker and self.inspection_worker.isRunning():
+            self.inspection_worker.cancel()
+        if hasattr(self, "secondary_layout"):
+            while self.secondary_layout.count():
+                item = self.secondary_layout.takeAt(0)
+                w = item.widget()
+                if w:
+                    w.deleteLater()
+        self.secondary_checkbox_items = []
         self.frame_ambiguity.setVisible(False)
         self.frame_arbitration.setVisible(False)
         self.frame_audio_audit.setVisible(False)

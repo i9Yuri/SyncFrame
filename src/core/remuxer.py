@@ -48,11 +48,12 @@ def build_mkvmerge_hybrid_command(
     ref_audio_track_id: int = 1,
     original_audio_language: str = "eng",
     original_audio_name: str = "Áudio Original",
-    discarded_audio_ids: Optional[List[int]] = None
+    discarded_audio_ids: Optional[List[int]] = None,
+    secondary_audio_selections: Optional[List[Tuple[str, int, bool]]] = None
 ) -> List[str]:
     """
     Constructs the mkvmerge command arguments combining untouched video stream
-    with synchronized target dubbed audio stream.
+    with synchronized target dubbed audio stream and optional secondary tracks.
     Applies map_offset_to_player_delay to ensure proper container delay sign convention.
     Excludes discarded duplicate audio streams using build_mkvmerge_exclusion_flags.
     """
@@ -61,40 +62,69 @@ def build_mkvmerge_hybrid_command(
     # 1. Video source options (untouched passthrough)
     cmd.extend(["--video-tracks", str(video_track_id)])
 
-    discarded = set(discarded_audio_ids or [])
-
-    if keep_original_audio:
-        if ref_audio_track_id in discarded:
+    if secondary_audio_selections:
+        video_abs = os.path.abspath(video_mkv)
+        enabled_video_audio_ids = [
+            tid for (fp, tid, en) in secondary_audio_selections
+            if os.path.abspath(fp) == video_abs and en
+        ]
+        if enabled_video_audio_ids:
+            cmd.extend(["--audio-tracks", ",".join(str(tid) for tid in enabled_video_audio_ids)])
+            for tid in enabled_video_audio_ids:
+                cmd.extend(["--default-track-flag", f"{tid}:no"])
+        else:
             cmd.append("--no-audio")
-        elif discarded:
-            cmd.extend(build_mkvmerge_exclusion_flags(list(discarded)))
-            if ref_audio_track_id is not None and ref_audio_track_id >= 0:
+    else:
+        discarded = set(discarded_audio_ids or [])
+        if keep_original_audio:
+            if ref_audio_track_id in discarded:
+                cmd.append("--no-audio")
+            elif discarded:
+                cmd.extend(build_mkvmerge_exclusion_flags(list(discarded)))
+                if ref_audio_track_id is not None and ref_audio_track_id >= 0:
+                    cmd.extend([
+                        "--default-track-flag", f"{ref_audio_track_id}:no",
+                        "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
+                        "--language", f"{ref_audio_track_id}:{original_audio_language}",
+                    ])
+            else:
                 cmd.extend([
+                    "--audio-tracks", str(ref_audio_track_id),
                     "--default-track-flag", f"{ref_audio_track_id}:no",
                     "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
                     "--language", f"{ref_audio_track_id}:{original_audio_language}",
                 ])
         else:
-            cmd.extend([
-                "--audio-tracks", str(ref_audio_track_id),
-                "--default-track-flag", f"{ref_audio_track_id}:no",
-                "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
-                "--language", f"{ref_audio_track_id}:{original_audio_language}",
-            ])
-    else:
-        cmd.append("--no-audio")
+            cmd.append("--no-audio")
 
     cmd.extend(["--no-subtitles", "--no-attachments", video_mkv])
 
     # 2. Synchronized Dubbed Audio source options
     # Normalizes offset to container delay convention (-offset_ms)
     container_delay_ms = int(round(map_offset_to_player_delay(offset_ms, "mkvmerge")))
+
+    audio_tracks_to_include = [target_audio_track_id]
+    if secondary_audio_selections:
+        audio_abs = os.path.abspath(audio_source)
+        extra_audio_ids = [
+            tid for (fp, tid, en) in secondary_audio_selections
+            if os.path.abspath(fp) == audio_abs and tid != target_audio_track_id and en
+        ]
+        audio_tracks_to_include.extend(extra_audio_ids)
+
     cmd.extend([
-        "--audio-tracks", str(target_audio_track_id),
+        "--audio-tracks", ",".join(str(tid) for tid in audio_tracks_to_include),
         "--sync", f"{target_audio_track_id}:{container_delay_ms}",
         "--default-track-flag", f"{target_audio_track_id}:yes",
         "--track-name", f"{target_audio_track_id}:{target_audio_name}",
         "--language", f"{target_audio_track_id}:{target_audio_language}",
+    ])
+
+    if len(audio_tracks_to_include) > 1:
+        for extra_id in audio_tracks_to_include[1:]:
+            cmd.extend(["--default-track-flag", f"{extra_id}:no"])
+
+    cmd.extend([
         "--no-video", "--no-subtitles", "--no-attachments",
         audio_source
     ])
@@ -306,7 +336,8 @@ def execute_lossless_remux(
             ref_audio_track_id=job.ref_audio_track_id,
             original_audio_language=job.original_audio_language,
             original_audio_name=job.original_audio_name,
-            discarded_audio_ids=job.discarded_audio_ids
+            discarded_audio_ids=job.discarded_audio_ids,
+            secondary_audio_selections=getattr(job, "secondary_audio_selections", None)
         )
 
         logger.info("Executing mkvmerge command: %s", " ".join(cmd))

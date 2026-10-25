@@ -8,6 +8,24 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [1.3.0] - 2026-10-25
 
 ### Adicionado
+- **Modo Inspeção / Visualizador de Mídia (Single-File Media Inspector):**
+  - Transmutação automática e fluida da interface ao ingerir exatamente 1 arquivo — contêiner de vídeo (.mkv, .mp4, .m4v, .mov) ou faixa de áudio isolada (.ac3, .eac3, .aac, .dts, .flac, .m4a, .mp3, .wav, .opus) —, apresentando bancada de auditoria técnica estruturada sem necessidade de arquivos secundários.
+  - Probing profundo assíncrono e não-bloqueante via `SingleFileInspectionWorker` (QThread) e `inspect_single_media`, extraindo formato do contêiner, taxa de quadros, HDR/Dolby Vision, profundidade de bits, layout e canais de áudio, legendas e capítulos com tolerância a cabeçalhos truncados (`-err_detect ignore_err`).
+  - Apresentação estruturada e modular em `MediaInspectorView`:
+    - Cabeçalho com identificador em pílula do contêiner, tamanho formatado em bytes, duração e contagem de fluxos.
+    - Bloco de especificações de vídeo (resolução UHD/HD, codec, taxa de quadros, formato HDR/Dolby Vision, perfil, bit depth) com supressão inteligente para faixas de áudio isoladas.
+    - Bloco de faixas de áudio com pílulas de trilha (A01, A02), idioma, codec, layout de canais (2.0, 5.1, 7.1 Atmos), taxa de amostragem e bitrate real.
+    - Bloco de legendas e capítulos com destaque para faixas forçadas e contagem estruturada.
+    - Card de aviso contextual para áudios isolados orientando a adição de fonte de vídeo de referência.
+    - Botão conectivo de rodapé (`btnConnectiveAction`, contorno tracejado com 22px de curvatura contínua) viabilizando a transição imediata para sincronização ao arrastar ou selecionar uma segunda fonte sem reiniciar o estado.
+- **Modo Sincronização e Remux Híbrido com Review Gate Consolidado:**
+  - Review Gate estruturado em 3 seções determinísticas:
+    (a) Dropdown de Vídeo de Referência Principal (`[Melhor Imagem Detectada]`).
+    (b) Dropdown de Áudio Dublado Principal (`[Áudio Recomendado]`).
+    (c) Painel de Fluxos Secundários de Áudio (`frameSecondaryAudio`) com checkboxes individuais dedicados (`chkSecondaryAudio`), indicador com cantos arredondados de 4px e glifo de visto verde (#2fb16b), mantendo o áudio original em inglês marcado por padrão e trilhas redundantes/inferiores desmarcadas.
+  - Formalização do contrato de seleção consolidada (`ConsolidatedStreamSelection`) e persistência no `RemuxJob`.
+  - Processamento determinístico em `build_mkvmerge_hybrid_command`: fluxo de vídeo bit-a-bit, áudio dublado principal alinhado por FFT e faixas secundárias marcadas incorporadas em modo stream copy passthrough com `--default-track-flag <id>:no`, omitindo faixas desmarcadas.
+  - Transições atômicas na janela principal (`transition_to_inspector_mode` e `transition_to_sync_mode`) coordenando a disponibilidade dos painéis da esteira.
 - **Verificação Pré-Voo de Dependências do Sistema (`PreFlightChecker` & `PreFlightDialog`):**
   - Auditoria estrita pré-inicialização das ferramentas mandatórias de sistema (`ffmpeg`, `ffprobe`, `mkvmerge`, `mpv`) via `PreFlightChecker.verify_system_binaries()`.
   - Exibição de diálogo modal One UI com cantos arredondados contínuos de 28px (`PreFlightDialog`) suspendendo a inicialização caso algum binário obrigatório esteja ausente, oferecendo instalação guiada com elevação de privilégios (`pkexec`) e opção de saída limpa.

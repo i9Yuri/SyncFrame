@@ -389,6 +389,51 @@ QFrame#soundbarTooltipContainer {
     border-radius: 12px;
 }
 
+QFrame#mediaInspectorView, QFrame.inspectorCard {
+    background-color: #222329;
+    border-radius: 20px;
+    border: 1px solid #33343b;
+}
+
+QPushButton#btnConnectiveAction {
+    border: 2px dashed #33343b;
+    border-radius: 22px;
+    background-color: #16171b;
+    color: #f2f3f7;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+QPushButton#btnConnectiveAction:hover {
+    border-color: #2fb16b;
+    background-color: #1c1d22;
+    color: #ffffff;
+}
+
+QPushButton#btnConnectiveAction:pressed {
+    border-color: #1e7e48;
+    background-color: #121316;
+}
+
+QFrame#frameSecondaryAudio {
+    background-color: #1b1c20;
+    border-radius: 20px;
+    border: 1px solid #2c2d34;
+}
+
+QCheckBox.chkSecondaryAudio::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid #383942;
+    background-color: #1b1c20;
+}
+
+QCheckBox.chkSecondaryAudio::indicator:checked {
+    border-color: #2fb16b;
+    background-color: #2fb16b;
+}
+
 QLabel.statusPill, QLabel#chipFFT, QLabel.tag {
     border-radius: 14px;
     height: 26px;
@@ -1589,6 +1634,51 @@ QWidget#badgeSoundbarAudit {
 
 QFrame#soundbarTooltipContainer {
     border-radius: 12px;
+}
+
+QFrame#mediaInspectorView, QFrame.inspectorCard {
+    background-color: #eceef4;
+    border-radius: 20px;
+    border: 1px solid #dcdfe8;
+}
+
+QPushButton#btnConnectiveAction {
+    border: 2px dashed #b8bcc8;
+    border-radius: 22px;
+    background-color: #f1f2f6;
+    color: #16181d;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+QPushButton#btnConnectiveAction:hover {
+    border-color: #1e7e48;
+    background-color: #e5e7ef;
+    color: #16181d;
+}
+
+QPushButton#btnConnectiveAction:pressed {
+    border-color: #145832;
+    background-color: #d8dae3;
+}
+
+QFrame#frameSecondaryAudio {
+    background-color: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #dcdfe8;
+}
+
+QCheckBox.chkSecondaryAudio::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid #c2c6d4;
+    background-color: #ffffff;
+}
+
+QCheckBox.chkSecondaryAudio::indicator:checked {
+    border-color: #2fb16b;
+    background-color: #2fb16b;
 }
 
 QLabel.statusPill, QLabel#chipFFT, QLabel.tag {

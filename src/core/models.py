@@ -232,6 +232,7 @@ class RemuxJob:
     audio_codec: str = "flac"  # "flac", "opus", "eac3", "aac"
     run_post_audit: bool = True
     discarded_audio_ids: List[int] = field(default_factory=list)
+    secondary_audio_selections: List[Tuple[str, int, bool]] = field(default_factory=list)
     target_audio_track_id: Optional[int] = None
     ref_audio_file: Optional[str] = None
 
@@ -320,5 +321,75 @@ class ImmersiveAuditResult:
     title: str
     description: str
     suggestion: str
+
+
+@dataclass
+class VideoStreamDetail:
+    """Detailed visual stream attributes for single media inspection."""
+    stream_id: int
+    codec: str
+    profile: str
+    width: int
+    height: int
+    aspect_ratio: str
+    fps: float
+    bit_depth: int
+    color_space: str
+    hdr_format: Optional[str] = None
+
+
+@dataclass
+class AudioStreamDetail:
+    """Detailed acoustic stream attributes for single media inspection."""
+    stream_id: int
+    language: str
+    title: str
+    codec: str
+    channels: int
+    channel_layout: str
+    sample_rate: int
+    bit_rate: int
+    is_immersive: bool = False
+    immersive_type: Optional[str] = None
+
+
+@dataclass
+class SubtitleDetail:
+    """Subtitle stream attributes for single media inspection."""
+    stream_id: int
+    language: str
+    title: str
+    codec: str
+    is_forced: bool = False
+    is_default: bool = False
+
+
+@dataclass
+class MediaInspectionReport:
+    """Deep structural inspection report for a single ingested media file."""
+    file_path: str
+    file_name: str
+    file_size_bytes: int
+    duration_sec: float
+    container_format: str
+    video_streams: List[VideoStreamDetail] = field(default_factory=list)
+    audio_streams: List[AudioStreamDetail] = field(default_factory=list)
+    subtitle_streams: List[SubtitleDetail] = field(default_factory=list)
+    chapter_count: int = 0
+    is_audio_only: bool = False
+    error_message: Optional[str] = None
+
+
+@dataclass
+class ConsolidatedStreamSelection:
+    """State contract representing explicit user choices in the dual-dropdown and multi-checkbox Review Gate."""
+    primary_video_file: str
+    primary_video_track_id: int
+    target_audio_file: str
+    target_audio_track_id: int
+    secondary_audio_selections: List[Tuple[str, int, bool]] = field(default_factory=list)
+    ref_audio_file: Optional[str] = None
+    ref_audio_track_id: Optional[int] = None
+
 
 

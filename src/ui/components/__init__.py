@@ -9,6 +9,7 @@ from .sync_controls import SyncControls, SensitivitySelectorWidget
 from .soundbar_audit_badge import SoundbarAuditBadge, SmoothFadeTooltip
 from .stream_selector_modal import StreamSelectorModal
 from .unified_drop_zone import UnifiedDropZone
+from .media_inspector_view import MediaInspectorView
 
 __all__ = [
     "CorrelationView",
@@ -23,4 +24,5 @@ __all__ = [
     "SmoothFadeTooltip",
     "StreamSelectorModal",
     "UnifiedDropZone",
+    "MediaInspectorView",
 ]
