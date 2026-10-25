@@ -376,49 +376,67 @@ QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.status
     font-weight: 700;
 }
 
-QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip {
+QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip, QLabel#tagIngest {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: #26272d;
     color: #9a9eac;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 600;
+    border: none;
 }
 
 QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: rgba(47, 177, 107, 0.16);
     color: #2fb16b;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
+    border: none;
 }
 
-QLabel.tagWarn, QLabel.badgeAmber {
+QLabel.tagWarn, QLabel.badgeAmber, QLabel#badgeWaiting {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: rgba(232, 150, 58, 0.16);
     color: #e8963a;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
+    border: none;
 }
 
 QLabel.badgeRecommended, QLabel#badgeRecommended {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: #33343b;
     color: #ffffff;
     border: 1px solid #50535e;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
 }
 
 /* Buttons (One UI Continuous Pills) */
 QPushButton.btn {
-    border-radius: 999px;
+    border-radius: 20px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
     background-color: #26272d;
     color: #f2f3f7;
-    padding: 10px 18px;
+    padding: 0 18px;
     font-weight: 600;
     font-size: 13px;
     border: none;
@@ -426,64 +444,70 @@ QPushButton.btn {
 
 QPushButton.btn:hover {
     background-color: #33343b;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
 QPushButton.btn:pressed {
     background-color: #40424c;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
-QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess {
-    border-radius: 999px;
+QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess, QPushButton#btnBrowse, QPushButton#btnBrowseSecond, QPushButton#btnConfirm, QPushButton#btnCloseCompletion {
+    border-radius: 22px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
     background-color: #ffffff;
     color: #000000;
-    padding: 12px 26px;
+    padding: 0 26px;
     font-weight: 700;
     font-size: 15px;
     border: none;
 }
 
-QPushButton.btnPrimary:hover, QPushButton.btnSuccess:hover {
+QPushButton.btnPrimary:hover, QPushButton.btnSuccess:hover, QPushButton#btnBrowse:hover, QPushButton#btnBrowseSecond:hover, QPushButton#btnConfirm:hover, QPushButton#btnCloseCompletion:hover {
     background-color: #e5e5e5;
-    border-radius: 999px;
+    border-radius: 22px;
 }
 
-QPushButton.btnPrimary:pressed, QPushButton.btnSuccess:pressed {
+QPushButton.btnPrimary:pressed, QPushButton.btnSuccess:pressed, QPushButton#btnBrowse:pressed, QPushButton#btnBrowseSecond:pressed, QPushButton#btnConfirm:pressed, QPushButton#btnCloseCompletion:pressed {
     background-color: #cccccc;
-    border-radius: 999px;
+    border-radius: 22px;
 }
 
-QPushButton.btnPrimary:disabled, QPushButton.btnSuccess:disabled {
+QPushButton.btnPrimary:disabled, QPushButton.btnSuccess:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnBrowseSecond:disabled, QPushButton#btnConfirm:disabled, QPushButton#btnCloseCompletion:disabled {
     background-color: #33343b;
     color: #6a7080;
-    border-radius: 999px;
+    border-radius: 22px;
 }
 
-QPushButton.btnSm, QPushButton.btnSecondary, QPushButton.btnDanger, QPushButton#btnRestore, QPushButton.btnRestore, QPushButton#btn_restore, QPushButton#btnBrowse, QPushButton#btnStopPreview {
-    border-radius: 999px;
+QPushButton.btnSm, QPushButton.btnSecondary, QPushButton.btnDanger, QPushButton#btnRestore, QPushButton.btnRestore, QPushButton#btn_restore, QPushButton#btnStopPreview, QPushButton#btnResetSingle {
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
     background-color: #26272d;
     color: #f2f3f7;
-    padding: 6px 14px;
+    padding: 0 14px;
     font-size: 13px;
     font-weight: 600;
     border: none;
 }
 
-QPushButton.btnSm:hover, QPushButton.btnSecondary:hover, QPushButton#btnRestore:hover, QPushButton.btnRestore:hover, QPushButton#btn_restore:hover, QPushButton#btnBrowse:hover, QPushButton#btnStopPreview:hover {
+QPushButton.btnSm:hover, QPushButton.btnSecondary:hover, QPushButton#btnRestore:hover, QPushButton.btnRestore:hover, QPushButton#btn_restore:hover, QPushButton#btnStopPreview:hover, QPushButton#btnResetSingle:hover {
     background-color: #33343b;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
-QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRestore:pressed, QPushButton.btnRestore:pressed, QPushButton#btn_restore:pressed, QPushButton#btnBrowse:pressed, QPushButton#btnStopPreview:pressed {
+QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRestore:pressed, QPushButton.btnRestore:pressed, QPushButton#btn_restore:pressed, QPushButton#btnStopPreview:pressed, QPushButton#btnResetSingle:pressed {
     background-color: #40424c;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
-QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnStopPreview:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnCheckUpdates:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
+QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnStopPreview:disabled, QPushButton#btnResetSingle:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnCheckUpdates:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
     background-color: #1b1c20;
     color: #555864;
-    border-radius: 999px;
+    border-radius: 17px;
     border: none;
 }
 
@@ -1302,49 +1326,67 @@ QLabel.tag, QLabel#badgeVFmt, QLabel#badgeAFmt, QLabel.formatChip, QLabel.status
     font-weight: 700;
 }
 
-QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip {
+QLabel.tagNeutral, QLabel.tagN, QLabel.badgeNeutral, QLabel.codecChip, QLabel.systemChip, QLabel#tagIngest {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: #eceef4;
     color: #6a7080;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 600;
+    border: none;
 }
 
 QLabel.tagGreen, QLabel.tagG, QLabel.badgeGreen, QLabel.badgeSignal {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: rgba(47, 177, 107, 0.16);
     color: #2fb16b;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
+    border: none;
 }
 
-QLabel.tagWarn, QLabel.badgeAmber {
+QLabel.tagWarn, QLabel.badgeAmber, QLabel#badgeWaiting {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: rgba(232, 150, 58, 0.16);
     color: #e8963a;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
+    border: none;
 }
 
 QLabel.badgeRecommended, QLabel#badgeRecommended {
     border-radius: 14px;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
     background-color: #e1e4ed;
     color: #16181d;
     border: 1px solid #dcdfe8;
-    padding: 4px 14px;
+    padding: 0 14px;
     font-size: 12px;
     font-weight: 700;
 }
 
 /* Buttons (One UI Continuous Pills) */
 QPushButton.btn {
-    border-radius: 999px;
+    border-radius: 20px;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
     background-color: #eceef4;
     color: #16181d;
-    padding: 10px 18px;
+    padding: 0 18px;
     font-weight: 600;
     font-size: 13px;
     border: none;
@@ -1352,64 +1394,70 @@ QPushButton.btn {
 
 QPushButton.btn:hover {
     background-color: #e1e4ed;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
 QPushButton.btn:pressed {
     background-color: #dcdfe8;
-    border-radius: 999px;
+    border-radius: 20px;
 }
 
-QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess {
-    border-radius: 999px;
+QPushButton.btnPrimary, QPushButton.btnPr, QPushButton.btnSuccess, QPushButton#btnBrowse, QPushButton#btnBrowseSecond, QPushButton#btnConfirm, QPushButton#btnCloseCompletion {
+    border-radius: 22px;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
     background-color: #16181d;
     color: #ffffff;
-    padding: 12px 26px;
+    padding: 0 26px;
     font-weight: 700;
     font-size: 15px;
     border: none;
 }
 
-QPushButton.btnPrimary:hover, QPushButton.btnSuccess:hover {
+QPushButton.btnPrimary:hover, QPushButton.btnSuccess:hover, QPushButton#btnBrowse:hover, QPushButton#btnBrowseSecond:hover, QPushButton#btnConfirm:hover, QPushButton#btnCloseCompletion:hover {
     background-color: #2b2e36;
-    border-radius: 999px;
+    border-radius: 22px;
 }
 
-QPushButton.btnPrimary:pressed, QPushButton.btnSuccess:pressed {
+QPushButton.btnPrimary:pressed, QPushButton.btnSuccess:pressed, QPushButton#btnBrowse:pressed, QPushButton#btnBrowseSecond:pressed, QPushButton#btnConfirm:pressed, QPushButton#btnCloseCompletion:pressed {
     background-color: #3f424c;
-    border-radius: 999px;
+    border-radius: 22px;
 }
 
-QPushButton.btnPrimary:disabled, QPushButton.btnSuccess:disabled {
+QPushButton.btnPrimary:disabled, QPushButton.btnSuccess:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnBrowseSecond:disabled, QPushButton#btnConfirm:disabled, QPushButton#btnCloseCompletion:disabled {
     background-color: #e1e4ed;
     color: #9a9eac;
-    border-radius: 999px;
+    border-radius: 22px;
 }
 
-QPushButton.btnSm, QPushButton.btnSecondary, QPushButton.btnDanger, QPushButton#btnRestore, QPushButton.btnRestore, QPushButton#btn_restore, QPushButton#btnBrowse, QPushButton#btnStopPreview {
-    border-radius: 999px;
+QPushButton.btnSm, QPushButton.btnSecondary, QPushButton.btnDanger, QPushButton#btnRestore, QPushButton.btnRestore, QPushButton#btn_restore, QPushButton#btnStopPreview, QPushButton#btnResetSingle {
+    border-radius: 17px;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
     background-color: #eceef4;
     color: #16181d;
-    padding: 6px 14px;
+    padding: 0 14px;
     font-size: 13px;
     font-weight: 600;
     border: none;
 }
 
-QPushButton.btnSm:hover, QPushButton.btnSecondary:hover, QPushButton#btnRestore:hover, QPushButton.btnRestore:hover, QPushButton#btn_restore:hover, QPushButton#btnBrowse:hover, QPushButton#btnStopPreview:hover {
+QPushButton.btnSm:hover, QPushButton.btnSecondary:hover, QPushButton#btnRestore:hover, QPushButton.btnRestore:hover, QPushButton#btn_restore:hover, QPushButton#btnStopPreview:hover, QPushButton#btnResetSingle:hover {
     background-color: #e1e4ed;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
-QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRestore:pressed, QPushButton.btnRestore:pressed, QPushButton#btn_restore:pressed, QPushButton#btnBrowse:pressed, QPushButton#btnStopPreview:pressed {
+QPushButton.btnSm:pressed, QPushButton.btnSecondary:pressed, QPushButton#btnRestore:pressed, QPushButton.btnRestore:pressed, QPushButton#btn_restore:pressed, QPushButton#btnStopPreview:pressed, QPushButton#btnResetSingle:pressed {
     background-color: #dcdfe8;
-    border-radius: 999px;
+    border-radius: 17px;
 }
 
-QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnStopPreview:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnCheckUpdates:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
+QPushButton.btnSm:disabled, QPushButton.btnSecondary:disabled, QPushButton#btnRestore:disabled, QPushButton#btnBrowse:disabled, QPushButton#btnStopPreview:disabled, QPushButton#btnResetSingle:disabled, QPushButton.pill:disabled, QPushButton#btnTheme:disabled, QPushButton#btnCheckUpdates:disabled, QPushButton#btnResetOffset:disabled, QPushButton#btn_reset:disabled, QPushButton:disabled {
     background-color: #eceef4;
     color: #9a9eac;
-    border-radius: 999px;
+    border-radius: 17px;
     border: none;
 }
 
@@ -2084,10 +2132,10 @@ def get_pill_button_style(is_primary: bool = False, mode: Literal["dark", "light
     if is_primary:
         bg = "#ffffff" if mode == "dark" else "#16181d"
         fg = "#000000" if mode == "dark" else "#ffffff"
-        return f"border-radius: 999px; background-color: {bg}; color: {fg}; font-weight: 700; padding: 12px 26px; border: none;"
+        return f"border-radius: 22px; height: 44px; min-height: 44px; max-height: 44px; /* border-radius: 999px; */ background-color: {bg}; color: {fg}; font-weight: 700; padding: 0 26px; border: none;"
     bg = "#26272d" if mode == "dark" else "#eceef4"
     fg = "#f2f3f7" if mode == "dark" else "#16181d"
-    return f"border-radius: 999px; background-color: {bg}; color: {fg}; font-weight: 600; padding: 10px 18px; border: none;"
+    return f"border-radius: 17px; height: 34px; min-height: 34px; max-height: 34px; /* border-radius: 999px; */ background-color: {bg}; color: {fg}; font-weight: 600; padding: 0 14px; border: none;"
 
 
 def get_compact_dropzone_style(is_dragover: bool = False, mode: Literal["dark", "light"] = "dark") -> str:

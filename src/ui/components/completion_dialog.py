@@ -103,8 +103,12 @@ class CompletionDialog(QDialog):
                 background-color: #26272d;
                 color: #f2f3f7;
                 border: 1px solid #33343b;
-                border-radius: 999px;
-                padding: 6px 14px;
+                border-radius: 17px;
+                height: 34px;
+                min-height: 34px;
+                max-height: 34px;
+                /* border-radius: 999px; */
+                padding: 0 14px;
                 font-family: monospace;
             }
         """)

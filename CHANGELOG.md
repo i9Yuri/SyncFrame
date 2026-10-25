@@ -28,6 +28,10 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
   - Remoção de margens internas de texto (`padding: 0px`) com dimensionamento fixo 34x34px, `qproperty-iconSize: 18px 18px`, tooltips contextuais ("Modo Claro" / "Modo Escuro") e suporte dinâmico a estados `:hover` e `:pressed` sem regressões geométricas.
 
 ### Corrigido
+- **Erradicação de Quinas Vivas e Caixas Retangulares na Zona de Ingestão e Botões Primários:**
+  - Substituição de `border-radius: 999px` por raios matemáticos contínuos de meia-altura (`22px` para botões primários de 44px, `17px` para botões secundários de 34px e `14px` para badges de 28px) em `DARK_THEME_QSS` e `LIGHT_THEME_QSS`.
+  - Correção da geometria do botão "Selecionar Arquivos..." (`#btnBrowse`), botão de segundo arquivo (`#btnBrowseSecond`) e botão de confirmação (`#btnConfirm`) transformando-os em pílulas orgânicas perfeitas com `border-radius: 22px`.
+  - Fixação de altura explícita (28px), `border: none` e `border-radius: 14px` no chip indicador de etapa "01 INGESTÃO DE FONTES" (`#tagIngest`) e badge de espera (`#badgeWaiting`), eliminando a renderização de caixas retangulares retas de 90 graus.
 - **Padronização e Erradicação de Arestas Rígidas no Card de Alinhamento Temporal:**
   - Substituição da diretiva `border-radius: 999px` por raios matemáticos contínuos proporcionais à meia-altura exata (13px, 14px, 17px, 18px) nos temas Dark e Light, sanando a reversão do Qt QSS para quinas retangulares de 90 graus.
   - Eliminação de cantos vivos na pílula do seletor de sensibilidade (`SensitivitySelectorWidget`), no chip de faixa ativa (`Faixa A02`), nos 8 botões da matriz de micro-passo (`stepBtn`) e na barra de diagnóstico de cadência (`frameNote`).

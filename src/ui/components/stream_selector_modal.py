@@ -47,10 +47,14 @@ class StreamSelectorModal(QDialog):
                 border: none;
             }
             QComboBox {
-                border-radius: 999px;
+                border-radius: 17px;
+                height: 34px;
+                min-height: 34px;
+                max-height: 34px;
+                /* border-radius: 999px; */
                 background-color: #1b1c20;
                 color: #f2f3f7;
-                padding: 6px 14px;
+                padding: 0 14px;
                 border: 1px solid #33343b;
             }
             QComboBox QAbstractItemView {

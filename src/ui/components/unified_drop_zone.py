@@ -174,7 +174,10 @@ class UnifiedDropZone(QFrame):
         tag_row = QHBoxLayout()
         tag_row.setAlignment(Qt.AlignCenter)
         tag_ingest = QLabel("01  INGESTÃO DE FONTES")
+        tag_ingest.setObjectName("tagIngest")
         tag_ingest.setProperty("class", "systemChip")
+        tag_ingest.setFixedHeight(28)
+        tag_ingest.setAlignment(Qt.AlignCenter)
         tag_row.addWidget(tag_ingest)
         empty_layout.addLayout(tag_row)
 
@@ -189,10 +192,12 @@ class UnifiedDropZone(QFrame):
         empty_layout.addWidget(lbl_hint)
 
         btn_browse = QPushButton("Selecionar Arquivos...")
+        btn_browse.setObjectName("btnBrowse")
         btn_browse.setProperty("class", "btnPrimary")
         btn_browse.setMinimumWidth(180)
         btn_browse.setMaximumWidth(240)
-        btn_browse.setMinimumHeight(44)
+        btn_browse.setFixedHeight(44)
+        btn_browse.setCursor(Qt.PointingHandCursor)
         btn_browse.clicked.connect(self._open_file_dialog)
         empty_layout.addWidget(btn_browse, alignment=Qt.AlignCenter)
 
@@ -210,7 +215,10 @@ class UnifiedDropZone(QFrame):
         single_layout.setContentsMargins(20, 20, 20, 20)
 
         self.badge_waiting = QLabel("1 de 2 arquivos carregados — Aguardando segundo arquivo")
+        self.badge_waiting.setObjectName("badgeWaiting")
         self.badge_waiting.setProperty("class", "badgeAmber")
+        self.badge_waiting.setFixedHeight(28)
+        self.badge_waiting.setAlignment(Qt.AlignCenter)
         single_layout.addWidget(self.badge_waiting, alignment=Qt.AlignCenter)
 
         self.lbl_single_filename = QLabel("")
@@ -228,12 +236,18 @@ class UnifiedDropZone(QFrame):
         btn_row.setSpacing(10)
 
         btn_browse_second = QPushButton("Adicionar Segundo Arquivo...")
+        btn_browse_second.setObjectName("btnBrowseSecond")
         btn_browse_second.setProperty("class", "btnPrimary")
+        btn_browse_second.setFixedHeight(44)
+        btn_browse_second.setCursor(Qt.PointingHandCursor)
         btn_browse_second.clicked.connect(self._open_single_file_dialog)
         btn_row.addWidget(btn_browse_second)
 
         btn_reset_single = QPushButton("Limpar")
+        btn_reset_single.setObjectName("btnResetSingle")
         btn_reset_single.setProperty("class", "btnSecondary")
+        btn_reset_single.setFixedHeight(44)
+        btn_reset_single.setCursor(Qt.PointingHandCursor)
         btn_reset_single.clicked.connect(self.reset)
         btn_row.addWidget(btn_reset_single)
 
@@ -552,7 +566,10 @@ class UnifiedDropZone(QFrame):
         action_row.setContentsMargins(0, 4, 0, 0)
 
         self.btn_confirm = QPushButton("Sincronizar e concluir")
+        self.btn_confirm.setObjectName("btnConfirm")
         self.btn_confirm.setProperty("class", "btnPrimary")
+        self.btn_confirm.setFixedHeight(44)
+        self.btn_confirm.setCursor(Qt.PointingHandCursor)
         self.btn_confirm.clicked.connect(self._on_confirm_clicked)
         action_row.addWidget(self.btn_confirm)
 
