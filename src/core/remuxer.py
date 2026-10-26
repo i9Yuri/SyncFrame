@@ -35,7 +35,7 @@ def generate_dlna_track_args(track: Any, is_primary: bool = False) -> List[str]:
     compatibility with DLNA/UPnP media renderers (e.g. BubbleUPnP on Smart TVs):
     - --track-name <id>:"<semantic_title>"
     - --language <id>:<iso_639_2>
-    - --enabled-track-flag <id>:1
+    - --track-enabled-flag <id>:1
     - --default-track-flag <id>:1 (primary) / <id>:0 (secondary)
     - --forced-display-flag <id>:0
     """
@@ -116,7 +116,7 @@ def generate_dlna_track_args(track: Any, is_primary: bool = False) -> List[str]:
     return [
         "--track-name", f"{track_id}:{track_name}",
         "--language", f"{track_id}:{lang_code}",
-        "--enabled-track-flag", f"{track_id}:1",
+        "--track-enabled-flag", f"{track_id}:1",
         "--default-track-flag", f"{track_id}:{default_val}",
         "--forced-display-flag", f"{track_id}:0"
     ]
@@ -154,7 +154,7 @@ def build_mkvmerge_hybrid_command(
     with synchronized target dubbed audio stream and optional secondary tracks.
     Applies map_offset_to_player_delay to ensure proper container delay sign convention.
     Excludes discarded duplicate audio streams using build_mkvmerge_exclusion_flags.
-    Applies DLNA/UPnP compliance flags (--enabled-track-flag, --forced-display-flag).
+    Applies DLNA/UPnP compliance flags (--track-enabled-flag, --forced-display-flag).
     """
     cmd = ["mkvmerge", "-o", output_path]
 
@@ -172,7 +172,7 @@ def build_mkvmerge_hybrid_command(
             for tid in enabled_video_audio_ids:
                 cmd.extend([
                     "--default-track-flag", f"{tid}:no",
-                    "--enabled-track-flag", f"{tid}:1",
+                    "--track-enabled-flag", f"{tid}:1",
                     "--forced-display-flag", f"{tid}:0",
                 ])
         else:
@@ -187,7 +187,7 @@ def build_mkvmerge_hybrid_command(
                 if ref_audio_track_id is not None and ref_audio_track_id >= 0:
                     cmd.extend([
                         "--default-track-flag", f"{ref_audio_track_id}:no",
-                        "--enabled-track-flag", f"{ref_audio_track_id}:1",
+                        "--track-enabled-flag", f"{ref_audio_track_id}:1",
                         "--forced-display-flag", f"{ref_audio_track_id}:0",
                         "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
                         "--language", f"{ref_audio_track_id}:{original_audio_language}",
@@ -196,7 +196,7 @@ def build_mkvmerge_hybrid_command(
                 cmd.extend([
                     "--audio-tracks", str(ref_audio_track_id),
                     "--default-track-flag", f"{ref_audio_track_id}:no",
-                    "--enabled-track-flag", f"{ref_audio_track_id}:1",
+                    "--track-enabled-flag", f"{ref_audio_track_id}:1",
                     "--forced-display-flag", f"{ref_audio_track_id}:0",
                     "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
                     "--language", f"{ref_audio_track_id}:{original_audio_language}",
@@ -223,7 +223,7 @@ def build_mkvmerge_hybrid_command(
         "--audio-tracks", ",".join(str(tid) for tid in audio_tracks_to_include),
         "--sync", f"{target_audio_track_id}:{container_delay_ms}",
         "--default-track-flag", f"{target_audio_track_id}:yes",
-        "--enabled-track-flag", f"{target_audio_track_id}:1",
+        "--track-enabled-flag", f"{target_audio_track_id}:1",
         "--forced-display-flag", f"{target_audio_track_id}:0",
         "--track-name", f"{target_audio_track_id}:{target_audio_name}",
         "--language", f"{target_audio_track_id}:{target_audio_language}",
@@ -233,7 +233,7 @@ def build_mkvmerge_hybrid_command(
         for extra_id in audio_tracks_to_include[1:]:
             cmd.extend([
                 "--default-track-flag", f"{extra_id}:no",
-                "--enabled-track-flag", f"{extra_id}:1",
+                "--track-enabled-flag", f"{extra_id}:1",
                 "--forced-display-flag", f"{extra_id}:0",
             ])
 
@@ -242,34 +242,31 @@ def build_mkvmerge_hybrid_command(
         audio_source
     ])
 
+    # 3. Additional sources from N-sources ingestion (if any secondary tracks belong to extra files)
+    if secondary_audio_selections:
+        video_abs = os.path.abspath(video_mkv)
+        audio_abs = os.path.abspath(audio_source)
+        extra_files: Dict[str, List[int]] = {}
+        for fp, tid, en in secondary_audio_selections:
+            fp_abs = os.path.abspath(fp)
+            if fp_abs not in (video_abs, audio_abs) and en:
+                extra_files.setdefault(fp_abs, []).append(tid)
+
+        for ext_fp, tids in extra_files.items():
+            cmd.extend([
+                "--audio-tracks", ",".join(str(tid) for tid in tids),
+                "--no-video", "--no-subtitles", "--no-attachments",
+            ])
+            for tid in tids:
+                cmd.extend([
+                    "--default-track-flag", f"{tid}:no",
+                    "--track-enabled-flag", f"{tid}:1",
+                    "--forced-display-flag", f"{tid}:0",
+                ])
+            cmd.append(ext_fp)
+
     return cmd
 
-
-def execute_lossless_remux(
-    job: RemuxJob,
-    on_progress: Optional[Callable[[float, str], None]] = None,
-    cancel_event: Optional[threading.Event] = None
-) -> bool:
-    """
-    Executes a lossless MKV remux combining untouched video stream with synchronized
-    target dubbed audio stream.
-    
-    Guarantees:
-    - 0% video recompression (100% direct stream copy).
-    - 0% audio recompression for standard codecs (stream copy demuxing if from MP4/MOV).
-    - Time-stretch without pitch alteration only if continuous drift is present.
-    - Real-time progress monitoring and graceful cancellation with SIGTERM.
-    """
-    if not os.path.isfile(job.video_file):
-        raise FileNotFoundError(f"Video source file not found: {job.video_file}")
-    if not os.path.isfile(job.target_audio_file):
-        raise FileNotFoundError(f"Audio source file not found: {job.target_audio_file}")
-
-    os.makedirs(os.path.dirname(os.path.abspath(job.output_path)), exist_ok=True)
-
-    with TempWorkspace(session_name="remux_staging") as staging:
-        audio_to_mux = job.target_audio_file
-        target_track_id = job.target_track_id
 
 def execute_closed_loop_audit(
     output_mkv: str,
@@ -465,6 +462,7 @@ def execute_lossless_remux(
             bufsize=1
         )
 
+        last_mkvmerge_lines: List[str] = []
         try:
             while True:
                 if cancel_event and cancel_event.is_set():
@@ -485,6 +483,10 @@ def execute_lossless_remux(
                 if line:
                     clean_line = line.strip()
                     logger.debug("mkvmerge output: %s", clean_line)
+                    last_mkvmerge_lines.append(clean_line)
+                    if len(last_mkvmerge_lines) > 20:
+                        last_mkvmerge_lines.pop(0)
+
                     match = PROGRESS_REGEX.search(clean_line)
                     if match and on_progress:
                         pct = float(match.group(1))
@@ -496,7 +498,8 @@ def execute_lossless_remux(
 
             retcode = proc.wait()
             if retcode not in (0, 1):  # 0 = success, 1 = warnings (normal in mkvmerge)
-                raise RuntimeError(f"mkvmerge remux failed with exit code {retcode}")
+                error_summary = "\n".join(last_mkvmerge_lines[-5:]) if last_mkvmerge_lines else "Sem saída disponível"
+                raise RuntimeError(f"mkvmerge remux failed with exit code {retcode}:\n{error_summary}")
 
             # Closed-Loop Post-Remux Verification
             if job.run_post_audit:

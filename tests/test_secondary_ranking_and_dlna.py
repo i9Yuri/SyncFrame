@@ -118,8 +118,8 @@ class TestSecondaryRankingAndDLNA(unittest.TestCase):
         idx_lang = dub_args.index("--language") + 1
         self.assertEqual(dub_args[idx_lang], "1:por")
 
-        self.assertIn("--enabled-track-flag", dub_args)
-        idx_enabled = dub_args.index("--enabled-track-flag") + 1
+        self.assertIn("--track-enabled-flag", dub_args)
+        idx_enabled = dub_args.index("--track-enabled-flag") + 1
         self.assertEqual(dub_args[idx_enabled], "1:1")
 
         self.assertIn("--default-track-flag", dub_args)
@@ -152,8 +152,8 @@ class TestSecondaryRankingAndDLNA(unittest.TestCase):
         idx_orig_lang = orig_args.index("--language") + 1
         self.assertEqual(orig_args[idx_orig_lang], "2:eng")
 
-        self.assertIn("--enabled-track-flag", orig_args)
-        idx_orig_enabled = orig_args.index("--enabled-track-flag") + 1
+        self.assertIn("--track-enabled-flag", orig_args)
+        idx_orig_enabled = orig_args.index("--track-enabled-flag") + 1
         self.assertEqual(orig_args[idx_orig_enabled], "2:1")
 
         self.assertIn("--default-track-flag", orig_args)

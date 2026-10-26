@@ -233,7 +233,7 @@ Quando o drift ratio for diferente de 1.0000 (exigindo estiramento ou compressã
    - `--track-name <id_sec>:"Inglês (Original - [Codec] [Canais])"`
    - `--language <id_sec>:eng`
    - `--default-track-flag <id_sec>:0`
-   - `--enabled-track-flag <id>:1`
+   - `--track-enabled-flag <id>:1`
 3. **Compensação de Atrasos do Contêiner (`start_time` / Edit Lists):**
    Calcula o offset líquido real somando atrasos de cabeçalho do MP4/MKV de origem:
    $$	ext{Offset}_{	ext{líquido}} = 	ext{Offset}_{	ext{acústico}} + (	ext{PTS\_start}_{	ext{ref}} - 	ext{PTS\_start}_{	ext{alvo}})$$
