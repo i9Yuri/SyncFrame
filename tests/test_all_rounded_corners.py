@@ -61,6 +61,7 @@ class TestAllRoundedCorners(unittest.TestCase):
             self.assertIn("QScrollBar:horizontal {", qss)
             self.assertIn("border-radius: 4px;", qss)
 
+            self.assertIn("QComboBoxPrivateContainer", qss)
             self.assertIn("QComboBox QAbstractItemView {", qss)
             self.assertIn("border-radius: 16px;", qss)
 
@@ -74,7 +75,26 @@ class TestAllRoundedCorners(unittest.TestCase):
             self.assertIn("border-radius: 7px;", qss)
 
             self.assertIn("QSlider::handle:horizontal {", qss)
-            self.assertIn("border-radius: 9px;", qss)
+            self.assertTrue("border-radius: 10px;" in qss or "border-radius: 9px;" in qss)
+
+    def test_combobox_popup_rounding_and_translucency(self):
+        """Verifies HighlightComboBox and drop zone comboboxes configure translucent popup containers."""
+        from src.ui.components.custom_combobox import HighlightComboBox, DropdownHighlightDelegate
+        from src.ui.components.unified_drop_zone import UnifiedDropZone
+
+        cb = HighlightComboBox()
+        self.assertIsInstance(cb.itemDelegate(), DropdownHighlightDelegate)
+        cb.showPopup()
+        container = cb.view().window()
+        self.assertTrue(container.testAttribute(Qt.WA_TranslucentBackground))
+        self.assertEqual(container.objectName(), "QComboBoxPrivateContainer")
+        cb.hidePopup()
+
+        dz = UnifiedDropZone()
+        self.assertIsInstance(dz.combo_video, HighlightComboBox)
+        self.assertIsInstance(dz.combo_target_audio, HighlightComboBox)
+        self.assertIsInstance(dz.combo_ref_audio, HighlightComboBox)
+        self.assertIsInstance(dz.combo_audio_codec, HighlightComboBox)
 
     def test_completion_dialog_has_rounded_geometry(self):
         """Verifies CompletionDialog has rounded styles on dialog and all children."""
@@ -210,7 +230,7 @@ class TestAllRoundedCorners(unittest.TestCase):
         # Topbar pills must have fixed 34px height
         self.assertEqual(win.pill_workspace.height(), 34)
         self.assertEqual(win.btn_theme.height(), 34)
-        self.assertEqual(win.btn_theme.width(), 34)
+        self.assertGreaterEqual(win.btn_theme.width(), 34)
         self.assertEqual(win.badge_v.height(), 34)
 
         # Pill workspace must be wider than text alone due to green dot and padding

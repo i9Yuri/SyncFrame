@@ -11,9 +11,11 @@ from .unified_drop_zone import (
 
 # Semantic alias for UnifiedDropZone acting as the Review Gate
 StreamReviewGate = UnifiedDropZone
+IngestPanel = UnifiedDropZone
 
 __all__ = [
     "StreamReviewGate",
+    "IngestPanel",
     "UnifiedDropZone",
     "StreamReviewState",
     "SmartDefaultsConfig",

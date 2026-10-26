@@ -200,3 +200,11 @@ class FileDropCard(QFrame):
     def get_selected_track_id(self) -> Optional[int]:
         data = self.combo_streams.currentData()
         return data if (data is not None and data >= 0) else None
+
+    def update_source_count_badge(self, count: int) -> None:
+        """Dynamically updates the source count badge if available."""
+        if hasattr(self, "chip_sources_count"):
+            self.chip_sources_count.setText(f"{count} / {count} FONTES")
+
+
+IngestPanel = FileDropCard

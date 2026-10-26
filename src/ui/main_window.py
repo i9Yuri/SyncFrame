@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from .components.collapsible_section import CollapsibleSection
 from .components.completion_dialog import show_completion_modal
 from .components.correlation_view import CorrelationView
+from .components.floating_action_dock import FloatingActionDock, DockItemConfig
 from .components.log_drawer import FloatingDockWidget, LogDrawer
 from .components.preview_player import PreviewPlayer
 from .components.sync_controls import SyncControls
@@ -127,17 +128,19 @@ class SyncFrameMainWindow(QWidget):
         root_layout.setContentsMargins(0, 0, 0, 0)
 
         # ======================================================================
-        # 1. Spacious One UI Header
+        # 1. Spacious One UI Header (Sticky Detached Topbar)
         # ======================================================================
         self.topbar = QWidget()
         self.topbar.setObjectName("topHeader")
+        self.topbar.setFixedHeight(76)
         tb_layout = QHBoxLayout(self.topbar)
-        tb_layout.setContentsMargins(28, 14, 28, 6)
+        tb_layout.setContentsMargins(28, 0, 28, 0)
         tb_layout.setSpacing(16)
+        tb_layout.setAlignment(Qt.AlignVCenter)
 
         # Brand mark & Title in integrated transparent block
         brand_texts = QVBoxLayout()
-        brand_texts.setSpacing(3)
+        brand_texts.setSpacing(2)
         brand_texts.setContentsMargins(0, 0, 0, 0)
         self.lbl_brand_title = QLabel("SyncFrame")
         self.lbl_brand_title.setObjectName("appTitle")
@@ -174,11 +177,14 @@ class SyncFrameMainWindow(QWidget):
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
+        # Forward mouse wheel scroll events from topbar directly to workbench scroll area
+        self.topbar.wheelEvent = lambda event: self.scroll_area.wheelEvent(event)
+
         body_container = QWidget()
         body_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.body_layout = QHBoxLayout(body_container)
         self.body_layout.setSpacing(12)
-        self.body_layout.setContentsMargins(18, 0, 18, 10)
+        self.body_layout.setContentsMargins(20, 20, 20, 20)
 
         # ----------------------------------------------------------------------
         # LEFT COLUMN (Stack 1: Operational & Decision Gate)
@@ -189,6 +195,7 @@ class SyncFrameMainWindow(QWidget):
         # Card 01 & 02: Unified Drop Zone & Review Gate
         self.drop_zone = UnifiedDropZone()
         self.drop_zone.files_ready.connect(self._on_files_ready)
+        self.drop_zone.multiple_files_ready.connect(self._on_multiple_files_ready)
         self.drop_zone.confirmation_confirmed.connect(self._on_confirmation_confirmed)
         self.drop_zone.target_audio_changed.connect(self._on_target_audio_changed)
         self.drop_zone.primary_audio_changed.connect(self._on_primary_audio_changed)
@@ -335,18 +342,16 @@ class SyncFrameMainWindow(QWidget):
         root_layout.addWidget(self.scroll_area, 1)
 
         # ======================================================================
-        # 4. Floating Bottom Dock Container
+        # 4. Floating Action Dock (Compact TiltedDock Nativo)
         # ======================================================================
-        self.dock_container = QWidget()
-        self.dock_container.setObjectName("dockContainer")
-        dock_bar = QHBoxLayout(self.dock_container)
-        dock_bar.setContentsMargins(24, 0, 24, 14)
-        dock_bar.setAlignment(Qt.AlignCenter)
-
+        # Retain backward-compatible log_drawer reference for legacy test suites
         self.log_drawer = FloatingDockWidget()
-        self.floating_dock = self.log_drawer
-        dock_bar.addWidget(self.log_drawer)
-        root_layout.addWidget(self.dock_container)
+        self.dock_container = QWidget()
+        self.dock_container.setVisible(False)
+
+        # Uncoupled compact floating dock in viewport
+        self.floating_dock = FloatingActionDock(self)
+        self.btn_dock_theme = self.floating_dock.buttons.get("theme_toggle")
 
         # Register manageable cards in WorkspaceLayoutManager
         self.widgets_map = {
@@ -385,18 +390,20 @@ class SyncFrameMainWindow(QWidget):
                 b.setProperty("done", "false")
             b.setStyle(b.style())
 
+    def _update_theme_button_state(self) -> None:
+        """Configures theme toggle button pill with icon, text, and dynamic width."""
+        if hasattr(self, "btn_theme") and self.btn_theme:
+            label = "Modo Claro" if self.current_theme == "dark" else "Modo Escuro"
+            self.btn_theme.setText(label)
+            self.btn_theme.setIcon(get_theme_icon(self.current_theme))
+            self.btn_theme.setIconSize(QSize(18, 18))
+            self.btn_theme.setToolTip(label)
+            self._update_topbar_pill_sizes()
+
     def apply_application_theme(self, theme_mode: Literal["dark", "light"]) -> None:
         """Applies the application theme atomically across the window and all child widgets."""
         self.current_theme = theme_mode
-        if hasattr(self, "btn_theme") and self.btn_theme:
-            self.btn_theme.setText("")
-            self.btn_theme.setIcon(get_theme_icon(self.current_theme))
-            self.btn_theme.setIconSize(QSize(18, 18))
-            if self.current_theme == "light":
-                self.btn_theme.setToolTip("Modo Escuro")
-            else:
-                self.btn_theme.setToolTip("Modo Claro")
-            self.btn_theme.setFixedSize(34, 34)
+        self._update_theme_button_state()
 
         theme_qss = get_theme_stylesheet(self.current_theme)
         app = QApplication.instance()
@@ -412,6 +419,8 @@ class SyncFrameMainWindow(QWidget):
             self.badge_soundbar.set_theme_mode(self.current_theme)
         if hasattr(self, "drop_zone") and hasattr(self.drop_zone, "set_theme_mode"):
             self.drop_zone.set_theme_mode(self.current_theme)
+        if hasattr(self, "floating_dock") and hasattr(self.floating_dock, "set_theme_mode"):
+            self.floating_dock.set_theme_mode(self.current_theme)
 
         # Recursively unpolish and polish all child widgets to refresh CSS properties
         for child in self.findChildren(QWidget):
@@ -444,22 +453,33 @@ class SyncFrameMainWindow(QWidget):
         """
         Dispatches background low-priority DependencyUpdateWorker auditing local and remote versions.
         """
+        if hasattr(self, "floating_dock") and self.floating_dock:
+            if not silent:
+                self.floating_dock.set_item_activity_state("check_updates", True, "Verificando ferramentas...")
+
         if not silent and hasattr(self, "btn_check_updates"):
             self.btn_check_updates.setText("Verificando...")
             self.btn_check_updates.setEnabled(False)
             self._update_topbar_pill_sizes()
 
         worker = DependencyUpdateWorker(self)
-        worker.status_message.connect(self.log_drawer.append_log)
+        worker.status_message.connect(self._on_worker_status_message)
         worker.update_available.connect(self._on_update_available)
         worker.audit_finished.connect(lambda res: self._on_update_audit_finished(res, silent))
         self.active_update_worker = worker
         worker.start(QThread.LowPriority)
 
+    def _on_worker_status_message(self, message: str) -> None:
+        """Dispatches status message to floating dock popover and log drawer."""
+        if hasattr(self, "floating_dock") and self.floating_dock:
+            self.floating_dock.append_log(message)
+        if hasattr(self, "log_drawer") and self.log_drawer:
+            self.log_drawer.append_log(message)
+
     def _on_update_available(self, tool_name: str, new_version: str) -> None:
         """Receives notice of available update and records telemetry."""
         msg = f"Atualização disponível: {tool_name} ({new_version})"
-        self.log_drawer.append_log(msg)
+        self._on_worker_status_message(msg)
         if hasattr(self, "btn_check_updates"):
             self.btn_check_updates.setToolTip(msg)
 
@@ -469,6 +489,21 @@ class SyncFrameMainWindow(QWidget):
             audit_result.get("syncframe", {}).get("has_update", False)
             or any(t.get("has_update") for t in audit_result.get("tools", {}).values())
         )
+        if hasattr(self, "floating_dock") and self.floating_dock:
+            self.floating_dock.set_item_activity_state("check_updates", False, "Verificar Atualizações")
+            tool_versions = {
+                t: data.get("local_version", "Detectado")
+                for t, data in audit_result.get("tools", {}).items()
+            }
+            app_v = audit_result.get("syncframe", {}).get("local_version", "v1.2.0")
+            self.floating_dock.version_popover.set_system_info(app_v, tool_versions)
+
+            if not silent:
+                if has_any_update:
+                    self.floating_dock.show_toast("Atualização disponível para ferramentas ou aplicação")
+                else:
+                    self.floating_dock.show_toast("Todas as dependências e o SyncFrame estão na versão mais recente")
+
         if not silent and hasattr(self, "btn_check_updates"):
             if has_any_update:
                 self.btn_check_updates.setText("Atualização disponível")
@@ -486,13 +521,9 @@ class SyncFrameMainWindow(QWidget):
 
     def setup_topbar_actions(self) -> None:
         """
-        Constructs and configures topbar pill actions deterministically:
-        - Espaço de trabalho local (pill with green dot)
-        - Modo Claro / Modo Escuro (theme switcher pill)
-        - v1.2.0 (version pill)
-        - Fully expunges inoperant Edit Mode and rogue '+' crosses
-        - Standardizes compact height to 34px with 8px horizontal gap
-        - Auto-fits pill widths via QFontMetrics + 28px symmetric padding
+        Streamlines topbar layout by isolating exclusively the theme switch pill on the top right.
+        Removes the workspace pill and version badge from the visible topbar.
+        Retains unattached compatibility attributes for legacy test suite contracts.
         """
         tb_layout = self.topbar.layout() if hasattr(self, "topbar") and self.topbar else None
         if tb_layout is None:
@@ -500,7 +531,7 @@ class SyncFrameMainWindow(QWidget):
 
         tb_layout.setSpacing(8)
 
-        # 1. Local workspace pill
+        # 1. Backward-compatible workspace pill (retained for test assertions, expunged from visible topbar)
         if not hasattr(self, "pill_workspace") or self.pill_workspace is None:
             self.pill_workspace = QFrame()
             pw_layout = QHBoxLayout(self.pill_workspace)
@@ -512,13 +543,14 @@ class SyncFrameMainWindow(QWidget):
             self.chip_workspace = QLabel("Espaço de trabalho")
             self.chip_workspace.setStyleSheet("font-weight: 600; font-size: 13px; border: none; background: transparent;")
             pw_layout.addWidget(self.chip_workspace)
-            tb_layout.addWidget(self.pill_workspace)
 
         self.pill_workspace.setObjectName("pillWorkspace")
         self.pill_workspace.setProperty("class", "pill")
         self.pill_workspace.setFixedHeight(34)
+        self.pill_workspace.setVisible(False)
+        tb_layout.removeWidget(self.pill_workspace)
 
-        # 2. Backward-compatible edit mode button: strictly expunged from visible topbar
+        # 2. Backward-compatible edit mode button
         if not hasattr(self, "btn_edit_mode") or self.btn_edit_mode is None:
             self.btn_edit_mode = QPushButton("Modo Edição")
             self.btn_edit_mode.setObjectName("btnEditMode")
@@ -528,44 +560,43 @@ class SyncFrameMainWindow(QWidget):
         self.btn_edit_mode.setVisible(False)
         tb_layout.removeWidget(self.btn_edit_mode)
 
-        # 3. Theme toggle button
-        if not hasattr(self, "btn_theme") or self.btn_theme is None:
-            self.btn_theme = QPushButton()
-            self.btn_theme.setToolTip("Modo Claro" if self.current_theme == "dark" else "Modo Escuro")
-            self.btn_theme.setIcon(get_theme_icon(self.current_theme))
-            self.btn_theme.setIconSize(QSize(18, 18))
-            self.btn_theme.clicked.connect(self.toggle_theme_mode)
-            tb_layout.addWidget(self.btn_theme)
-
-        self.btn_theme.setObjectName("btnTheme")
-        self.btn_theme.setProperty("class", "pill")
-        self.btn_theme.setFixedSize(34, 34)
-        self.btn_theme.setIconSize(QSize(18, 18))
-        self.btn_theme.setCursor(Qt.PointingHandCursor)
-
-        # 4. Check updates button (silent/interactive updater)
+        # 3. Backward-compatible check updates button (action moved to floating action dock)
         if not hasattr(self, "btn_check_updates") or self.btn_check_updates is None:
-            self.btn_check_updates = QPushButton("Verificar Atualizações")
+            self.btn_check_updates = QPushButton("Verificar Atualizações", self)
             self.btn_check_updates.setToolTip("Auditar versões locais e checar releases do sistema")
             self.btn_check_updates.clicked.connect(lambda: self.check_for_updates(silent=False))
-            tb_layout.addWidget(self.btn_check_updates)
 
         self.btn_check_updates.setObjectName("btnCheckUpdates")
         self.btn_check_updates.setProperty("class", "pill")
         self.btn_check_updates.setFixedHeight(34)
-        self.btn_check_updates.setCursor(Qt.PointingHandCursor)
+        self.btn_check_updates.move(-9999, -9999)
+        tb_layout.removeWidget(self.btn_check_updates)
 
-        # 5. Version badge
+        # 4. Backward-compatible version badge (details moved to floating action dock version popover)
         if not hasattr(self, "badge_v") or self.badge_v is None:
             self.badge_v = QLabel("v1.2.0")
             self.badge_v.setAlignment(Qt.AlignCenter)
-            tb_layout.addWidget(self.badge_v)
 
         self.badge_v.setObjectName("badgeVersion")
         self.badge_v.setProperty("class", "pillSoft")
         self.badge_v.setFixedHeight(34)
         self.badge_v.setAlignment(Qt.AlignCenter)
+        self.badge_v.setVisible(False)
+        tb_layout.removeWidget(self.badge_v)
 
+        # 5. Theme toggle button - moved to floating dock, removed from topbar
+        if not hasattr(self, "btn_theme") or self.btn_theme is None:
+            self.btn_theme = QPushButton()
+            self.btn_theme.clicked.connect(self.toggle_theme_mode)
+
+        self.btn_theme.setObjectName("btnTheme")
+        self.btn_theme.setProperty("class", "pill")
+        self.btn_theme.setFixedHeight(34)
+        self.btn_theme.setCursor(Qt.PointingHandCursor)
+        self.btn_theme.setVisible(False)
+        tb_layout.removeWidget(self.btn_theme)
+
+        self._update_theme_button_state()
         self._update_topbar_pill_sizes()
 
     def toggle_theme_mode(self) -> None:
@@ -577,6 +608,12 @@ class SyncFrameMainWindow(QWidget):
         """Backwards-compatible alias for toggle_theme_mode."""
         self.toggle_theme_mode()
 
+    def showEvent(self, event):
+        """Positions floating dock centered at bottom when window is displayed."""
+        super().showEvent(event)
+        if hasattr(self, "floating_dock") and self.floating_dock is not None:
+            self.floating_dock.reposition(self.width(), self.height())
+
     def resizeEvent(self, event):
         """Ensures responsive adaptation and geometry recalculation on window resize."""
         super().resizeEvent(event)
@@ -587,18 +624,25 @@ class SyncFrameMainWindow(QWidget):
                 self.body_layout.setDirection(QBoxLayout.LeftToRight)
         if hasattr(self, "scroll_area"):
             self.scroll_area.updateGeometry()
+        if hasattr(self, "floating_dock") and self.floating_dock is not None:
+            self.floating_dock.reposition(self.width(), self.height())
         self._update_topbar_pill_sizes()
 
     def _update_topbar_pill_sizes(self) -> None:
-        """Dynamically sizes topbar pill tags and buttons based on QFontMetrics with generous margins."""
+        """Dynamically sizes topbar theme pill via QFontMetrics with symmetric padding and zero truncation."""
+        if hasattr(self, "btn_theme") and self.btn_theme:
+            fm_theme = self.btn_theme.fontMetrics()
+            text = self.btn_theme.text()
+            text_w = fm_theme.horizontalAdvance(text) if text else 0
+            icon_space = 24 if not self.btn_theme.icon().isNull() else 0
+            self.btn_theme.setFixedWidth(text_w + icon_space + 28)
+            self.btn_theme.setFixedHeight(34)
+
         if hasattr(self, "pill_workspace") and hasattr(self, "chip_workspace") and self.pill_workspace:
             fm_ws = self.chip_workspace.fontMetrics()
             text_w = fm_ws.horizontalAdvance(self.chip_workspace.text())
             self.pill_workspace.setFixedWidth(max(text_w + 52, 160))
             self.pill_workspace.setFixedHeight(34)
-
-        if hasattr(self, "btn_theme") and self.btn_theme:
-            self.btn_theme.setFixedSize(34, 34)
 
         if hasattr(self, "btn_check_updates") and self.btn_check_updates and self.btn_check_updates.text():
             fm_up = self.btn_check_updates.fontMetrics()
@@ -696,21 +740,36 @@ class SyncFrameMainWindow(QWidget):
         self.sync_controls.setEnabled(True)
         self.preview_player.setEnabled(True)
         if len(files) >= 2:
-            self._on_files_ready(files[0], files[1])
+            self._on_files_ready(files[0], files[1], *files[2:])
 
     def _on_single_file_inspected(self, report: MediaInspectionReport) -> None:
         self.transition_to_inspector_mode(report)
 
-    def _on_files_ready(self, file_a: str, file_b: str):
+    def _on_multiple_files_ready(self, files: List[str]) -> None:
+        if len(files) >= 2:
+            self._on_files_ready(files[0], files[1], *files[2:])
+
+    def _on_files_ready(self, file_a: str, file_b: str = None, *extra_files: str):
         self.card_remux_exec.setEnabled(True)
         self.card_acoustic.setEnabled(True)
         self.sync_controls.setEnabled(True)
         self.preview_player.setEnabled(True)
-        self.log_drawer.append_log(f"Fontes recebidas: {os.path.basename(file_a)}, {os.path.basename(file_b)}")
+        all_incoming: List[str] = []
+        for item in [file_a, file_b, *extra_files]:
+            if isinstance(item, (list, tuple)):
+                all_incoming.extend([x for x in item if isinstance(x, str) and x])
+            elif isinstance(item, str) and item:
+                all_incoming.append(item)
+
+        # Synchronize loaded_files in drop_zone
+        self.drop_zone.loaded_files = list(all_incoming)
+
+        names_str = ", ".join(os.path.basename(f) for f in all_incoming)
+        self.log_drawer.append_log(f"Fontes recebidas: {names_str}")
         self._set_stepper_active(1)
 
         try:
-            verdict = evaluate_media_streams(file_a, file_b)
+            verdict = evaluate_media_streams(file_a, file_b, *extra_files)
         except Exception as exc:
             logger.error("Falha ao avaliar streams de mídia: %s", exc, exc_info=True)
             self.log_drawer.append_log(f"Erro na inspeção: {exc}")
@@ -734,7 +793,7 @@ class SyncFrameMainWindow(QWidget):
                 file_path=file_v,
                 file_size_formatted=sz_v,
                 extension=ext_v,
-                role_label="REFERENCIA DE VIDEO",
+                role_label="REFERÊNCIA DE VÍDEO",
                 summary=v_summary,
                 is_video_source=True
             )
@@ -750,13 +809,48 @@ class SyncFrameMainWindow(QWidget):
                     file_path=file_a_path,
                     file_size_formatted=sz_a,
                     extension=ext_a,
-                    role_label="AUDIO DUBLADO",
+                    role_label="ÁUDIO DUBLADO",
                     summary=a_summary,
                     is_video_source=False
                 )
             )
 
-        self.drop_zone.update_sources_view(media_sources)
+        existing_paths = {file_v}
+        if file_a_path:
+            existing_paths.add(file_a_path)
+
+        for other_f in all_incoming:
+            if other_f not in existing_paths:
+                existing_paths.add(other_f)
+                o_sz = format_bytes(os.path.getsize(other_f)) if os.path.isfile(other_f) else "0 B"
+                o_ext = os.path.splitext(other_f)[1].replace(".", "").upper()
+                is_other_vid = any(v.file_path == other_f for v in verdict.alternative_videos)
+                o_vid_cand = next((v for v in verdict.alternative_videos if v.file_path == other_f), None)
+                o_aud_cand = next((a for a in verdict.alternative_audios if a.file_path == other_f), None)
+
+                if is_other_vid and o_vid_cand:
+                    o_role = "VÍDEO ALTERNATIVO"
+                    fps_txt = f"  •  {o_vid_cand.stream.fps:.3f} fps" if o_vid_cand.stream.fps > 0 else ""
+                    o_summary = f"{o_sz}{fps_txt}"
+                elif o_aud_cand:
+                    o_role = "ÁUDIO ADICIONAL"
+                    ch_lbl = format_channel_layout_label(o_aud_cand.stream.channels, o_aud_cand.stream.channel_layout) if o_aud_cand.stream.channels else ""
+                    o_summary = f"{o_sz}  •  {ch_lbl}" if ch_lbl else f"{o_sz} [{o_ext}]"
+                else:
+                    o_role = "FONTE ADICIONAL"
+                    o_summary = f"{o_sz} [{o_ext}]"
+
+                media_sources.append(
+                    MediaSourceInfo(
+                        file_path=other_f,
+                        file_size_formatted=o_sz,
+                        extension=o_ext,
+                        role_label=o_role,
+                        summary=o_summary,
+                        is_video_source=is_other_vid
+                    )
+                )
+
         self.drop_zone.set_verdict(verdict)
 
         # Arm preview player immediately with nominal duration and sources

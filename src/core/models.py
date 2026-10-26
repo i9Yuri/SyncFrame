@@ -22,6 +22,55 @@ def format_channel_layout_label(channels: int, layout: str = "") -> str:
     return "Canais Desconhecidos"
 
 
+def format_immersive_profile_label(
+    codec: str,
+    channels: int,
+    channel_layout: str = "",
+    is_immersive: bool = False,
+    title: str = "",
+    spatial_label: str = ""
+) -> str:
+    """
+    Standardized badge profile for channel audit and stream selection:
+    DOLBY ATMOS, DOLBY AUDIO 5.1, DTS-HD MA 7.1, DTS SURROUND, ESTÉREO CONVENCIONAL.
+    """
+    c = (codec or "").lower().replace("-", "").replace("_", "")
+    layout_lower = (channel_layout or "").lower()
+    title_lower = (title or "").lower()
+    spatial_lower = (spatial_label or "").lower()
+
+    if is_immersive or "atmos" in title_lower or "atmos" in layout_lower or "atmos" in spatial_lower or "joc" in layout_lower:
+        return "DOLBY ATMOS"
+
+    if "dts" in c or "dts" in title_lower:
+        if channels >= 8 or "7.1" in layout_lower or "dts-hd ma" in title_lower or "dtshd" in c:
+            return "DTS-HD MA 7.1"
+        elif "dts-hd" in title_lower or "dtshd" in c:
+            return f"DTS-HD MA {channels}.1" if channels >= 6 else "DTS-HD MA"
+        return "DTS SURROUND"
+
+    if any(k in c for k in ("ac3", "eac3", "truehd", "dolby")) or "dolby" in title_lower:
+        if channels >= 8 or "7.1" in layout_lower:
+            return "DOLBY AUDIO 7.1"
+        elif channels >= 6 or "5.1" in layout_lower:
+            return "DOLBY AUDIO 5.1"
+        elif channels == 2 and ("surround" in layout_lower or "surround" in title_lower):
+            return "DOLBY SURROUND"
+        elif channels <= 2:
+            return "ESTÉREO CONVENCIONAL"
+        return f"DOLBY AUDIO {channels}ch"
+
+    if channels <= 2:
+        return "ESTÉREO CONVENCIONAL"
+    elif channels >= 8 or "7.1" in layout_lower:
+        return "SURROUND 7.1"
+    elif channels >= 6 or "5.1" in layout_lower:
+        return "SURROUND 5.1"
+
+    return format_channel_layout_label(channels, channel_layout).upper()
+
+
+
 @dataclass
 class AudioProfile:
     """Detailed acoustic and channel metrics for an audio stream."""
@@ -94,6 +143,16 @@ class StreamMetadata:
             title_str = f" - {self.title}" if self.title else ""
             details = ", ".join(filter(None, [self.codec.upper(), ch_str, sr_str]))
             return f"Áudio #{self.id} ({lang}): {details}{title_str}{default_tag}"
+
+    def get_immersive_profile_label(self) -> str:
+        return format_immersive_profile_label(
+            codec=self.codec,
+            channels=self.channels,
+            channel_layout=self.channel_layout,
+            is_immersive=self.is_immersive,
+            title=self.title,
+            spatial_label=self.spatial_label
+        )
 
 
 @dataclass
@@ -274,6 +333,7 @@ class StreamCandidate:
     is_recommended: bool = False
     badge_label: str = ""
     details_str: str = ""
+    is_best_quality: bool = False
 
     def summary_title(self) -> str:
         basename = os.path.basename(self.file_path)
@@ -341,16 +401,75 @@ class VideoStreamDetail:
 @dataclass
 class AudioStreamDetail:
     """Detailed acoustic stream attributes for single media inspection."""
-    stream_id: int
-    language: str
-    title: str
-    codec: str
-    channels: int
-    channel_layout: str
-    sample_rate: int
-    bit_rate: int
+    stream_id: int = 0
+    language: str = ""
+    title: str = ""
+    codec: str = ""
+    channels: int = 2
+    channel_layout: str = ""
+    sample_rate: int = 48000
+    bit_rate: int = 0
     is_immersive: bool = False
     immersive_type: Optional[str] = None
+    spatial_label: str = ""
+    container_format: str = "mkv"
+
+    def __init__(
+        self,
+        stream_id: int = 0,
+        language: str = "",
+        title: str = "",
+        codec: str = "",
+        channels: int = 2,
+        channel_layout: str = "",
+        sample_rate: int = 48000,
+        bit_rate: int = 0,
+        is_immersive: bool = False,
+        immersive_type: Optional[str] = None,
+        spatial_label: str = "",
+        container_format: str = "mkv",
+        id: Optional[int] = None,
+        bitrate: Optional[int] = None,
+        **kwargs
+    ):
+        self.stream_id = stream_id if id is None else id
+        self.language = language
+        self.title = title
+        self.codec = codec
+        self.channels = channels
+        self.channel_layout = channel_layout
+        self.sample_rate = sample_rate
+        self.bit_rate = bit_rate if bitrate is None else bitrate
+        self.is_immersive = is_immersive
+        self.immersive_type = immersive_type
+        self.spatial_label = spatial_label
+        self.container_format = container_format
+
+    @property
+    def id(self) -> int:
+        return self.stream_id
+
+    @id.setter
+    def id(self, val: int) -> None:
+        self.stream_id = val
+
+    @property
+    def bitrate(self) -> int:
+        return self.bit_rate
+
+    @bitrate.setter
+    def bitrate(self, val: int) -> None:
+        self.bit_rate = val
+
+    def get_immersive_profile_label(self) -> str:
+        return format_immersive_profile_label(
+            codec=self.codec,
+            channels=self.channels,
+            channel_layout=self.channel_layout,
+            is_immersive=self.is_immersive,
+            title=self.title,
+            spatial_label=self.spatial_label or self.immersive_type or ""
+        )
 
 
 @dataclass
@@ -390,6 +509,33 @@ class ConsolidatedStreamSelection:
     secondary_audio_selections: List[Tuple[str, int, bool]] = field(default_factory=list)
     ref_audio_file: Optional[str] = None
     ref_audio_track_id: Optional[int] = None
+
+
+@dataclass
+class AudioQualityBadge:
+    """Dataclass structured for atomic chip rendering of secondary audio streams."""
+    language: str  # e.g., "ENG", "POR", "JAP"
+    brand_format: str  # e.g., "DOLBY ATMOS", "DOLBY AUDIO", "DTS-HD MA", "DTS", "PCM"
+    channels_desc: str  # e.g., "7.1.4", "7.1", "5.1", "2.0"
+    sample_rate_hz: int  # e.g., 48000
+    bit_rate_kbps: int  # e.g., 640 or 0
+    codec_name: str  # e.g., "TRUEHD", "E-AC-3", "AC-3", "DTS", "FLAC"
+    source_filename: str  # e.g., "Vingadores...mkv"
+    track_id: int  # e.g., 2
+    is_best_option: bool = False
+    title: str = ""
+
+
+@dataclass
+class StreamAuditSummary:
+    """Structured deduplicated metrics for the channel audit bar."""
+    container: str  # e.g., "MKV Nativo", "MP4 -> MKV Remux"
+    audio_profile: str  # e.g., "DOLBY ATMOS", "DOLBY AUDIO 5.1", "DTS-HD MA 7.1", "ESTÉREO CONVENCIONAL"
+    channels: str  # e.g., "7.1.4 Surround", "5.1 Surround", "2.0 Estéreo"
+    codec: str  # e.g., "E-AC-3", "AC-3", "TrueHD", "DTS", "FLAC"
+    sample_rate: str  # e.g., "48.000 Hz"
+    bit_rate: str  # e.g., "640 kbps"
+
 
 
 

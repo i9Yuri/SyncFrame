@@ -5,6 +5,123 @@ Todas as alterações notáveis neste projeto serão documentadas neste arquivo.
 O formato segue as diretrizes do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.5.0] - 2026-10-25
+
+### Adicionado
+- **Faixa Declarativa de Especificações do Arquivo Resultante (Target Output Summary / Resulting File Specs):**
+  - Substituição da linha textual estática de "Auditoria de canais" na parte inferior do painel de "Revisão de faixas" por uma barra horizontal reativa e declarativa com componentes visuais em pílulas arredondadas (`border-radius: 12px`, altura 24px) em container de cápsula contínua (`border-radius: 20px`, min-height 38px, `resultingSpecsBar`).
+  - Consolidação e exibição em tempo real de 7 metadados técnicos padronizados do arquivo de saída: contêiner (`MKV Matroska` nativo ou `MKV Remux`), modo de processamento com classes cromáticas de alto contraste (`Cópia Direta (Passthrough)` com realce verde `#2fb16b` / `resultingPillGreen` ou `Re-encode [CODEC] (PAL 24fps)` com realce âmbar `#e8963a` / `resultingPillAmber`), formato comercial (`DOLBY ATMOS` com realce sinal `#4081f7` / `resultingPillSignal`, `DOLBY AUDIO 5.1`, `DTS-HD MA 7.1`, `FLAC LOSSLESS`), codec exato em caixa alta (`AC-3`, `E-AC-3`, `TRUEHD`, `DTS-HD MA`, `FLAC`, `OPUS`, `AAC`), topologia de canais decomposta com indicação explícita de surround, height/atmos e subwoofer LFE (`5.1 Surround (+Subwoofer)`, `7.1 Atmos (Surround + Height + Sub)`, `2.0 Estéreo (Sem LFE)`, `1.0 Mono (Sem LFE)`), frequência de amostragem padronizada com separador de milhar decimal (`48.000 Hz`) e taxa de bits nominal/real formatada (`640 kbps`, `3500 kbps`, `Bitrate Variável (VBR)`).
+  - Reatividade bidirecional instantânea a alterações na seleção de áudio principal (`combo_target_audio`), comutação da restauração PAL (`check_pal_pitch`), seleção de codec de re-encode (`combo_audio_codec`) e seleção de vídeo de referência (`combo_video`).
+  - Apresentação de fallback elegante de estado deselecionado (`Nenhum áudio selecionado`), contrato público `update_resulting_specs(self, track_info, remux_options) -> dict` e retrocompatibilidade estrita mantida com os atributos e rótulos legados (`lbl_audit_origin`, `badge_audit_layout`, `lbl_audit_specs`).
+- **Dinamização da Ingestão de Fontes para $N$ Arquivos ($N \ge 2$):**
+  - Substituição da estrutura estática de 2 cartões no `UnifiedDropZone` (`block_sources`) por layout flexível reativo (`self.sources_layout = QHBoxLayout()`).
+  - Geração dinâmica de cartões em cápsula arredondada contínua (`.fileBox`, raio de 20px) para qualquer quantidade $N \ge 2$ de arquivos carregados (`self.dynamic_source_cards`), com limpeza determinística em `reset()`.
+  - Atualização dinâmica do badge de contagem de fontes para `f"{N} / {N} FONTES"` (ex.: `3 / 3 FONTES`).
+  - Identificação semântica de papéis de arquivo para todas as fontes adicionais (`VÍDEO ALTERNATIVO`, `ÁUDIO ADICIONAL` ou `FONTE ADICIONAL`).
+- **Pooling Universal de Fluxos de Vídeo no Review Gate (`combo_video`):**
+  - Desempacotamento recursivo em `Inspector.evaluate_media_streams` aceitando listas, tuplas e múltiplos argumentos posicionais.
+  - Varredura e indexação de 100% dos fluxos de vídeo de todos os $N$ contêineres carregados, disponibilizando todas as opções com metadados técnicos completos (resolução, taxa de quadros, codec, contêiner e trilha) no seletor "Melhor Imagem" (V01).
+- **Restauração dos Controles de Sensibilidade do Slider Temporal (`SensitivitySelectorWidget`):**
+  - Reativação e ancoragem do seletor segmentado em pílula (`1 ms`, `10 ms`, `50 ms`) no cabeçalho de *Alinhamento temporal* ao lado do badge `Faixa A02`.
+  - Conexão bidirecional mantida com o `SliderSensitivityController` e `DampedSlider` para ajuste milimétrico de offset acústico.
+- **Expansão e Resiliência da Janela de Registro de Eventos (`EventLogPopover`):**
+  - Expansão das dimensões do console para `820x520` (mais de 2.6x de área em relação ao layout original), proporcionando leitura técnica ampla de stack traces e saídas do FFmpeg/mkvmerge.
+  - Adoção das flags `Qt.Tool | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint` com cálculo de posicionamento clampeado nos limites do monitor (`QGuiApplication.primaryScreen().availableGeometry()`), eliminando o erro de captura Wayland e impedindo que a janela seja renderizada fora da tela.
+  - Fechamento imediato com a tecla `Escape` e curvatura contínua One UI de 18px (`border-radius: 18px`).
+- **Micro-Interações e Profundidade no Dock Flutuante (TiltedDock Nativo):**
+  - Transposição integral do comportamento do TiltedDock: o botão focado amplia para 1.35x com curva de mola `OutBack` e exibe destaque circular iluminado (`rgba(255, 255, 255, 0.14)` / `rgba(0, 0, 0, 0.08)`).
+  - Profundidade de foco através de atenuação suave dos botões vizinhos (sibling dimming) para opacidade 0.45 via `QPropertyAnimation` na propriedade `buttonOpacity`.
+  - Alternância de visibilidade por clique repetido (toggle) nos botões de logs e versão.
+- **Transposição do Botão de Alternância de Tema para o Dock Flutuante:**
+  - Remoção visual completa do botão de tema da Topbar superior, purificando totalmente o cabeçalho contra botões operacionais concorrentes.
+  - Integração do botão de alternância de tema (`theme_toggle`) como o terceiro item funcional no dock flutuante desacoplado (`FloatingActionDock`), com auto-ajuste de largura para 228px.
+  - Suporte visual adaptativo no dock: renderização do ícone solar SVG (`dock_theme_dark.svg`) em modo escuro (indicando ação para modo claro) e ícone lunar SVG (`dock_theme_light.svg`) em modo claro (indicando ação para modo escuro).
+  - Micro-interações táteis completas: realce circular iluminado, ampliação suave de mola para 1.35x sob hover com atenuação dos irmãos vizinhos para 0.45 de opacidade, e micro-tooltip dinâmico contextual ("Modo Claro" / "Modo Escuro").
+- **Desacoplamento e Fixação da Barra Superior (Sticky Detached Topbar):**
+  - Desprendimento visual e estrutural completo da barra superior (`self.topbar` / `#topHeader`) da esteira de rolagem central da aplicação.
+  - Fixação da altura em 76px com alinhamento vertical centrado, superfície sólida opaca (`#121316` no tema escuro e `#ffffff` no tema claro) e linha divisória sutil de 1px (`#23252b` / `#e1e4ed`), garantindo que o cabeçalho permaneça fixo no topo da janela quando a bancada é rolada para baixo.
+  - Margem de respiro superior de 20px em `self.body_layout.setContentsMargins(20, 20, 20, 20)` no contêiner da bancada, permitindo que os cartões rolem suavemente por baixo da divisória sem colidir com a tipografia do título e subtítulo.
+  - Propagação contínua de eventos de rolagem do mouse (`wheelEvent`) na área do cabeçalho superior diretamente para o viewport da `QScrollArea`, garantindo rolagem fluida e sem atritos em qualquer ponto da interface.
+
+### Corrigido
+- **Erradicação do Retângulo Escuro de Fundo no Painel de Faixas Secundárias:**
+  - Remoção completa do container retangular opaco (`#1b1c20`) e da borda dura (`1px solid #282d34`) que envolviam as opções de faixas secundárias (`QFrame#frameSecondaryAudio`), configurando fundo 100% transparente e sem bordas (`background-color: transparent; border: none;`) em ambos os temas.
+  - Alinhamento horizontal limpo dos cartões em cápsula (`secondaryTrackCard`) diretamente sobre a superfície do cartão de revisão de faixas (`blockReviewGate`), eliminando caixas ou retângulos residuais atrás das opções.
+  - Ajuste idêntico em `optionsContainer` e `frameOptions`, garantindo que os seletores inferiores de preservação de áudio, restauração PAL e codec de re-encode não exibam sobreposições retangulares de fundo.
+- **Eliminação do Bug de Desaparecimento de Ícones no Hover do Dock:**
+  - Identificada e sanada a colisão de renderização no `paintEvent` do `DockItemButton`: o uso de `super().paintEvent` concorrente a um `QPainter` ativo abortava a pintura interna do Qt.
+  - Renderização vetorial direta e nítida utilizando `QSvgRenderer` e `QPainter` unificado, mantendo os ícones 100% visíveis, sem recortes ou artefatos ao passar o cursor ou ampliar.
+- **Erradicação de Quinas Vivas nas Faixas de Áudio Secundárias:**
+  - Sanado o defeito visual onde `border-radius: 999px` em `QLabel.atomicChip` e `QLabel.atomicChipBest` revertia silenciosamente para retângulos rígidos de 90 graus no motor de QSS do Qt.
+  - Implementação de raios contínuos proporcionais à meia-altura: `border-radius: 10px` com altura fixa de 20px (`min-height: 20px; max-height: 20px; padding: 0 8px;`) e alinhamento centrado em todos os chips de metadados (`ENG`, codecs, layout de canais, especificações técnicas e badge `RECOMENDADO`).
+  - Transmutação do indicador de seleção (`chkSecondaryAudio::indicator`) de retângulo com cantos vivos para uma esfera perfeita de 18x18px (`border-radius: 9px;`).
+  - Cartões de linha (`secondaryTrackCard`) com altura fixa de 34px e curvatura em cápsula de 16px (`border-radius: 16px;`), assegurando geometria 100% arredondada em ambos os temas.
+- **Geometria 100% Circular no Slider de Alinhamento Temporal:**
+  - Fixação de altura determinística de 28px no widget do slider (`min-height: 28px; height: 28px;` e `self.slider.setFixedHeight(28)`), eliminando o corte (clipping) vertical decorrente do teto de altura anterior.
+  - Recalibração do handle horizontal (`::handle:horizontal`) com `width: 14px; height: 14px; margin: -6px 0; border: 3px solid #4081f7; border-radius: 10px;`.
+  - Geometria esférica 1:1 resultante aferida por pixel: 20px de largura por 20px de altura, livre de achatamentos, arestas retas ou deformações nos modos Claro e Escuro.
+- **Transparência de Cantos e Legibilidade em Menus Suspensos (`QComboBox` / Review Gate):**
+  - Sanado o defeito de opções ilegíveis e "sobra de cantos brancos" nos seletores de imagem, faixa de áudio e codec de re-encode (`combo_audio_codec`).
+  - Identificada e corrigida a causa raiz da ilegibilidade no `DropdownHighlightDelegate`: correção de acesso aos sinalizadores de estado do Qt via `QStyle.State_Selected` e `QStyle.State_MouseOver` (em vez de atributos inexistentes no `QStyleOptionViewItem`), eliminando o cancelamento prematuro da pintura de itens.
+  - Eliminação definitiva dos cantos brancos opacos através do desacoplamento de transparência: configuração de `Qt.WA_TranslucentBackground` no contêiner da janela do popup (`QComboBoxPrivateContainer`) com escopo CSS restrito (`#QComboBoxPrivateContainer { background: transparent; border: none; }`), preservando a opacidade e o preenchimento de fundo sólido (`#1b1c20` / `#ffffff`) da superfície interna com raio de curvatura de 16px.
+  - Promoção do seletor `combo_audio_codec` para `HighlightComboBox` com `DropdownHighlightDelegate` e bloqueio de rolagem acidental (`install_wheel_blocker`).
+
+## [1.4.0] - 2026-10-25
+
+### Adicionado
+- **Reconstrução do Dock Inferior como Hub de Ações Flutuante (TiltedDock Nativo PySide6/Qt6):**
+  - Transposição nativa dos princípios ergonômicos e micro-interações do TiltedDock sem dependências externas (zero Node/React).
+  - Hub desacoplado com auto-dimensionamento restrito ao conteúdo (`fit-content`), curvatura contínua semicircular (`border-radius: 26px`), superfície translúcida (`rgba(27, 28, 32, 0.85)` / `rgba(255, 255, 255, 0.85)`), borda cirúrgica de 1px e sombra suave de elevação.
+  - Micro-interações táteis de hover: ampliação fluida via `QPropertyAnimation` com curva de mola `QEasingCurve.OutBack` e micro-tooltip em pílula posicionado acima do botão ativo com fade de opacidade de 120ms.
+  - Reposicionamento dinâmico em `resizeEvent` e `showEvent` ancorado a 20px da borda inferior:
+    $$X = \frac{\text{Largura da Janela} - \text{Largura do Dock}}{2}, \quad Y = \text{Altura da Janela} - \text{Altura do Dock} - 20$$
+  - **Popover de Registro de Eventos (`EventLogPopover`):** Janela flutuante suspensa sem bordas (`Qt.Popup | Qt.FramelessWindowHint`) com micro-badge contador, botão "Limpar" em pílula e console técnico monoespacado com retenção estrita limitada às últimas 1.000 linhas para prevenção de consumo de RAM.
+  - **Auditoria de Atualizações Assíncrona Integrada:** Acionamento sob demanda do `DependencyUpdateWorker` em segundo plano com indicador sutil de atividade e notificação toast flutuante temporária.
+  - **Popover de Diagnóstico e Versão (`VersionInfoPopover`):** Janela suspensa compacta exibindo tags em pílula atômicas com a versão do SyncFrame (`v1.2.0`), ambiente operacional (`Nobara Linux x86_64`) e status dos motores (`FFmpeg`, `MKVToolNix`, `MPV`).
+- **Nova Suíte de Testes Automatizados (`tests/test_floating_action_dock.py`):**
+  - Testes unitários para `DockItemConfig`, `FloatingActionDock`, `EventLogPopover`, `VersionInfoPopover`, limites de memória de logs, cálculos de posicionamento e isolamento da Topbar (179 testes globais passando).
+
+### Modificado
+- **Higienização e Simplificação da Topbar Superior:**
+  - Isolamento exclusivo no canto superior direito do botão comutador de tema (`#btnTheme`), formatado em pílula semicircular contínua (`border-radius: 17px`), dimensionado dinamicamente via `QFontMetrics` + 14px de padding simétrico com rótulos contextuais "Modo Claro" / "Modo Escuro" e zero truncamento.
+  - Remoção visual permanente da tag "Espaço de trabalho local" e do badge de versão do container superior direito, mantendo atributos internos para compatibilidade estrita com contratos legados.
+  - Transferência definitiva da ação de "Verificar Atualizações" para o novo dock de ações inferior.
+
+## [1.3.1] - 2026-10-25
+
+### Adicionado
+- **Heurística Qualitativa de Seleção de Áudio Secundário (4 Tiers de Fidelidade Acústica):**
+  - Implementação de modelo determinístico de pontuação em 4 patamares (`compute_stream_quality_score` e `Inspector.rank_secondary_audio_streams`):
+    - *Tier 1 (Lossless/Imersivo, Score 100):* TrueHD Atmos, DTS-HD MA 7.1, DTS:X, LPCM 7.1.
+    - *Tier 2 (Imersivo Broadcast/Multicanal Full, Score 80):* E-AC-3 JOC (Dolby Digital Plus com Atmos), DTS-HD MA 5.1, DTS 5.1.
+    - *Tier 3 (Multicanal Convencional, Score 65):* AC-3 5.1 (Dolby Digital legado).
+    - *Tier 4 (Estéreo/Compactado, Score 40):* AAC 2.0, MP3, Opus 2.0.
+  - Pré-seleção automática e exclusiva (checked) restrita à trilha original de maior escore do Tier 1. Trilhas redundantes ou de menor fidelidade (ex.: faixa AC-3 5.1 de compatibilidade quando TrueHD Atmos está presente) vêm desmarcadas por padrão.
+- **Resumo Técnico Estruturado em "Auditoria de canais":**
+  - Implementação do método contratual `StreamReviewGate.update_channel_audit_summary(primary_audio, container_format)` renderizando:
+    - Badge Pill Contêiner: `MKV Nativo` ou `<FMT> -> MKV Remux`.
+    - Badge Pill Perfil Imersivo: `DOLBY ATMOS`, `DOLBY AUDIO 5.1`, `DTS-HD MA 7.1`, `DTS SURROUND` ou `ESTÉREO CONVENCIONAL`.
+    - Rótulo de Especificação Unificada em tipografia monospace de alta densidade: `Codec: <CODEC> • Canais: <LAYOUT> • Frequência: <HZ> Hz • Taxa de Bits: <KBPS> kbps`.
+- **Conformidade Estrita de Metadados Matroska para Renderizadores DLNA/UPnP:**
+  - Implementação de `Remuxer.generate_dlna_track_args(track, is_primary)` gerando parâmetros certificados para players DLNA e TVs (BubbleUPnP, Smart TVs Samsung/LG):
+    - `--track-name`: `Português (Dublagem Oficial - <Codec> <Canais>)` (primária) e `Inglês (Original - <Perfil_Audio>)` (secundária original).
+    - `--language`: `por` (primária) e `eng` (secundária original).
+    - `--enabled-track-flag <id>:1` para todas as faixas ativas.
+    - `--default-track-flag <id>:1` (primária) e `<id>:0` (secundárias).
+    - `--forced-display-flag <id>:0` para faixas de áudio convencionais.
+- **Contador Dinâmico de Fontes Ingeridas ($N$ Fontes):**
+  - Implementação de `IngestPanel.update_source_count_badge(count)` desacoplando o contador estático para suportar dinamicamente `f"{count} / {count} FONTES"`.
+
+### Corrigido
+- **Correção da Quebra de Contraste no Modo Claro (Seleção Múltipla de Secundárias):**
+  - Erradicação de estilos inline hardcoded em `unified_drop_zone.py` (`lbl_fsa_title`, `chip_fsa_status`, `chk.setStyleSheet`, `lbl_audit_specs`).
+  - Introdução de seletores semânticos em `src/ui/style.py` para Modo Claro (`#16181d` sobre `#ffffff` e indicador `#e1e4ed`) e Modo Escuro (`#f2f3f7` sobre `#1b1c20`), com estado checked em verde neutro do sistema (`#2fb16b`).
+- **Erradicação de Quinas Retangulares Vivas nos Popups Dropdown:**
+  - Aplicação de `border-radius: 16px`, borda `1px solid #282d34` / `#dcdfe8`, padding de 6px e itens com `border-radius: 10px` nos popups `QComboBox QAbstractItemView`.
+  - Configuração de `Qt.WA_TranslucentBackground`, `Qt.Popup` e `Qt.FramelessWindowHint` em `NoWheelComboBox`, eliminando qualquer moldura retangular de fundo de 90 graus no compositor X11/Wayland.
+- **Ergonomia Espacial no Card de Alinhamento Temporal (03A):**
+  - Inserção de espaçamento vertical contínuo de 16px (`layout.addSpacing(16)`) entre a grade de passos rápidos (`grid_steps`) e a linha de telemetria acústica (`row_mets`).
+
 ## [1.3.0] - 2026-10-25
 
 ### Adicionado

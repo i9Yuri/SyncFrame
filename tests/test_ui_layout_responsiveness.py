@@ -115,6 +115,32 @@ class TestUILayoutResponsiveness(unittest.TestCase):
         self.assertIsNone(self.window.audio_path)
         self.assertEqual(self.window.txt_output_path.text(), "")
 
+    def test_sticky_detached_topbar_structure(self):
+        """Top bar must be detached from scroll area with fixed 76px height and distinct theme styling."""
+        topbar = getattr(self.window, "topbar", None)
+        self.assertIsNotNone(topbar)
+        self.assertEqual(topbar.objectName(), "topHeader")
+        self.assertEqual(topbar.height(), 76)
+
+        # Ensure scroll area is positioned below the sticky topbar
+        self.window.resize(1024, 720)
+        self.window.show()
+        QApplication.processEvents()
+
+        self.assertGreaterEqual(self.window.scroll_area.y(), 76)
+
+        # Validate dark theme topbar styling
+        img_dark = topbar.grab().toImage()
+        self.assertEqual(img_dark.pixelColor(10, 10).name(), "#121316")
+        self.assertEqual(img_dark.pixelColor(10, 75).name(), "#23252b")
+
+        # Toggle to light theme and validate styling
+        self.window.toggle_theme_mode()
+        QApplication.processEvents()
+        img_light = topbar.grab().toImage()
+        self.assertEqual(img_light.pixelColor(10, 10).name(), "#ffffff")
+        self.assertEqual(img_light.pixelColor(10, 75).name(), "#e1e4ed")
+
 
 if __name__ == "__main__":
     unittest.main()

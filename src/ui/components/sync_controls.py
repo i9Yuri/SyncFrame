@@ -171,8 +171,8 @@ class SyncControls(QFrame):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(12)
+        layout.setContentsMargins(24, 20, 24, 20)
 
         # Header with Title and Track Tag
         header_layout = QHBoxLayout()
@@ -187,7 +187,7 @@ class SyncControls(QFrame):
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        # Precision Stepper: Pill segmented group (1 ms, 10 ms, 50 ms)
+        # Precision Stepper: Segmented pill container (1 ms, 10 ms, 50 ms)
         self.sensitivity_selector = SensitivitySelectorWidget(self)
         self.stepper_group = self.sensitivity_selector
         self.btn_sens_fine = self.sensitivity_selector.btn_1ms
@@ -198,9 +198,9 @@ class SyncControls(QFrame):
 
         self.chip_track = QLabel("Faixa A02")
         self.chip_track.setObjectName("chipTrack")
-        self.chip_track.setProperty("class", "statusPill")
+        self.chip_track.setProperty("class", "chipTrack")
         self.chip_track.setAlignment(Qt.AlignCenter)
-        self.chip_track.setFixedHeight(34)
+        self.chip_track.setFixedHeight(28)
         header_layout.addWidget(self.chip_track)
         layout.addLayout(header_layout)
 
@@ -208,7 +208,7 @@ class SyncControls(QFrame):
         offset_callout_frame = QFrame()
         offset_callout_frame.setProperty("class", "offBox")
         disp_box = QHBoxLayout(offset_callout_frame)
-        disp_box.setContentsMargins(18, 10, 14, 10)
+        disp_box.setContentsMargins(20, 16, 20, 16)
         disp_box.setSpacing(12)
 
         disp_sub = QVBoxLayout()
@@ -228,7 +228,7 @@ class SyncControls(QFrame):
         self.btn_reset.setObjectName("btnResetOffset")
         self.btn_reset.setProperty("class", "pill")
         self.btn_reset.setCursor(Qt.PointingHandCursor)
-        self.btn_reset.setFixedHeight(34)
+        self.btn_reset.setFixedHeight(30)
         self.btn_reset.clicked.connect(self.reset_to_calculated)
         disp_box.addWidget(self.btn_reset, alignment=Qt.AlignVCenter)
         layout.addWidget(offset_callout_frame)
@@ -238,20 +238,21 @@ class SyncControls(QFrame):
         self.frame_slider.setObjectName("frameSlider")
         self.frame_slider.setProperty("class", "sliderContainer")
         slider_box = QVBoxLayout(self.frame_slider)
-        slider_box.setContentsMargins(14, 10, 14, 10)
+        slider_box.setContentsMargins(2, 6, 2, 6)
         slider_box.setSpacing(6)
 
         self.slider = DampedSlider(Qt.Horizontal)
         self.slider.setRange(-5000, 5000)
         self.slider.setSingleStep(10)
         self.slider.setPageStep(50)
+        self.slider.setFixedHeight(28)
         self.sensitivity_controller = SliderSensitivityController(self.slider)
         self.set_sensitivity_mode("normal")
         self.slider.valueChanged.connect(self._on_slider_changed)
         slider_box.addWidget(self.slider)
 
         lbl_row = QHBoxLayout()
-        lbl_left = QLabel("−5000 ms")
+        lbl_left = QLabel("-5000 ms")
         lbl_left.setProperty("class", "hint")
         lbl_mid = QLabel("0")
         lbl_mid.setProperty("class", "hint")
@@ -267,13 +268,13 @@ class SyncControls(QFrame):
 
         # Precision Nudge Grid: 2 rows of 4 buttons (.steps)
         grid_steps = QGridLayout()
-        grid_steps.setSpacing(6)
+        grid_steps.setSpacing(8)
 
         step_values = [
-            (-250.0, "−250 ms", 0, 0),
-            (-50.0, "−50 ms", 0, 1),
-            (-10.0, "−10 ms", 0, 2),
-            (-1.0, "−1 ms", 0, 3),
+            (-250.0, "-250 ms", 0, 0),
+            (-50.0, "-50 ms", 0, 1),
+            (-10.0, "-10 ms", 0, 2),
+            (-1.0, "-1 ms", 0, 3),
             (1.0, "+1 ms", 1, 0),
             (10.0, "+10 ms", 1, 1),
             (50.0, "+50 ms", 1, 2),
@@ -328,9 +329,11 @@ class SyncControls(QFrame):
         bc_layout.addWidget(lbl_conf_title)
         self.lbl_confidence = QLabel("Não analisado")
         self.lbl_confidence.setProperty("class", "metVal")
+        self.lbl_confidence.setProperty("analyzed", "false")
         bc_layout.addWidget(self.lbl_confidence)
         row_mets.addWidget(box_conf, 1)
 
+        layout.addSpacing(16)
         layout.addLayout(row_mets)
 
         # Discontinuity Warning Banner (Cuts/Step Discontinuities)
@@ -363,7 +366,7 @@ class SyncControls(QFrame):
         fn_layout.addWidget(dot)
 
         self.lbl_diagnosis = QLabel("Taxas de quadros congruentes (sem deriva contínua)")
-        self.lbl_diagnosis.setProperty("class", "hint")
+        self.lbl_diagnosis.setObjectName("lblDiagnosisNote")
         fn_layout.addWidget(self.lbl_diagnosis)
         fn_layout.addStretch()
         layout.addWidget(self.frame_note)
@@ -391,6 +394,8 @@ class SyncControls(QFrame):
             self.lbl_confidence.setText(f"Alta ({pct:.1f}%{pslr_tag})".replace(".", ","))
         else:
             self.lbl_confidence.setText(f"Baixa ({pct:.1f}%{pslr_tag}) — Manual".replace(".", ","))
+        self.lbl_confidence.setProperty("analyzed", "true")
+        self.lbl_confidence.setStyle(self.lbl_confidence.style())
 
         self.slider.blockSignals(True)
         self.slider.setValue(int(round(metrics.static_offset_ms)))

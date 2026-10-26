@@ -24,7 +24,9 @@ from .models import (
     SubtitleDetail,
     MediaInspectionReport,
     ConsolidatedStreamSelection,
-    RemuxJob
+    RemuxJob,
+    AudioQualityBadge,
+    StreamAuditSummary
 )
 
 logger = logging.getLogger(__name__)
@@ -1282,41 +1284,49 @@ def arbitrate_duplicate_language_streams(
         )
 
 
-def evaluate_media_streams(file_a: Any, file_b: Any) -> AutoMatchVerdict:
+def evaluate_media_streams(file_a: Any, file_b: Any = None, *extra_files: Any) -> AutoMatchVerdict:
     """
-    Executes immediate comparative heuristic evaluation of two media files (MKV, MP4, M4V, MOV),
+    Executes immediate comparative heuristic evaluation of N media files (MKV, MP4, M4V, MOV, N >= 2),
     producing an AutoMatchVerdict with recommended streams, alternatives, and duplicate language arbitration.
-    Supports either file paths (str) or pre-inspected stream lists (List[StreamMetadata]).
+    Supports either file paths (str), list of file paths, or pre-inspected stream lists (List[StreamMetadata]).
     """
-    if isinstance(file_a, str):
-        streams_a = inspect_media(file_a)
-        path_a = file_a
-    elif isinstance(file_a, list):
-        streams_a = file_a
-        path_a = getattr(streams_a[0], "file_path", "file_a") if streams_a else "file_a"
-    else:
-        raise TypeError(f"file_a must be str or list of StreamMetadata, got {type(file_a)}")
+    raw_inputs: List[Any] = []
+    def _flatten_input(obj: Any):
+        if isinstance(obj, (list, tuple)):
+            if obj and hasattr(obj[0], "track_type"):
+                raw_inputs.append(list(obj))
+            else:
+                for sub in obj:
+                    _flatten_input(sub)
+        elif obj is not None:
+            raw_inputs.append(obj)
 
-    if isinstance(file_b, str):
-        streams_b = inspect_media(file_b)
-        path_b = file_b
-    elif isinstance(file_b, list):
-        streams_b = file_b
-        path_b = getattr(streams_b[0], "file_path", "file_b") if streams_b else "file_b"
-    else:
-        raise TypeError(f"file_b must be str or list of StreamMetadata, got {type(file_b)}")
+    _flatten_input(file_a)
+    if file_b is not None:
+        _flatten_input(file_b)
+    for extra in extra_files:
+        _flatten_input(extra)
 
     all_streams_with_files: List[Tuple[str, StreamMetadata]] = []
-    for s in streams_a:
-        all_streams_with_files.append((path_a, s))
-    for s in streams_b:
-        all_streams_with_files.append((path_b, s))
+    for idx, item in enumerate(raw_inputs):
+        if isinstance(item, str):
+            streams = inspect_media(item)
+            path = item
+        elif isinstance(item, list):
+            streams = item
+            path = getattr(streams[0], "file_path", f"file_{idx}") if streams else f"file_{idx}"
+        else:
+            raise TypeError(f"Media input at index {idx} must be str or list of StreamMetadata, got {type(item)}")
+
+        for s in streams:
+            all_streams_with_files.append((path, s))
 
     ranked_videos = rank_video_streams(all_streams_with_files)
     if not ranked_videos:
         raise ValueError("Nenhuma faixa de vídeo válida encontrada em nenhum dos arquivos informados.")
 
     chosen_video = ranked_videos[0]
+    chosen_video.is_best_quality = True
     alt_videos = ranked_videos[1:]
 
     recommended_target, reference_audio, all_audios, is_ambiguous, ambiguity_reason = identify_target_and_ref_audios(
@@ -1339,6 +1349,17 @@ def evaluate_media_streams(file_a: Any, file_b: Any) -> AutoMatchVerdict:
                 recommended_target.badge_label = "Dublagem Superior Selecionada"
                 break
 
+    if recommended_target:
+        recommended_target.is_best_quality = True
+    if reference_audio:
+        reference_audio.is_best_quality = True
+
+    # Mark highest quality audio in all_audios
+    ranked_sec = rank_secondary_audio_streams(all_audios)
+    for cand, is_rec in ranked_sec:
+        if is_rec and isinstance(cand, StreamCandidate):
+            cand.is_best_quality = True
+
     alt_audios = [a for a in all_audios if a != recommended_target]
 
     return AutoMatchVerdict(
@@ -1350,6 +1371,70 @@ def evaluate_media_streams(file_a: Any, file_b: Any) -> AutoMatchVerdict:
         is_ambiguous=is_ambiguous,
         ambiguity_reason=ambiguity_reason,
         arbitration_result=arbitration
+    )
+
+
+def build_audio_quality_badge(candidate: StreamCandidate, is_best: bool = False) -> AudioQualityBadge:
+    """Builds atomic structured AudioQualityBadge from a StreamCandidate."""
+    s = candidate.stream
+    lang = (s.language or "und").upper()
+    brand = s.get_immersive_profile_label()
+
+    if s.is_immersive and s.spatial_label:
+        ch_desc = s.spatial_label
+    elif s.channel_layout:
+        ch_desc = s.channel_layout
+    elif s.channels > 0:
+        ch_desc = f"{s.channels}.0" if s.channels <= 2 else f"{s.channels - 1}.1"
+    else:
+        ch_desc = "2.0"
+
+    sr = s.sample_rate if s.sample_rate > 0 else 48000
+    br_kbps = int(round(s.bitrate / 1000.0)) if (s.bitrate and s.bitrate > 0) else 0
+    codec_name = (s.codec or "").upper()
+    filename = os.path.basename(candidate.file_path)
+
+    return AudioQualityBadge(
+        language=lang,
+        brand_format=brand,
+        channels_desc=ch_desc,
+        sample_rate_hz=sr,
+        bit_rate_kbps=br_kbps,
+        codec_name=codec_name,
+        source_filename=filename,
+        track_id=s.id,
+        is_best_option=is_best or candidate.is_best_quality or candidate.is_recommended,
+        title=s.title or ""
+    )
+
+
+def build_stream_audit_summary(candidate: StreamCandidate, container_format: str = "mkv") -> StreamAuditSummary:
+    """Builds structured deduplicated StreamAuditSummary from a StreamCandidate."""
+    s = candidate.stream
+    fmt_upper = (container_format or s.container_format or "mkv").lower()
+    container_lbl = "MKV Nativo" if fmt_upper == "mkv" else f"{fmt_upper.upper()} -> MKV Remux"
+
+    profile = s.get_immersive_profile_label()
+
+    layout_lbl = format_channel_layout_label(s.channels, s.channel_layout)
+    if s.channels >= 6 or "5.1" in layout_lbl or "7.1" in layout_lbl:
+        ch_lbl = f"{layout_lbl} Surround"
+    elif s.channels == 2:
+        ch_lbl = f"{layout_lbl}"
+    else:
+        ch_lbl = layout_lbl
+
+    codec_lbl = (s.codec or "").upper()
+    sr_lbl = f"{s.sample_rate:,} Hz".replace(",", ".") if s.sample_rate > 0 else "48.000 Hz"
+    br_lbl = f"{int(round(s.bitrate / 1000.0))} kbps" if (s.bitrate and s.bitrate > 0) else "VBR"
+
+    return StreamAuditSummary(
+        container=container_lbl,
+        audio_profile=profile,
+        channels=ch_lbl,
+        codec=codec_lbl,
+        sample_rate=sr_lbl,
+        bit_rate=br_lbl
     )
 
 
@@ -1650,19 +1735,15 @@ def build_consolidated_selection_state(
             all_audio_cands.append(cand)
 
     secondary_selections: List[Tuple[str, int, bool]] = []
-    for cand in all_audio_cands:
-        # If this is the chosen primary dubbed audio, it is not a secondary track
-        if cand.file_path == target_a_file and cand.stream.id == target_a_id:
-            continue
+    secondary_cands = [
+        cand for cand in all_audio_cands
+        if not (cand.file_path == target_a_file and cand.stream.id == target_a_id)
+    ]
 
-        lang = (cand.stream.language or "und").lower()
-        # Original audio tracks (English or designated reference) checked by default
-        is_original = (
-            "eng" in lang
-            or "en" in lang
-            or (ref_a_file and cand.file_path == ref_a_file and cand.stream.id == ref_a_id)
-        )
-        secondary_selections.append((cand.file_path, cand.stream.id, is_original))
+    # Apply smart qualitative ranking to secondary candidates so only the highest fidelity is checked by default
+    ranked_secondary = rank_secondary_audio_streams(secondary_cands)
+    for cand, is_rec in ranked_secondary:
+        secondary_selections.append((cand.file_path, cand.stream.id, is_rec))
 
     return ConsolidatedStreamSelection(
         primary_video_file=primary_v_file,
@@ -1695,6 +1776,155 @@ def apply_selection_to_remux_job(
     job.keep_original_audio = has_enabled_secondary
 
     return job
+
+
+def compute_stream_quality_score(stream: Any) -> float:
+    """
+    Computes an acoustic fidelity quality score (0 - 100+) based on the 4-tier model:
+    - Tier 1 (Score: 100): TrueHD Atmos, DTS-HD MA 7.1, DTS:X, LPCM 7.1
+    - Tier 2 (Score: 80): E-AC-3 JOC (Atmos 5.1/7.1), DTS-HD MA 5.1, DTS 5.1
+    - Tier 3 (Score: 65): AC-3 5.1 (Dolby Audio 640/384 kbps)
+    - Tier 4 (Score: 40): AAC 2.0, MP3, Opus 2.0
+    """
+    s = stream.stream if hasattr(stream, "stream") and hasattr(stream.stream, "codec") else stream
+
+    c = str(getattr(s, "codec", "") or "").lower().replace("-", "").replace("_", "")
+    layout = str(getattr(s, "channel_layout", "") or "").lower()
+    channels = int(getattr(s, "channels", 0) or 0)
+    title = str(getattr(s, "title", "") or "").lower()
+    is_imm = bool(getattr(s, "is_immersive", False))
+    spatial_lbl = str(getattr(s, "spatial_label", "") or "").lower()
+    imm_type = str(getattr(s, "immersive_type", "") or "").lower()
+
+    has_atmos = (
+        is_imm
+        or "atmos" in title
+        or "atmos" in layout
+        or "atmos" in spatial_lbl
+        or "atmos" in imm_type
+        or "joc" in layout
+        or "joc" in title
+    )
+    has_dtsx = "dts:x" in title or "dts-x" in title or "dtsx" in title
+
+    # Tier 1: Lossless & Immersive (Base Score: 100)
+    if "truehd" in c and has_atmos:
+        score = 100.0
+    elif has_dtsx:
+        score = 99.5
+    elif ("dts" in c or "dtshd" in c) and (channels >= 8 or "7.1" in layout or "dts-hd ma" in title):
+        score = 99.0
+    elif ("truehd" in c or "flac" in c or "pcm" in c) and (channels >= 8 or "7.1" in layout):
+        score = 98.5
+    elif "truehd" in c or "flac" in c:
+        score = 95.0
+
+    # Tier 2: Immersive Broadcast / Multichannel Full (Base Score: 80)
+    elif ("eac3" in c or "ec3" in c or "ac3" in c) and has_atmos:
+        score = 85.0
+    elif ("dts" in c or "dtshd" in c) and (channels >= 6 or "5.1" in layout):
+        score = 82.0
+    elif "dts" in c:
+        score = 80.0
+
+    # Tier 3: Multichannel Conventional (Base Score: 65)
+    elif ("ac3" in c or "eac3" in c or "dolby" in c) and (channels >= 6 or "5.1" in layout):
+        score = 65.0
+    elif channels >= 6 or "5.1" in layout or "7.1" in layout:
+        score = 60.0
+
+    # Tier 4: Stereo / Compressed (Base Score: 40)
+    elif "opus" in c and channels <= 2:
+        score = 45.0
+    elif "aac" in c or "mp4a" in c:
+        score = 42.0
+    elif "mp3" in c:
+        score = 38.0
+    else:
+        score = 40.0
+
+    # Channel bonus: 7.1 (+2.0), 5.1 (+1.0)
+    if channels >= 8:
+        score += 2.0
+    elif channels >= 6:
+        score += 1.0
+
+    # Bitrate tie-breaker
+    br = getattr(s, "bit_rate", 0) or getattr(s, "bitrate", 0) or 0
+    if br and br > 0:
+        score += min(1.0, float(br) / 5_000_000.0)
+
+    return score
+
+
+def rank_secondary_audio_streams(streams: List[Any]) -> List[Tuple[Any, bool]]:
+    """
+    Ranks non-primary audio streams by qualitative acoustic tier (Lossless/Immersive > Full Surround > AC-3 > Stereo)
+    and determines default selection recommendation.
+    
+    Rule:
+    If multiple original language (e.g. English) streams exist (e.g., DTS-HD MA 7.1, TrueHD Atmos 7.1, AC-3 5.1),
+    strictly the highest scoring stream (Tier 1 leader) is recommended (True).
+    Redundant or lower-tier streams are unchecked (False) by default to prevent container bloat.
+    
+    Returns:
+        List of (stream, is_recommended_checked) tuples ordered from highest to lowest quality.
+    """
+    if not streams:
+        return []
+
+    # Score each stream
+    scored_items: List[Tuple[float, Any]] = []
+    for st in streams:
+        sc = compute_stream_quality_score(st)
+        scored_items.append((sc, st))
+
+    # Sort descending by score
+    scored_items.sort(key=lambda x: x[0], reverse=True)
+
+    # Identify original / English language tracks
+    def _is_original_lang(st: Any) -> bool:
+        s = st.stream if hasattr(st, "stream") and hasattr(st.stream, "language") else st
+        lang = str(getattr(s, "language", "") or "").lower()
+        title = str(getattr(s, "title", "") or "").lower()
+        return (
+            "eng" in lang
+            or "en" in lang
+            or "english" in lang
+            or "inglês" in lang
+            or "ingles" in lang
+            or "original" in title
+            or lang in ("und", "")
+        )
+
+    # Find the single highest-scoring stream to check by default
+    orig_candidates = [item for item in scored_items if _is_original_lang(item[1])]
+    best_target = orig_candidates[0][1] if orig_candidates else (scored_items[0][1] if scored_items else None)
+
+    results: List[Tuple[Any, bool]] = []
+    for sc, item in scored_items:
+        is_recommended = (item is best_target)
+        results.append((item, is_recommended))
+
+    return results
+
+
+class Inspector:
+    """Namespace wrapper for media inspection and stream ranking routines."""
+    rank_secondary_audio_streams = staticmethod(rank_secondary_audio_streams)
+    compute_stream_quality_score = staticmethod(compute_stream_quality_score)
+    inspect_media = staticmethod(inspect_media)
+    probe_media_file = staticmethod(probe_media_file)
+    inspect_single_media = staticmethod(inspect_single_media)
+    detect_immersive_audio_metadata = staticmethod(detect_immersive_audio_metadata)
+    audit_immersive_capabilities = staticmethod(audit_immersive_capabilities)
+    evaluate_media_streams = staticmethod(evaluate_media_streams)
+    arbitrate_duplicate_language_streams = staticmethod(arbitrate_duplicate_language_streams)
+    build_consolidated_selection_state = staticmethod(build_consolidated_selection_state)
+    apply_selection_to_remux_job = staticmethod(apply_selection_to_remux_job)
+    build_audio_quality_badge = staticmethod(build_audio_quality_badge)
+    build_stream_audit_summary = staticmethod(build_stream_audit_summary)
+
 
 
 

@@ -5,7 +5,7 @@ import os
 import re
 import subprocess
 import threading
-from typing import Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 from .correlator import (
     compute_acoustic_correlation,
@@ -15,13 +15,111 @@ from .correlator import (
 )
 from .extractor import extract_audio_lossless, extract_reference_channel
 from .inspector import extract_container_time_offsets
-from .models import RemuxJob, AuditVerificationResult
+from .models import (
+    RemuxJob,
+    AuditVerificationResult,
+    format_channel_layout_label,
+    format_immersive_profile_label
+)
 from .transformer import apply_temporal_transform
 from .temp_manager import TempWorkspace
 
 logger = logging.getLogger(__name__)
 
 PROGRESS_REGEX = re.compile(r"Progress:\s*(\d+)%", re.IGNORECASE)
+
+
+def generate_dlna_track_args(track: Any, is_primary: bool = False) -> List[str]:
+    """
+    Constructs normalized mkvmerge command arguments for an audio track to ensure full
+    compatibility with DLNA/UPnP media renderers (e.g. BubbleUPnP on Smart TVs):
+    - --track-name <id>:"<semantic_title>"
+    - --language <id>:<iso_639_2>
+    - --enabled-track-flag <id>:1
+    - --default-track-flag <id>:1 (primary) / <id>:0 (secondary)
+    - --forced-display-flag <id>:0
+    """
+    s = track.stream if hasattr(track, "stream") and hasattr(track.stream, "codec") else track
+
+    track_id = int(getattr(s, "stream_id", getattr(s, "id", 0)))
+    raw_codec = str(getattr(s, "codec", "") or "").upper()
+    codec_norm = raw_codec
+    if "EAC3" in raw_codec or "EC3" in raw_codec:
+        codec_norm = "E-AC-3"
+    elif "AC3" in raw_codec:
+        codec_norm = "AC-3"
+    elif "TRUEHD" in raw_codec:
+        codec_norm = "TrueHD"
+    elif "DTS" in raw_codec:
+        title_low = str(getattr(s, "title", "") or "").lower()
+        if "dts-hd ma" in title_low or "dtshd" in raw_codec.lower():
+            codec_norm = "DTS-HD MA"
+        elif "dts:x" in title_low or "dtsx" in title_low:
+            codec_norm = "DTS:X"
+        else:
+            codec_norm = "DTS"
+
+    channels = int(getattr(s, "channels", 0) or 0)
+    layout = str(getattr(s, "channel_layout", "") or "")
+    channels_lbl = format_channel_layout_label(channels, layout).replace("Surround ", "").replace("Estéreo ", "")
+    if not channels_lbl or channels_lbl == "Canais Desconhecidos":
+        channels_lbl = f"{channels}.0" if channels > 0 else "2.0"
+
+    raw_lang = str(getattr(s, "language", "") or "").lower()
+
+    if is_primary:
+        lang_code = "por"
+        track_name = f"Português (Dublagem Oficial - {codec_norm} {channels_lbl})"
+        default_val = "1"
+    else:
+        default_val = "0"
+        is_eng = (
+            "eng" in raw_lang
+            or "en" in raw_lang
+            or "english" in raw_lang
+            or "original" in str(getattr(s, "title", "")).lower()
+        )
+        if is_eng:
+            lang_code = "eng"
+            # Perfil Audio (ex.: TrueHD 7.1 Atmos, DTS-HD MA 7.1, AC-3 5.1)
+            if hasattr(s, "get_immersive_profile_label"):
+                prof_label = s.get_immersive_profile_label()
+            else:
+                prof_label = format_immersive_profile_label(
+                    codec=getattr(s, "codec", ""),
+                    channels=channels,
+                    channel_layout=layout,
+                    is_immersive=bool(getattr(s, "is_immersive", False)),
+                    title=str(getattr(s, "title", "") or "")
+                )
+
+            is_imm = bool(getattr(s, "is_immersive", False)) or "atmos" in prof_label.lower() or "atmos" in str(getattr(s, "title", "")).lower()
+            if is_imm:
+                perfil = f"{codec_norm} {channels_lbl} Atmos" if "atmos" not in codec_norm.lower() else codec_norm
+            elif "DTS-HD MA" in prof_label:
+                perfil = f"DTS-HD MA {channels_lbl}"
+            elif "DTS SURROUND" in prof_label:
+                perfil = f"DTS {channels_lbl}"
+            elif "DOLBY AUDIO" in prof_label:
+                perfil = f"{codec_norm} {channels_lbl}"
+            else:
+                perfil = f"{codec_norm} {channels_lbl}"
+
+            track_name = f"Inglês (Original - {perfil})"
+        elif raw_lang and raw_lang not in ("und", "unknown"):
+            lang_code = raw_lang[:3]
+            track_name = f"Áudio Secundário #{track_id} ({codec_norm} {channels_lbl})"
+        else:
+            lang_code = "und"
+            track_name = f"Áudio Secundário #{track_id} ({codec_norm} {channels_lbl})"
+
+    return [
+        "--track-name", f"{track_id}:{track_name}",
+        "--language", f"{track_id}:{lang_code}",
+        "--enabled-track-flag", f"{track_id}:1",
+        "--default-track-flag", f"{track_id}:{default_val}",
+        "--forced-display-flag", f"{track_id}:0"
+    ]
 
 
 def build_mkvmerge_exclusion_flags(discarded_stream_ids: List[int]) -> List[str]:
@@ -56,6 +154,7 @@ def build_mkvmerge_hybrid_command(
     with synchronized target dubbed audio stream and optional secondary tracks.
     Applies map_offset_to_player_delay to ensure proper container delay sign convention.
     Excludes discarded duplicate audio streams using build_mkvmerge_exclusion_flags.
+    Applies DLNA/UPnP compliance flags (--enabled-track-flag, --forced-display-flag).
     """
     cmd = ["mkvmerge", "-o", output_path]
 
@@ -71,7 +170,11 @@ def build_mkvmerge_hybrid_command(
         if enabled_video_audio_ids:
             cmd.extend(["--audio-tracks", ",".join(str(tid) for tid in enabled_video_audio_ids)])
             for tid in enabled_video_audio_ids:
-                cmd.extend(["--default-track-flag", f"{tid}:no"])
+                cmd.extend([
+                    "--default-track-flag", f"{tid}:no",
+                    "--enabled-track-flag", f"{tid}:1",
+                    "--forced-display-flag", f"{tid}:0",
+                ])
         else:
             cmd.append("--no-audio")
     else:
@@ -84,6 +187,8 @@ def build_mkvmerge_hybrid_command(
                 if ref_audio_track_id is not None and ref_audio_track_id >= 0:
                     cmd.extend([
                         "--default-track-flag", f"{ref_audio_track_id}:no",
+                        "--enabled-track-flag", f"{ref_audio_track_id}:1",
+                        "--forced-display-flag", f"{ref_audio_track_id}:0",
                         "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
                         "--language", f"{ref_audio_track_id}:{original_audio_language}",
                     ])
@@ -91,6 +196,8 @@ def build_mkvmerge_hybrid_command(
                 cmd.extend([
                     "--audio-tracks", str(ref_audio_track_id),
                     "--default-track-flag", f"{ref_audio_track_id}:no",
+                    "--enabled-track-flag", f"{ref_audio_track_id}:1",
+                    "--forced-display-flag", f"{ref_audio_track_id}:0",
                     "--track-name", f"{ref_audio_track_id}:{original_audio_name}",
                     "--language", f"{ref_audio_track_id}:{original_audio_language}",
                 ])
@@ -116,13 +223,19 @@ def build_mkvmerge_hybrid_command(
         "--audio-tracks", ",".join(str(tid) for tid in audio_tracks_to_include),
         "--sync", f"{target_audio_track_id}:{container_delay_ms}",
         "--default-track-flag", f"{target_audio_track_id}:yes",
+        "--enabled-track-flag", f"{target_audio_track_id}:1",
+        "--forced-display-flag", f"{target_audio_track_id}:0",
         "--track-name", f"{target_audio_track_id}:{target_audio_name}",
         "--language", f"{target_audio_track_id}:{target_audio_language}",
     ])
 
     if len(audio_tracks_to_include) > 1:
         for extra_id in audio_tracks_to_include[1:]:
-            cmd.extend(["--default-track-flag", f"{extra_id}:no"])
+            cmd.extend([
+                "--default-track-flag", f"{extra_id}:no",
+                "--enabled-track-flag", f"{extra_id}:1",
+                "--forced-display-flag", f"{extra_id}:0",
+            ])
 
     cmd.extend([
         "--no-video", "--no-subtitles", "--no-attachments",
@@ -502,6 +615,12 @@ def execute_unified_sync_pipeline(
 
         if success:
             on_status_change("Sincronização e multiplexação concluídas com sucesso!", 100.0)
-
         return success
 
+
+class Remuxer:
+    """Namespace class exposing core remuxing static methods."""
+    generate_dlna_track_args = staticmethod(generate_dlna_track_args)
+    execute_lossless_remux = staticmethod(execute_lossless_remux)
+    build_mkvmerge_hybrid_command = staticmethod(build_mkvmerge_hybrid_command)
+    build_mkvmerge_exclusion_flags = staticmethod(build_mkvmerge_exclusion_flags)
