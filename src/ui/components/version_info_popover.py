@@ -29,7 +29,7 @@ class VersionInfoPopover(QWidget):
         self.setFixedSize(400, 240)
 
         self.current_theme: Literal["dark", "light"] = "dark"
-        self.app_version: str = "v1.5.0"
+        self.app_version: str = "v2.0.0"
         self.tool_versions: Dict[str, str] = {}
 
         self.init_ui()

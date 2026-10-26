@@ -73,6 +73,8 @@ class TestPreFlightAndUpdater(unittest.TestCase):
         self.assertTrue(hasattr(worker, "audit_finished"))
         self.assertTrue(hasattr(worker, "update_available"))
         self.assertTrue(hasattr(worker, "status_message"))
+        self.assertTrue(hasattr(worker, "update_progress"))
+        self.assertTrue(hasattr(worker, "update_completed"))
 
         captured_audit = []
         worker.audit_finished.connect(captured_audit.append)
@@ -83,7 +85,47 @@ class TestPreFlightAndUpdater(unittest.TestCase):
         res = captured_audit[0]
         self.assertIn("syncframe", res)
         self.assertIn("tools", res)
-        self.assertEqual(res["syncframe"]["local_version"], "1.2.0")
+        self.assertEqual(res["syncframe"]["local_version"], "2.0.0")
+
+    def test_dependency_update_worker_semantic_comparison(self):
+        """Verifies semantic version parsing avoids false-positive downgrade notices."""
+        from src.ui.workers.dependency_update_worker import parse_semantic_version
+        self.assertGreater(parse_semantic_version("2.0.0"), parse_semantic_version("1.0.0"))
+        self.assertGreater(parse_semantic_version("v2.0.0"), parse_semantic_version("1.5.0"))
+        self.assertGreater(parse_semantic_version("2.0.1"), parse_semantic_version("2.0.0"))
+        self.assertLess(parse_semantic_version("1.0.0"), parse_semantic_version("2.0.0"))
+        self.assertEqual(parse_semantic_version("2.0.0"), parse_semantic_version("v2.0.0"))
+
+    def test_dependency_update_worker_auto_update_flow(self):
+        """Verifies that when an update is available and auto_apply is True, update is executed."""
+        worker = DependencyUpdateWorker(auto_apply=True)
+        status_msgs = []
+        worker.status_message.connect(status_msgs.append)
+
+        # Mock an update scenario via git
+        with patch("shutil.which", return_value="/bin/git"), \
+             patch("os.path.isdir", return_value=True), \
+             patch("subprocess.run") as mock_run:
+            def side_effect(cmd, **kwargs):
+                ret = MagicMock()
+                ret.returncode = 0
+                if "rev-list" in cmd:
+                    ret.stdout = "2\n"  # 2 commits behind
+                elif "pull" in cmd:
+                    ret.stdout = "Updating 123..456\nFast-forward\n"
+                    ret.stderr = ""
+                else:
+                    ret.stdout = "master\n"
+                return ret
+
+            mock_run.side_effect = side_effect
+            audit_events = []
+            worker.audit_finished.connect(audit_events.append)
+            worker.run()
+
+            self.assertEqual(len(audit_events), 1)
+            self.assertTrue(audit_events[0]["syncframe"]["updated"])
+            self.assertTrue(any("SyncFrame atualizado com sucesso" in m for m in status_msgs))
 
     def test_lipsync_controller_contract(self):
         """Verifies LipSyncController signals, state transitions, and process handling."""

@@ -489,23 +489,33 @@ class SyncFrameMainWindow(QWidget):
             audit_result.get("syncframe", {}).get("has_update", False)
             or any(t.get("has_update") for t in audit_result.get("tools", {}).values())
         )
+        was_updated = (
+            audit_result.get("syncframe", {}).get("updated", False)
+            or audit_result.get("tools_updated", False)
+        )
         if hasattr(self, "floating_dock") and self.floating_dock:
             self.floating_dock.set_item_activity_state("check_updates", False, "Verificar Atualizações")
             tool_versions = {
                 t: data.get("local_version", "Detectado")
                 for t, data in audit_result.get("tools", {}).items()
             }
-            app_v = audit_result.get("syncframe", {}).get("local_version", "v1.2.0")
+            app_v = audit_result.get("syncframe", {}).get("local_version", "2.0.0")
+            if not app_v.startswith("v"):
+                app_v = f"v{app_v}"
             self.floating_dock.version_popover.set_system_info(app_v, tool_versions)
 
             if not silent:
-                if has_any_update:
-                    self.floating_dock.show_toast("Atualização disponível para ferramentas ou aplicação")
+                if was_updated:
+                    self.floating_dock.show_toast("Atualização concluída com sucesso! Reinicie o aplicativo.")
+                elif has_any_update:
+                    self.floating_dock.show_toast("Atualização pendente ou requer autorização do sistema")
                 else:
-                    self.floating_dock.show_toast("Todas as dependências e o SyncFrame estão na versão mais recente")
+                    self.floating_dock.show_toast(f"Todas as dependências e o SyncFrame ({app_v}) estão na versão mais recente")
 
         if not silent and hasattr(self, "btn_check_updates"):
-            if has_any_update:
+            if was_updated:
+                self.btn_check_updates.setText("Atualizado! Reinicie o app")
+            elif has_any_update:
                 self.btn_check_updates.setText("Atualização disponível")
             else:
                 self.btn_check_updates.setText("Todas as ferramentas atualizadas")
@@ -660,27 +670,8 @@ class SyncFrameMainWindow(QWidget):
             self.btn_edit_mode.setFixedHeight(34)
 
     def paintEvent(self, event):
-        """Draws orthogonal modular grid (48px spacing) with symmetric crosses (+), strictly below topbar."""
+        """Standard window paint event without background crosses or grid artifacts."""
         super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, False)
-        cross_color = QColor("#1f2329") if getattr(self, "current_theme", "dark") == "dark" else QColor("#e2e5eb")
-        pen = QPen(cross_color, 1)
-        painter.setPen(pen)
-
-        step = 48
-        arm = 4
-        w = self.width()
-        h = self.height()
-
-        topbar_h = self.topbar.geometry().bottom() if hasattr(self, "topbar") and self.topbar else 70
-        start_y = ((max(topbar_h, 60) + step) // step) * step
-
-        for x in range(step, w, step):
-            for y in range(start_y, h, step):
-                painter.drawLine(x - arm, y, x + arm, y)
-                painter.drawLine(x, y - arm, x, y + arm)
-        painter.end()
 
     def toggle_workspace_edit_mode(self) -> None:
         """Toggles workspace customization edit mode and persists layout on completion."""

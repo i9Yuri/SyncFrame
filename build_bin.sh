@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
 echo "========================================================================"
-echo "  SyncFrame — Pipeline de Empacotamento em Binário Único (v1.0.0)"
+echo "  SyncFrame — Pipeline de Empacotamento em Binário Único (v2.0.0)"
 echo "========================================================================"
 
 # 1. Localizar ou validar PyInstaller

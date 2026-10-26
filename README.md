@@ -15,13 +15,17 @@ Projetado com uma interface neutra, minimalista e de alta densidade de informaç
 - **Arquitetura de Modo Duplo Baseada em Ingestão:**
   - **Modo Inspeção / Visualizador de Mídia (Single-File Media Inspector):** Ao carregar exatamente 1 arquivo — vídeo (`.mkv`, `.mp4`, `.m4v`, `.mov`) ou áudio isolado (`.ac3`, `.eac3`, `.aac`, `.dts`, `.flac`, `.m4a`, `.mp3`, `.wav`, `.opus`) —, o SyncFrame atua como uma bancada analítica técnica aprofundada, exibindo metadados do contêiner, especificações do fluxo de vídeo (resolução, framerate, codec, perfil HDR/Dolby Vision, bit depth), catálogo completo de faixas de áudio (codec, canais 2.0/5.1/7.1 Atmos, taxa de amostragem, bitrate real) e trilhas de legenda/capítulos. Permite conexão fluida de uma segunda fonte sem reiniciar a bancada.
   - **Modo Sincronização e Remux Híbrido (Multi-File Synchronizer):** Ao carregar 2 ou mais arquivos, o sistema aciona a esteira de sincronização e o Review Gate consolidado em 3 seções: seleção de vídeo de referência principal, áudio dublado alvo e matriz de fluxos secundários com checkboxes dedicados para preservação ou descarte seletivo no remux.
+- **Faixa Declarativa de Especificações do Arquivo Resultante (Target Output Summary):** Barra horizontal reativa de badges em pílula (`resultingSpecsBar`) consolidando em tempo real 7 metadados técnicos do fluxo resultante: contêiner, modo de processamento (Cópia Direta Passthrough ou Re-encode PAL 24fps), formato comercial (Dolby Atmos, Dolby Audio 5.1, DTS-HD MA, etc.), codec em caixa alta, topologia de canais decomposta (surround, canais de altura e presença de subwoofer), frequência de amostragem e taxa de bits nominal/real.
+- **Dock de Ações Flutuante (TiltedDock Nativo PySide6):** Hub inferior desacoplado com micro-interações táteis de hover, ampliação de mola para 1.35x com curva `OutBack`, realce circular iluminado, atenuação de botões vizinhos (sibling dimming) e atalho de alternância de tema Claro/Escuro via ícones vetoriais SVG adaptativos.
+- **Topbar Desacoplada e Fixa (Sticky Topbar):** Cabeçalho de 76px fixado no topo da aplicação com superfície sólida opaca e linha divisória sutil de 1px, com repasse contínuo de eventos de rolagem do mouse (`wheelEvent`) diretamente para o viewport central.
+- **Proteção Térmica e de Hardware contra Desarme de Sistema (OCP Protection):** Diagnóstico automático de logs de crash e blindagem do host contra sobrecorrente/desarme térmico através de throttling compulsório de threads no FFmpeg (`-threads 2`), contenção de threads em runtime (`OMP_NUM_THREADS=2`, `OPENBLAS_NUM_THREADS=2`) e execução dos workers em baixa prioridade (`os.nice(5)`).
 - **Card de Auditoria Acústica e Badge Imersivo 7.1.4:** Apresentação clara de layout de canais (Mono 1.0, Estéreo 2.0, Surround 5.1, Surround 7.1), codec, taxa de amostragem e bitrate, acompanhado de badge reativo anti-aliased para compatibilidade com soundbars 7.1.4 Dolby Atmos (verde para Atmos/7.1 discreto, âmbar para 5.1/estéreo convencional com tooltip em fade).
 - **Zero Recompressão para Offsets Estáticos:** Se as taxas de quadros forem congruentes, o atraso/adiantamento é aplicado nativamente no cabeçalho do contêiner MKV (`--sync <TRACK_ID>:<OFFSET_MS>`).
 - **Detecção de Framerate & Correlação FFT Multi-Janela:** Extrai trechos acústicos filtrados (bandpass 300Hz-4000Hz mono PCM) no início (5%), meio (50%) e fim (85%) para isolar transientes, trilhas incidentais e foley idênticos entre idiomas, diagnosticando divergências de frame rate conhecidas:
   - `23.976 fps <-> 24.000 fps` (deriva telecine NTSC de $1001/1000 \approx +0.1001\%$)
   - `24.000 fps <-> 25.000 fps` (PAL Speedup/Slowdown de $25/24 \approx +4.167\%$)
-- **Zona Unificada de Entrada (Unified Drop Zone) & Review Gate Tabular:** Zona central inteligente que aceita 1 ou 2 arquivos simultaneamente (.mkv, .mp4, .m4v, .mov, .ac3, .flac, etc.), com transição de modo fluida e aprovação instantânea em 1 clique ou via tecla **Enter**.
-- **Estética Neutra Monocromática & Modo Escuro/Claro:** Design refinado em escala de cinza neutra, preto e branco, com alternador dinâmico de tema (Modo Escuro / Modo Claro) no cabeçalho e geometria 100% contínua e arredondada.
+- **Zona Unificada de Entrada (Unified Drop Zone) & Review Gate Tabular:** Zona central inteligente que aceita qualquer quantidade $N \ge 2$ de arquivos (.mkv, .mp4, .m4v, .mov, .ac3, .flac, etc.), com transição de modo fluida e aprovação instantânea em 1 clique ou via tecla **Enter**.
+- **Estética Neutra Monocromática & Modo Escuro/Claro (One UI 8.5):** Design refinado em escala de cinza neutra, preto e branco, com geometria 100% contínua e arredondada (zero cantos retos de 90 graus).
 - **Layout Totalmente Responsivo com Scroll Vertical:** Estrutura envelopada em `QScrollArea` que garante perfeita usabilidade em modo janela (`1024x650`, `900x550`), eliminando achatamento ou sobreposição de widgets.
 - **Time-Stretch Inteligente sem Alteração de Pitch:** Se e somente se houver deriva contínua significativa ($\text{drift} \neq 1.0$), o filtro `atempo` do FFmpeg é aplicado em cópia temporária de alta precisão (FLAC lossless).
 - **Player de Inspeção Instantânea:** Teste de reprodução em tempo real nos marcadores 5%, 50% e 90% via `mpv` com compensação de atraso instantânea para validação labial antes do remux.
@@ -67,7 +71,7 @@ A aplicação pode ser executada diretamente como um único arquivo executável 
 # Execução direta via terminal ou duplo clique
 ./dist/SyncFrame
 
-# Execução Headless Automatizada (v1.1.0)
+# Execução Headless Automatizada (v2.0.0)
 ./dist/SyncFrame --video master_4k.mkv --dub audio_dublado.mp4 --output final_synced.mkv --keep-original
 
 # Diagnóstico de ferramentas do sistema via CLI
@@ -103,7 +107,7 @@ python3 src/main.py \
 - `2`: Descontinuidade em degrau (corte de montagem ou abertura divergente detectado).
 - `3`: Confiança acústica insuficiente no pico de correlação (piso de ruído elevado).
 
-### 2. Modo de Desenvolvimento Local (`run.sh`)
+### 3. Modo de Desenvolvimento Local (`run.sh`)
 Para desenvolvimento e inspeção do código-fonte:
 
 ```bash
@@ -181,9 +185,13 @@ SyncFrame/
 │   │       └── remux_worker.py     # Multiplexação com cancelamento gracioso
 │   └── utils/
 │       └── system_check.py         # Diagnóstico de integridade e logs de crash
-└── tests/                          # Suíte de 59 testes unitários automatizados
+└── tests/                          # Suíte de 189 testes unitários e de integração
     ├── test_completion_dialog.py
     ├── test_discontinuity.py       # Cortes não lineares, PSLR e restauração PAL
+    ├── test_floating_action_dock.py # Dock de ações flutuante e popovers
+    ├── test_preflight_and_updater.py # Verificação pré-voo e auto-updater
+    ├── test_n_sources_and_atomic_chips.py # Ingestão N-fontes e chips
+    ├── test_all_rounded_corners.py # Design System One UI 8.5
     ├── test_ui_components.py
     ├── test_system_diagnostics.py
     ├── test_container_handling.py
@@ -200,7 +208,7 @@ SyncFrame/
 
 ## Suíte de Testes
 
-Para executar os 59 testes unitários da esteira matemática, interface e modelos:
+Para executar os 189 testes unitários e de integração da esteira matemática, interface e modelos:
 
 ```bash
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -v

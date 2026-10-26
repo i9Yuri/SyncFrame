@@ -643,6 +643,8 @@ class UnifiedDropZone(QFrame):
         fsa_layout.addLayout(fsa_head)
 
         self.secondary_container = QWidget()
+        self.secondary_container.setObjectName("secondaryContainer")
+        self.secondary_container.setStyleSheet("background: transparent; border: none;")
         self.secondary_layout = QVBoxLayout(self.secondary_container)
         self.secondary_layout.setContentsMargins(0, 2, 0, 2)
         self.secondary_layout.setSpacing(6)
@@ -1232,6 +1234,7 @@ class UnifiedDropZone(QFrame):
         card = QFrame()
         card.setObjectName(f"secondaryCard_{badge_data.track_id}")
         card.setProperty("class", "secondaryTrackCard")
+        card.setStyleSheet("background: transparent; border: none;")
         card.setFixedHeight(34)
         card_layout = QHBoxLayout(card)
         card_layout.setContentsMargins(10, 4, 12, 4)

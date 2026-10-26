@@ -489,6 +489,13 @@ QFrame#frameSecondaryAudio {
     border: none;
 }
 
+QWidget#secondaryContainer,
+QWidget#secondary_container {
+    background: transparent;
+    background-color: transparent;
+    border: none;
+}
+
 QLabel#lblFsaTitle {
     color: #f2f3f7;
     font-size: 13px;
@@ -544,9 +551,9 @@ QFrame#frameSecondaryAudio QCheckBox::indicator:checked {
 
 QFrame.secondaryTrackCard,
 QFrame[class="secondaryTrackCard"] {
-    background-color: #18191d;
-    border-radius: 16px;
-    border: 1px solid #282d34;
+    background: transparent;
+    background-color: transparent;
+    border: none;
 }
 
 QLabel.atomicChip,
@@ -928,9 +935,9 @@ QLabel.resultingSpecPill, QLabel[class~="resultingSpecPill"] {
 }
 
 QLabel.resultingPillSignal, QLabel[class~="resultingPillSignal"] {
-    background-color: rgba(64, 129, 247, 0.18);
-    border: 1px solid #4081f7;
-    color: #70a5ff;
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid #e1e4ed;
+    color: #ffffff;
     font-weight: 700;
 }
 
@@ -2015,6 +2022,13 @@ QFrame#frameSecondaryAudio {
     border: none;
 }
 
+QWidget#secondaryContainer,
+QWidget#secondary_container {
+    background: transparent;
+    background-color: transparent;
+    border: none;
+}
+
 QLabel#lblFsaTitle {
     color: #16181d;
     font-size: 13px;
@@ -2070,9 +2084,9 @@ QFrame#frameSecondaryAudio QCheckBox::indicator:checked {
 
 QFrame.secondaryTrackCard,
 QFrame[class="secondaryTrackCard"] {
-    background-color: #f9fafc;
-    border-radius: 16px;
-    border: 1px solid #e1e4ed;
+    background: transparent;
+    background-color: transparent;
+    border: none;
 }
 
 QLabel.atomicChip,
@@ -2454,9 +2468,9 @@ QLabel.resultingSpecPill, QLabel[class~="resultingSpecPill"] {
 }
 
 QLabel.resultingPillSignal, QLabel[class~="resultingPillSignal"] {
-    background-color: rgba(31, 100, 219, 0.12);
-    border: 1px solid #1f64db;
-    color: #1a56be;
+    background-color: rgba(22, 24, 29, 0.08);
+    border: 1px solid #16181d;
+    color: #16181d;
     font-weight: 700;
 }
 

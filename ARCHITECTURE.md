@@ -428,7 +428,10 @@ Para manter a interface gráfica a 60 fps constantes e sem engasgos (jank-free),
 | `UnifiedPipelineWorker` | `execution_failed` | `error_msg: str` | Registra erro no console de telemetria e exibe alerta contextual ao usuário. |
 | `SingleFileInspectionWorker` | `inspection_completed` | `StreamCandidate` | Alimenta os cartões de metadados da Bancada de Inspeção Técnica. |
 | `SingleFileInspectionWorker` | `inspection_failed` | `str` | Notifica falha na leitura do arquivo unitário ingerido. |
-| `DependencyUpdateWorker` | `status_updated` | `dict` (ferramentas e versões) | Atualiza os badges de versão no `VersionInfoPopover` e notifica o dock. |
+| `DependencyUpdateWorker` | `audit_finished` | `dict` (ferramentas e versões) | Atualiza os badges de versão no `VersionInfoPopover` e notifica o dock. |
+| `DependencyUpdateWorker` | `update_available` | `tool_name: str, version: str` | Notifica existência de nova versão identificada via comparação semântica. |
+| `DependencyUpdateWorker` | `status_message` | `msg: str` | Registra mensagens no `EventLogPopover` com telemetria detalhada de execução. |
+| `DependencyUpdateWorker` | `update_completed` | `item: str, success: bool, msg: str` | Sinaliza término da execução do auto-updater (git pull, download ou dnf). |
 
 ---
 

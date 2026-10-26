@@ -188,7 +188,7 @@ def main() -> int:
     parser.add_argument(
         "--version",
         action="version",
-        version="SyncFrame 1.1.0"
+        version="SyncFrame 2.0.0"
     )
 
     # Headless CLI arguments
